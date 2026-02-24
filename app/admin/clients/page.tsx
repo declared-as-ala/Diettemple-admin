@@ -205,10 +205,10 @@ export default function AdminClientsPage() {
 
       <div className="rounded-xl border bg-card">
         {loading ? (
-          <SkeletonTable rows={10} columns={5} />
+          <SkeletonTable rows={10} cols={5} />
         ) : clients.length === 0 ? (
           <EmptyState
-            icon={Users}
+            icon={<Users className="size-10" />}
             title={fr.clientsPage.noClientsFound}
             description={segment !== "all" ? `${fr.empty.noClientsInSegment} "${SEGMENTS.find((s) => s.value === segment)?.label}".` : fr.empty.addClientOrAdjustFilters}
           />

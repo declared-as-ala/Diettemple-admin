@@ -28,11 +28,14 @@ const LEVEL_OPTIONS = ["Intiate", "Fighter", "Warrior", "Champion", "Elite"] as 
 
 export default function UsersPage() {
   const { toast } = useToast()
+  const { query, setQuery, effectiveQuery, isDebouncing } = useDebouncedSearch()
+  const abortRef = useRef<AbortController | null>(null)
+  const hasLoadedOnce = useRef(false)
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchLoading, setSearchLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
-  const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
   const [editUser, setEditUser] = useState<any | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)

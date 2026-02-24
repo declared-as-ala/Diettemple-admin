@@ -64,6 +64,7 @@ export default function AssignmentsBoardPage() {
     levelName: string;
     hasActive: boolean;
     currentLevelId?: string;
+    subscriptionId?: string;
   } | null>(null);
   const [assignStart, setAssignStart] = useState(format(new Date(), "yyyy-MM-dd"));
   const [assignEnd, setAssignEnd] = useState(format(addDays(new Date(), 30), "yyyy-MM-dd"));
