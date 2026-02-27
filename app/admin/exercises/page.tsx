@@ -18,10 +18,10 @@ import { Field, FieldGroup } from "@/components/ui/field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://145.223.118.9:5000/api'
+import { getApiBaseUrl } from "@/lib/apiBaseUrl"
 
 export default function ExercisesPage() {
+  const API_BASE_URL = getApiBaseUrl()
   const { toast } = useToast()
   const [exercises, setExercises] = useState<any[]>([])
   const [muscleGroups, setMuscleGroups] = useState<string[]>([])

@@ -17,10 +17,11 @@ A comprehensive admin dashboard for managing DietTemple products, orders, and us
 npm install
 ```
 
-2. Create `.env.local` file:
+2. Create `.env.local` (see `.env.example`). For **production (e.g. Vercel)**, set:
 ```bash
 NEXT_PUBLIC_API_URL=https://your-api-url.com/api
 ```
+   The URL **must use HTTPS** when the dashboard is served over HTTPS, or the browser will block API requests (Mixed Content).
 
 3. Run the development server:
 ```bash

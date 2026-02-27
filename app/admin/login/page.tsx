@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading"
 import { Mail, Lock, ArrowRight } from "lucide-react"
+import { getApiBaseUrl } from "@/lib/apiBaseUrl"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -22,8 +23,7 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://145.223.118.9:5000/api'
-      
+      const API_BASE_URL = getApiBaseUrl()
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {

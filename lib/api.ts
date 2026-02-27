@@ -1,7 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
 import Cookies from 'js-cookie';
+import { getApiBaseUrl } from './apiBaseUrl';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://145.223.118.9:5000/api';
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiClient {
   private client: AxiosInstance;
