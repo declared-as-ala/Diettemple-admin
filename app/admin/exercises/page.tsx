@@ -18,10 +18,11 @@ import { Field, FieldGroup } from "@/components/ui/field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
-import { getApiBaseUrl } from "@/lib/apiBaseUrl"
+import { getApiBaseUrl, getMediaBaseUrl } from "@/lib/apiBaseUrl"
 
 export default function ExercisesPage() {
   const API_BASE_URL = getApiBaseUrl()
+  const MEDIA_BASE_URL = getMediaBaseUrl()
   const { toast } = useToast()
   const [exercises, setExercises] = useState<any[]>([])
   const [muscleGroups, setMuscleGroups] = useState<string[]>([])
@@ -261,10 +262,9 @@ export default function ExercisesPage() {
       return
     }
     // Backend serves /media at root and /api/videos for legacy. Prepend origin only.
-    const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '')
     const fullUrl = videoUrl.startsWith('/')
-      ? `${baseUrl}${videoUrl}` // e.g. http://145.223.118.9:5000/media/... or .../api/videos/...
-      : `${baseUrl}/${videoUrl}`
+      ? `${MEDIA_BASE_URL}${videoUrl}`
+      : `${MEDIA_BASE_URL}/${videoUrl}`
     setSelectedVideoUrl(fullUrl)
     setShowVideoPlayer(true)
   }
@@ -272,8 +272,7 @@ export default function ExercisesPage() {
   const getVideoUrl = (videoUrl: string) => {
     if (!videoUrl) return null
     if (videoUrl.startsWith('http')) return videoUrl
-    const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '')
-    return videoUrl.startsWith('/') ? `${baseUrl}${videoUrl}` : `${baseUrl}/${videoUrl}`
+    return videoUrl.startsWith('/') ? `${MEDIA_BASE_URL}${videoUrl}` : `${MEDIA_BASE_URL}/${videoUrl}`
   }
 
   const filteredExercises = exercises
