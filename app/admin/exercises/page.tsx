@@ -47,7 +47,13 @@ export default function ExercisesPage() {
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const createVideoInputRef = useRef<HTMLInputElement>(null)
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null)
+  const [creatingExercise, setCreatingExercise] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingBulk, setDeletingBulk] = useState(false)
   const [newExercise, setNewExercise] = useState({
     name: "",
     muscleGroup: "",
@@ -111,6 +117,7 @@ export default function ExercisesPage() {
     })
     setSelectedVideoFile(null)
     setSelectedExercise(null)
+    if (createVideoInputRef.current) createVideoInputRef.current.value = ""
   }
 
   const handleCreateExercise = async () => {
@@ -118,9 +125,12 @@ export default function ExercisesPage() {
       toast("Veuillez remplir les champs obligatoires", "error")
       return
     }
+    if (creatingExercise) return
 
+    setCreatingExercise(true)
+    setUploadProgress(0)
     try {
-      await api.createExercise({
+      const response = await api.createExercise({
         name: newExercise.name,
         muscleGroup: newExercise.muscleGroup,
         description: newExercise.description,
@@ -128,15 +138,24 @@ export default function ExercisesPage() {
         reps: newExercise.reps ? parseInt(newExercise.reps) : undefined,
         restTime: newExercise.restTime ? parseInt(newExercise.restTime) : undefined,
         defaultWeight: newExercise.defaultWeight ? parseFloat(newExercise.defaultWeight) : undefined,
-        videoUrl: newExercise.videoUrl || undefined,
       })
-
-      toast("Exercise created successfully", "success")
+      const createdId = response?.exercise?._id
+      if (createdId && selectedVideoFile) {
+        await api.updateExerciseVideo(
+          createdId,
+          selectedVideoFile,
+          (percent) => setUploadProgress(percent)
+        )
+      }
+      toast("Exercice créé avec succès", "success")
       setShowCreateDialog(false)
       resetForm()
       await loadData()
     } catch (error: any) {
       toast(error.message || "Erreur lors de la création", "error")
+    } finally {
+      setCreatingExercise(false)
+      setUploadProgress(0)
     }
   }
 
@@ -275,6 +294,59 @@ export default function ExercisesPage() {
     return videoUrl.startsWith('/') ? `${MEDIA_BASE_URL}${videoUrl}` : `${MEDIA_BASE_URL}/${videoUrl}`
   }
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredExercises.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredExercises.map((e) => e._id)))
+    }
+  }
+
+  const handleDeleteOne = async (id: string) => {
+    if (deletingId || deletingBulk) return
+    setDeletingId(id)
+    try {
+      await api.deleteExercise(id)
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+      setExercises((prev) => prev.filter((e) => e._id !== id))
+      toast("Exercice supprimé", "success")
+    } catch (error: any) {
+      toast(error.message || "Erreur lors de la suppression", "error")
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setDeletingBulk(true)
+    try {
+      await Promise.all(ids.map((id) => api.deleteExercise(id)))
+      setExercises((prev) => prev.filter((e) => !selectedIds.has(e._id)))
+      setSelectedIds(new Set())
+      toast(`${ids.length} exercice(s) supprimé(s)`, "success")
+      await loadData()
+    } catch (error: any) {
+      toast(error.message || "Erreur lors de la suppression", "error")
+    } finally {
+      setDeletingBulk(false)
+    }
+  }
+
   const filteredExercises = exercises
 
   if (loading && exercises.length === 0 && !searchLoading) {
@@ -401,27 +473,82 @@ export default function ExercisesPage() {
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-3">Média</h3>
+                    <h3 className="text-sm font-semibold text-foreground mb-3">Vidéo (optionnel)</h3>
                     <Field>
-                      <Label htmlFor="video-url">URL de la vidéo (optionnel)</Label>
-                      <Input
-                        id="video-url"
-                        value={newExercise.videoUrl}
-                        onChange={(e) => setNewExercise({ ...newExercise, videoUrl: e.target.value })}
-                        placeholder="https://..."
+                      <input
+                        ref={createVideoInputRef}
+                        type="file"
+                        accept="video/*"
+                        onChange={handleVideoFileSelect}
+                        className="hidden"
+                        id="create-video-upload"
                       />
+                      <Card className="border-2 border-dashed hover:border-primary transition-colors bg-muted/30">
+                        <CardContent className="p-4">
+                          <label
+                            htmlFor="create-video-upload"
+                            className="cursor-pointer flex flex-col items-center gap-2"
+                          >
+                            <Upload className="h-5 w-5 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">
+                              {selectedVideoFile ? selectedVideoFile.name : "Cliquez pour ajouter une vidéo (MP4, MOV, WEBM, max 100 Mo)"}
+                            </span>
+                          </label>
+                          {selectedVideoFile && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2 w-full"
+                              onClick={() => {
+                                setSelectedVideoFile(null)
+                                if (createVideoInputRef.current) createVideoInputRef.current.value = ""
+                              }}
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Retirer la vidéo
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
                     </Field>
                   </div>
                 </div>
               </FieldGroup>
             </div>
+            {creatingExercise && (
+              <div className="px-6 pb-2 space-y-1">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>{selectedVideoFile ? "Création et envoi de la vidéo…" : "Création…"}</span>
+                  {selectedVideoFile && uploadProgress > 0 && <span>{uploadProgress}%</span>}
+                </div>
+                {(selectedVideoFile && uploadProgress > 0) && (
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-[width] duration-200 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="ghost">{fr.buttons.cancel}</Button>
+                <Button variant="ghost" disabled={creatingExercise}>{fr.buttons.cancel}</Button>
               </DialogClose>
-              <Button onClick={handleCreateExercise} type="button">
-                <Plus className="h-4 w-4 mr-2" />
-                {fr.buttons.createExercise}
+              <Button
+                onClick={handleCreateExercise}
+                type="button"
+                disabled={creatingExercise}
+              >
+                {creatingExercise ? (
+                  <>Création…</>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {fr.buttons.createExercise}
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -491,13 +618,37 @@ export default function ExercisesPage() {
 
       {/* Exercises Table */}
       <Card className="card-hover border-border bg-card/50 backdrop-blur-sm">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>{filteredExercises.length} exercice{filteredExercises.length !== 1 ? "s" : ""}</CardTitle>
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{selectedIds.size} sélectionné(s)</span>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deletingBulk}
+                onClick={handleDeleteSelected}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                {deletingBulk ? "Suppression…" : "Tout supprimer"}
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    checked={filteredExercises.length > 0 && selectedIds.size === filteredExercises.length}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-border"
+                    aria-label="Tout sélectionner"
+                  />
+                </TableHead>
                 <TableHead>Vidéo</TableHead>
                 <TableHead>Nom</TableHead>
                 <TableHead>Groupe musculaire</TableHead>
@@ -511,6 +662,15 @@ export default function ExercisesPage() {
             <TableBody>
               {filteredExercises.map((exercise) => (
                 <TableRow key={exercise._id}>
+                  <TableCell className="w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(exercise._id)}
+                      onChange={() => toggleSelect(exercise._id)}
+                      className="h-4 w-4 rounded border-border"
+                      aria-label={`Sélectionner ${exercise.name}`}
+                    />
+                  </TableCell>
                   <TableCell className="w-[140px] p-2">
                     {exercise.videoUrl ? (
                       <div className="flex flex-col gap-1">
@@ -570,6 +730,16 @@ export default function ExercisesPage() {
                           <Play className="h-4 w-4" />
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        disabled={deletingId !== null || deletingBulk}
+                        onClick={() => handleDeleteOne(exercise._id)}
+                        title="Supprimer cet exercice"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

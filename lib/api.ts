@@ -428,6 +428,11 @@ class ApiClient {
     return response.data;
   }
 
+  async deleteExercise(id: string) {
+    const response = await this.client.delete(`/admin/exercises/${id}`);
+    return response.data;
+  }
+
   async updateExerciseVideo(id: string, videoFile: File, onUploadProgress?: (percent: number) => void) {
     const formData = new FormData();
     formData.append('video', videoFile);
