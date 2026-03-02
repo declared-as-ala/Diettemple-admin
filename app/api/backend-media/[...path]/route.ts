@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_ORIGIN = process.env.BACKEND_API_URL
-  ? process.env.BACKEND_API_URL.replace(/\/api\/?$/, '')
-  : 'http://145.223.118.9:5000';
+// Media served from same origin as API, without /api
+const BACKEND_ORIGIN = (process.env.BACKEND_API_URL || 'https://next.protein.tn/api')
+  .replace(/\/api\/?$/, '')
+  .replace(/\/$/, '');
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;

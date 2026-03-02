@@ -1,22 +1,13 @@
-const HARDCODED_HTTP_API = 'http://145.223.118.9:5000/api';
+// New HTTPS backend for DietTemple
+// Example: https://next.protein.tn/api
+const HARDCODED_API_BASE = 'https://next.protein.tn/api';
 
-// Base URL used by the admin frontend (browser)
+// Base URL used by the admin frontend (browser) and server
 export function getApiBaseUrl(): string {
-  // When running on HTTPS (Vercel admin), always use the same-origin proxy
-  // to avoid mixed-content errors while still talking to the HTTP backend.
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    return '/api/backend';
-  }
-
-  // For local HTTP or non-browser environments, hit the backend directly.
-  return HARDCODED_HTTP_API;
+  return HARDCODED_API_BASE;
 }
 
-// Base URL for media/video assets
+// Base URL for media/video assets (same origin, without /api)
 export function getMediaBaseUrl(): string {
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    return '/api/backend-media';
-  }
-
-  return HARDCODED_HTTP_API.replace(/\/api\/?$/, '');
+  return HARDCODED_API_BASE.replace(/\/api\/?$/, '');
 }
