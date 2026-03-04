@@ -82,13 +82,28 @@ export default function ExercisesPage() {
       if (hasVideoFilter === "no") params.hasVideo = "false"
       const [exercisesData, muscleGroupsData] = await Promise.all([
         api.getExercises(params, { signal }),
-        api.getMuscleGroups(),
+        api.getMuscleGroups().catch((error: any) => {
+          console.error('Failed to load muscle groups, will derive from exercises:', error)
+          return { muscleGroups: [] }
+        }),
       ])
       if (signal.aborted) return
       hasLoadedOnce.current = true
       const exercisesList = exercisesData.exercises || []
       setExercises(exercisesList)
-      setMuscleGroups(muscleGroupsData.muscleGroups || [])
+
+      // Use backend muscle groups when available; otherwise derive from exercises
+      const backendGroups: string[] = muscleGroupsData.muscleGroups || []
+      const derivedGroups: string[] = Array.from(
+        new Set(
+          (exercisesList || [])
+            .map((ex: any) => ex.muscleGroup)
+            .filter((g: any): g is string => typeof g === 'string' && g.trim().length > 0)
+        )
+      ).sort((a, b) => a.localeCompare(b))
+
+      const finalGroups = backendGroups.length > 0 ? backendGroups : derivedGroups
+      setMuscleGroups(finalGroups)
     } catch (error: any) {
       if (error?.name === "AbortError" || error?.code === "ERR_CANCELED") return
       toast(error.message || "Erreur lors du chargement des exercices", "error")
