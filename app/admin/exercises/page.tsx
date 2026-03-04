@@ -20,6 +20,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator"
 import { getApiBaseUrl, getMediaBaseUrl } from "@/lib/apiBaseUrl"
 
+// Default muscle groups available even when backend has none
+const DEFAULT_MUSCLE_GROUPS: string[] = [
+  "chest",
+  "back",
+  "shoulders",
+  "biceps",
+  "triceps",
+  "legs",
+  "core",
+  "glutes",
+  "hamstrings",
+  "quadriceps",
+  "calves",
+]
+
 export default function ExercisesPage() {
   const API_BASE_URL = getApiBaseUrl()
   const MEDIA_BASE_URL = getMediaBaseUrl()
@@ -100,9 +115,16 @@ export default function ExercisesPage() {
         .filter((g: any): g is string => typeof g === 'string' && g.trim().length > 0)
 
       const uniqueGroups = new Set<string>(exerciseGroups)
-      const derivedGroups: string[] = Array.from(uniqueGroups).sort((a, b) => a.localeCompare(b))
+      const derivedGroups: string[] = Array.from(uniqueGroups)
 
-      const finalGroups: string[] = backendGroups.length > 0 ? backendGroups : derivedGroups
+      // Merge default groups + backend groups + derived from exercises
+      const allGroupsSet = new Set<string>([
+        ...DEFAULT_MUSCLE_GROUPS,
+        ...backendGroups,
+        ...derivedGroups,
+      ])
+
+      const finalGroups: string[] = Array.from(allGroupsSet).sort((a, b) => a.localeCompare(b))
       setMuscleGroups(finalGroups)
     } catch (error: any) {
       if (error?.name === "AbortError" || error?.code === "ERR_CANCELED") return
