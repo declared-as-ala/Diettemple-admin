@@ -94,15 +94,15 @@ export default function ExercisesPage() {
 
       // Use backend muscle groups when available; otherwise derive from exercises
       const backendGroups: string[] = muscleGroupsData.muscleGroups || []
-      const derivedGroups: string[] = Array.from(
-        new Set(
-          (exercisesList || [])
-            .map((ex: any) => ex.muscleGroup)
-            .filter((g: any): g is string => typeof g === 'string' && g.trim().length > 0)
-        )
-      ).sort((a, b) => a.localeCompare(b))
 
-      const finalGroups = backendGroups.length > 0 ? backendGroups : derivedGroups
+      const exerciseGroups: string[] = (exercisesList || [])
+        .map((ex: any) => ex.muscleGroup)
+        .filter((g: any): g is string => typeof g === 'string' && g.trim().length > 0)
+
+      const uniqueGroups = new Set<string>(exerciseGroups)
+      const derivedGroups: string[] = Array.from(uniqueGroups).sort((a, b) => a.localeCompare(b))
+
+      const finalGroups: string[] = backendGroups.length > 0 ? backendGroups : derivedGroups
       setMuscleGroups(finalGroups)
     } catch (error: any) {
       if (error?.name === "AbortError" || error?.code === "ERR_CANCELED") return
