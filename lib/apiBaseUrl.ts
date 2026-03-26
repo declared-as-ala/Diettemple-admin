@@ -1,6 +1,5 @@
-// New HTTPS backend for DietTemple
-// Example: https://next.protein.tn/api
-const HARDCODED_API_BASE = 'https://next.protein.tn/api';
+// Local backend for development
+const HARDCODED_API_BASE = 'http://localhost:5000/api';
 
 // Base URL used by the admin frontend (browser) and server
 export function getApiBaseUrl(): string {

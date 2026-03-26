@@ -63,7 +63,7 @@ class ApiClient {
     return response.data;
   }
 
-  async createLevelTemplate(data: { name: string; description?: string; isActive?: boolean }) {
+  async createLevelTemplate(data: { name: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; isActive?: boolean }) {
     const response = await this.client.post('/admin/level-templates', data);
     return response.data;
   }
@@ -253,6 +253,12 @@ class ApiClient {
     return response.data;
   }
 
+  /** Repartir à la semaine 1 : met à jour startAt (date du jour UTC) sans changer le plan ni la date de fin */
+  async restartSubscriptionProgramWeek1(id: string, data?: { note?: string }) {
+    const response = await this.client.put(`/admin/subscriptions/${id}/restart-program-week1`, data ?? {});
+    return response.data;
+  }
+
   async cancelSubscription(id: string, data?: { note?: string }) {
     const response = await this.client.put(`/admin/subscriptions/${id}/cancel`, data || {});
     return response.data;
@@ -295,6 +301,11 @@ class ApiClient {
 
   async getClientTimeline(clientId: string, params?: { limit?: number }) {
     const response = await this.client.get(`/admin/clients/${clientId}/timeline`, { params });
+    return response.data;
+  }
+
+  async setClientNutritionTarget(clientId: string, data: { dailyCalories?: number; proteinG?: number; carbsG?: number; fatG?: number }) {
+    const response = await this.client.put(`/admin/clients/${clientId}/nutrition-target`, data);
     return response.data;
   }
 
@@ -534,6 +545,7 @@ class ApiClient {
       carbs?: number;
       fat?: number;
       imageUrl?: string;
+      images?: string[];
       tags?: string[];
       videoSource?: 'upload' | 'youtube';
       videoUrl?: string;

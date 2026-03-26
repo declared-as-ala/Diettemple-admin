@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useTheme } from "@/components/theme-provider"
-import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { fr } from "@/lib/i18n/fr"
@@ -11,12 +10,10 @@ import {
   Moon,
   Sun,
   Bell,
-  Plus,
 } from "lucide-react"
 
 export function TopBar() {
   const { theme, setTheme } = useTheme()
-  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [mounted, setMounted] = useState(false)
 
@@ -99,14 +96,6 @@ export function TopBar() {
             <span className="sr-only">{fr.topBar.toggleTheme}</span>
           </Button>
 
-          {/* New Program Button */}
-          <Button
-            onClick={() => router.push("/admin/level-templates")}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {fr.buttons.newProgram}
-          </Button>
         </div>
       </div>
     </header>

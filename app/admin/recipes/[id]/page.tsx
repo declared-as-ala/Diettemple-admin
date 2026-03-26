@@ -21,6 +21,7 @@ interface RecipeForm {
   carbs: string;
   fat: string;
   imageUrl: string;
+  images: string[];
   videoSource: "youtube" | "upload" | "";
   videoUrl: string;
   posterUrl: string;
@@ -49,6 +50,7 @@ export default function EditRecipePage() {
             carbs: r.carbs != null ? String(r.carbs) : "",
             fat: r.fat != null ? String(r.fat) : "",
             imageUrl: r.imageUrl ?? "",
+            images: Array.isArray(r.images) ? r.images : [],
             videoSource: r.videoSource ?? "",
             videoUrl: r.videoUrl ?? "",
             posterUrl: r.posterUrl ?? "",
@@ -82,6 +84,25 @@ export default function EditRecipePage() {
     );
   };
 
+  const addImage = () => {
+    setRecipe((prev) => (prev ? { ...prev, images: [...prev.images, ""] } : prev));
+  };
+
+  const updateImage = (index: number, value: string) => {
+    setRecipe((prev) => {
+      if (!prev) return prev;
+      const next = [...prev.images];
+      next[index] = value;
+      return { ...prev, images: next };
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setRecipe((prev) =>
+      prev ? { ...prev, images: prev.images.filter((_, i) => i !== index) } : prev
+    );
+  };
+
   const save = async () => {
     if (!recipe) return;
     setSaving(true);
@@ -89,6 +110,7 @@ export default function EditRecipePage() {
       const payload: any = {
         title: recipe.title || undefined,
         imageUrl: recipe.imageUrl || undefined,
+        images: recipe.images.filter(Boolean),
         videoSource: recipe.videoSource || undefined,
         videoUrl: recipe.videoUrl || undefined,
         posterUrl: recipe.posterUrl || undefined,
@@ -150,9 +172,33 @@ export default function EditRecipePage() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Image (URL)</Label>
+            <Label>Image principale (URL)</Label>
             <Input value={recipe.imageUrl} onChange={(e) => update({ imageUrl: e.target.value })} placeholder="https://…" />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Images supplémentaires</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {recipe.images.map((img, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              {img && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img} alt="" className="h-10 w-10 rounded object-cover flex-shrink-0 border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              )}
+              <Input value={img} onChange={(e) => updateImage(i, e.target.value)} placeholder="https://…" className="flex-1" />
+              <Button type="button" variant="outline" size="icon" onClick={() => removeImage(i)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button type="button" variant="outline" size="sm" onClick={addImage}>
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter une image
+          </Button>
         </CardContent>
       </Card>
 
