@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
+import { ConfirmModal } from "@/components/shared/ConfirmModal"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,7 @@ import {
   RefreshCw,
   Search,
   Settings,
+  Trash2,
   User,
   Users,
 } from "lucide-react"
@@ -70,6 +72,8 @@ export default function LevelTemplatesPage() {
   const [newName, setNewName] = useState("")
   const [newGender, setNewGender] = useState<"M" | "F">("M")
   const [newDescription, setNewDescription] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<LevelTemplateRow | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const load = useCallback(async (searchQuery: string) => {
     setLoading(true)
@@ -121,6 +125,22 @@ export default function LevelTemplatesPage() {
       toast(e.response?.data?.message || e.message || "Erreur lors de la création", "error")
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    try {
+      await api.deleteLevelTemplate(deleteTarget._id)
+      toast("Plan supprimé", "success")
+      await load(search)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string }
+      toast(e.response?.data?.message || e.message || "Impossible de supprimer ce plan", "error")
+      throw err
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -225,6 +245,15 @@ export default function LevelTemplatesPage() {
                       <Settings className="h-4 w-4" />
                     </Button>
                   </Link>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    title="Supprimer le plan"
+                    onClick={() => setDeleteTarget(t)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             )
@@ -305,6 +334,24 @@ export default function LevelTemplatesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        title="Supprimer ce plan ?"
+        description={
+          deleteTarget
+            ? `« ${deleteTarget.name ?? "Sans nom"} » sera définitivement supprimé. Les clients avec cet abonnement peuvent être impactés — vérifiez les affectations avant de continuer.`
+            : undefined
+        }
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        variant="destructive"
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   )
 }
