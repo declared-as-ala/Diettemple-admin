@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { api } from "@/lib/api";
 import { fr } from "@/lib/i18n/fr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,7 +75,12 @@ interface DashboardStats {
 
 interface ChartData {
   activeVsExpiredOverTime: { date: string; active: number; expired: number }[];
-  distributionByLevel: { levelName: string; count: number }[];
+  distributionByLevel: { levelTemplateId?: string; levelName: string; count: number }[];
+}
+
+interface PlanFromDb {
+  _id: string;
+  name: string;
 }
 
 interface InactiveItem {
@@ -101,19 +106,27 @@ export default function AdminDashboardPage() {
   const [changeLevelId, setChangeLevelId] = useState("");
   const [changeLevelLoading, setChangeLevelLoading] = useState(false);
   const [levelTemplatesList, setLevelTemplatesList] = useState<{ _id: string; name: string }[]>([]);
+  const [plansFromDb, setPlansFromDb] = useState<PlanFromDb[]>([]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     setChartsLoading(true);
     try {
-      const [statsData, chartsData, inactiveData] = await Promise.all([
+      const [statsData, chartsData, inactiveData, templatesRes] = await Promise.all([
         api.getDashboardStats({ range: "30d" }),
         api.getDashboardCharts({ range: "30d" }),
         api.getDashboardInactive({ days: 7 }).catch(() => ({ inactive: [] })),
+        api.getLevelTemplates({ limit: 100 }).catch(() => ({ levelTemplates: [] as PlanFromDb[] })),
       ]);
       setStats(statsData);
       setCharts(chartsData);
       setInactiveList(inactiveData.inactive || []);
+      const raw = (templatesRes as { levelTemplates?: PlanFromDb[] }).levelTemplates || [];
+      setPlansFromDb(
+        raw
+          .map((t) => ({ _id: String(t._id), name: String(t.name ?? "—") }))
+          .filter((t) => t._id)
+      );
     } catch (e) {
       console.error(e);
     } finally {
@@ -160,6 +173,40 @@ export default function AdminDashboardPage() {
   };
 
   const isEmpty = stats && stats.usersTotal === 0 && (stats.templatesCounts?.levelTemplatesCount ?? 0) === 0;
+
+  const planIdSet = useMemo(() => new Set(plansFromDb.map((p) => p._id)), [plansFromDb]);
+
+  const planNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    plansFromDb.forEach((p) => m.set(p._id, p.name));
+    return m;
+  }, [plansFromDb]);
+
+  /** Active subs par plan : uniquement les plans encore présents en base (ignore abonnements orphelins / anciens). */
+  const distributionByLevelFromDb = useMemo(() => {
+    if (!charts?.distributionByLevel?.length) return [];
+    return charts.distributionByLevel
+      .filter((row) => {
+        const id = row.levelTemplateId != null ? String(row.levelTemplateId) : "";
+        return id && planIdSet.has(id);
+      })
+      .map((row) => {
+        const id = String(row.levelTemplateId);
+        return {
+          levelName: planNameById.get(id) ?? row.levelName,
+          count: row.count,
+        };
+      });
+  }, [charts, planIdSet, planNameById]);
+
+  const planSubscriberCount = useMemo(() => {
+    const m = new Map<string, number>();
+    stats?.levelsDistribution?.forEach((row) => {
+      const id = String(row.levelTemplateId);
+      if (planIdSet.has(id)) m.set(id, row.count);
+    });
+    return m;
+  }, [stats?.levelsDistribution, planIdSet]);
 
   // Build alerts list
   const alerts: { icon: React.ReactNode; label: string; count: number; color: string; href: string }[] = [];
@@ -323,6 +370,51 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
+      {/* ── PLANS (base de données uniquement, sans visuels statiques) ── */}
+      {!isEmpty && (
+        <div>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Plans</h2>
+          {loading ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 rounded-xl border border-border bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : plansFromDb.length === 0 ? (
+            <Card className="bg-card border-border border-dashed">
+              <CardContent className="py-8">
+                <p className="text-sm text-muted-foreground text-center">
+                  Aucun plan en base. Créez-en depuis{" "}
+                  <button type="button" className="text-primary underline" onClick={() => router.push("/admin/level-templates")}>
+                    Plans
+                  </button>
+                  .
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {plansFromDb.map((p) => {
+                const n = planSubscriberCount.get(p._id) ?? 0;
+                return (
+                  <button
+                    key={p._id}
+                    type="button"
+                    onClick={() => router.push(`/admin/level-templates/${p._id}`)}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                  >
+                    <span className="font-medium text-sm truncate">{p.name}</span>
+                    <Badge variant="secondary" className="shrink-0 tabular-nums">
+                      {n} actif{n !== 1 ? "s" : ""}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── CHARTS (2 max) ── */}
       {!isEmpty && (
         <div>
@@ -354,17 +446,23 @@ export default function AdminDashboardPage() {
                     </ResponsiveContainer>
                   </div>
                 </ChartCard>
-                <ChartCard title="Répartition par plan" description="Clients actifs par plan d'entraînement">
+                <ChartCard title="Répartition par plan" description="Abonnements actifs — plans encore en base uniquement">
                   <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={charts.distributionByLevel} layout="vertical" margin={{ left: 70 }}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                        <YAxis type="category" dataKey="levelName" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={70} />
-                        <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Clients" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {distributionByLevelFromDb.length === 0 ? (
+                      <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                        Aucune donnée à afficher pour les plans actuels (ou pas d’abonnement actif sur ces plans).
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={distributionByLevelFromDb} layout="vertical" margin={{ left: 70 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                          <YAxis type="category" dataKey="levelName" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={70} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                          <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Clients" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </ChartCard>
               </>
