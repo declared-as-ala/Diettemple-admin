@@ -26,13 +26,14 @@ import { fr as dateFnsFr } from "date-fns/locale";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Segment = "all" | "active" | "expired" | "expiring_soon" | "inactive" | "unassigned";
+type Segment = "all" | "active" | "expired" | "expiring_soon" | "unassigned";
 
 interface ClientRow {
   _id: string;
   name?: string;
   email?: string;
   phone?: string;
+  photoUri?: string | null;
   createdAt: string;
   subscription: {
     _id: string;
@@ -50,7 +51,6 @@ const SEGMENTS: { value: Segment; label: string }[] = [
   { value: "all",           label: "Tous" },
   { value: "active",        label: "Actifs" },
   { value: "expiring_soon", label: "Expire bientôt" },
-  { value: "inactive",      label: "Inactifs" },
   { value: "expired",       label: "Expirés" },
   { value: "unassigned",    label: "Non assignés" },
 ];
@@ -58,22 +58,13 @@ const SEGMENTS: { value: Segment; label: string }[] = [
 const SEGMENT_STYLE: Record<string, { dot: string; pill: string }> = {
   active:        { dot: "bg-emerald-500", pill: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400" },
   expiring_soon: { dot: "bg-amber-400",   pill: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400" },
-  inactive:      { dot: "bg-gray-400",    pill: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
   expired:       { dot: "bg-red-500",     pill: "bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-400" },
   unassigned:    { dot: "bg-gray-300",    pill: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500" },
 };
 
 const SEGMENT_LABEL: Record<string, string> = {
   active: "Actif", expiring_soon: "Expire bientôt",
-  inactive: "Inactif", expired: "Expiré", unassigned: "Non assigné",
-};
-
-const LEVEL_AVATAR: Record<string, string> = {
-  Intiate:  "bg-slate-500",
-  Fighter:  "bg-blue-500",
-  Warrior:  "bg-emerald-600",
-  Champion: "bg-amber-500",
-  Elite:    "bg-rose-500",
+  expired: "Expiré", unassigned: "Non assigné",
 };
 
 function daysUntil(dateStr: string): number {
@@ -90,9 +81,8 @@ function getInitials(name?: string, email?: string): string {
 
 function ClientCard({ client, onClick }: { client: ClientRow; onClick: () => void }) {
   const seg = client.segment;
-  const style = SEGMENT_STYLE[seg] || SEGMENT_STYLE.inactive;
+  const style = SEGMENT_STYLE[seg] || SEGMENT_STYLE.unassigned;
   const levelName = client.subscription?.levelName;
-  const avatarColor = LEVEL_AVATAR[levelName || ""] || "bg-primary/80";
   const daysLeft = client.subscription ? daysUntil(client.subscription.endAt) : null;
 
   return (
@@ -102,11 +92,18 @@ function ClientCard({ client, onClick }: { client: ClientRow; onClick: () => voi
     >
       <div className="p-4 flex items-start gap-3">
         {/* Avatar */}
-        <div className={cn(
-          "h-10 w-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm",
-          avatarColor
-        )}>
-          {getInitials(client.name, client.email)}
+        <div className="relative h-10 w-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm overflow-hidden bg-primary/80">
+          {client.photoUri ? (
+            <img
+              src={client.photoUri}
+              alt={client.name || "Client"}
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : null}
+          <span>{getInitials(client.name, client.email)}</span>
         </div>
 
         {/* Info */}

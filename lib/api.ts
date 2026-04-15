@@ -304,6 +304,16 @@ class ApiClient {
     return response.data;
   }
 
+  async getClientOrders(clientId: string, params?: { limit?: number }) {
+    const response = await this.client.get(`/admin/clients/${clientId}/orders`, { params });
+    return response.data;
+  }
+
+  async getClientExerciseLoadHistory(clientId: string, params?: { limit?: number }) {
+    const response = await this.client.get(`/admin/clients/${clientId}/exercise-load-history`, { params });
+    return response.data;
+  }
+
   async setClientNutritionTarget(clientId: string, data: { dailyCalories?: number; proteinG?: number; carbsG?: number; fatG?: number }) {
     const response = await this.client.put(`/admin/clients/${clientId}/nutrition-target`, data);
     return response.data;
@@ -570,6 +580,41 @@ class ApiClient {
 
   async revokeUserRole(userId: string) {
     const response = await this.client.delete(`/admin/users/${userId}/role`);
+    return response.data;
+  }
+
+  // ── Weight / Volume Analytics ──────────────────────────────────────────────
+
+  async getWeightAnalytics(): Promise<{
+    users: Array<{
+      userId: string;
+      name: string;
+      email: string;
+      totalVolumeKg: number;
+      totalSessions: number;
+      lastSessionAt: string | null;
+      topExercises: Array<{ exerciseName: string; maxWeightKg: number; totalVolumeKg: number }>;
+    }>;
+  }> {
+    const response = await this.client.get('/admin/analytics/weight-lifted');
+    return response.data;
+  }
+
+  async getUserWeightDetail(userId: string): Promise<{
+    user: { name: string; email: string };
+    sessions: Array<{
+      sessionId: string;
+      completedAt: string;
+      durationSeconds: number | null;
+      totalVolumeKg: number;
+      exercises: Array<{
+        exerciseName: string;
+        totalVolumeKg: number;
+        sets: Array<{ setNumber: number; reps: number; weightKg: number }>;
+      }>;
+    }>;
+  }> {
+    const response = await this.client.get(`/admin/analytics/weight-lifted/${userId}`);
     return response.data;
   }
 }
