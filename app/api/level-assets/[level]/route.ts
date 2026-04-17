@@ -3,7 +3,9 @@ import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 
 const CANDIDATE_DIRS = [
+  path.join(process.cwd(), 'public', 'level'),
   path.resolve(process.cwd(), '../Mobile/assets/level'),
+  path.resolve(process.cwd(), '..', 'Mobile', 'assets', 'level'),
   path.resolve(process.cwd(), '../Mobile/assets'),
 ];
 
@@ -15,7 +17,7 @@ function normalizeLevelName(raw: string): string {
   const lower = value.toLowerCase();
   if (lower === 'initiate' || lower === 'intiate') return 'Intiate';
   if (lower === 'fighter') return 'Fighter';
-  if (lower === 'warrior') return 'Warrior';
+  if (lower === 'warrior') return 'Fighter';
   if (lower === 'champion') return 'Champion';
   if (lower === 'elite') return 'Elite';
   return value;

@@ -24,11 +24,11 @@ import {
   User, Users, Calendar, Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getLevelImageUrl, normalizeLevelName } from "@/lib/levelAssets";
 
 const LEVEL_COLORS: Record<string, string> = {
   Intiate:  "from-slate-600 to-slate-800",
   Fighter:  "from-blue-600 to-blue-900",
-  Warrior:  "from-emerald-600 to-emerald-900",
   Champion: "from-amber-500 to-amber-800",
   Elite:    "from-rose-600 to-rose-900",
 };
@@ -156,8 +156,9 @@ export default function LevelTemplateEditorPage() {
   const canSave = invalidWeeks.length === 0;
   const levelName = levelTemplate ? String(levelTemplate.name ?? "") : "";
   const gender = levelTemplate ? String(levelTemplate.gender ?? "M") : "M";
-  const gradientClass = LEVEL_COLORS[levelName] ?? "from-gray-600 to-gray-900";
-  const levelImage = `/levels/${levelName}.png`;
+  const tierForUi = normalizeLevelName(levelName);
+  const gradientClass = LEVEL_COLORS[tierForUi] ?? "from-gray-600 to-gray-900";
+  const levelImage = getLevelImageUrl(levelName);
 
   if (loading || !levelTemplate) return <PageLoader />;
 

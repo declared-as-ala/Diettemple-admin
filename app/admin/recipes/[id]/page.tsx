@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { PageLoader } from "@/components/ui/loading";
+import { useToast } from "@/components/ui/toast";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fr } from "@/lib/i18n/fr";
@@ -28,16 +27,40 @@ interface RecipeForm {
   ingredients: string[];
 }
 
+function emptyForm(): RecipeForm {
+  return {
+    title: "",
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
+    imageUrl: "",
+    images: [],
+    videoSource: "",
+    videoUrl: "",
+    posterUrl: "",
+    ingredients: [],
+  };
+}
+
 export default function EditRecipePage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const id = params.id as string;
+  const isNew = id === "new";
   const [recipe, setRecipe] = useState<RecipeForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
+  const load = useCallback(() => {
+    if (isNew) {
+      setRecipe(emptyForm());
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     api
       .getAdminRecipe(id)
       .then((data: { recipe?: any }) => {
@@ -56,10 +79,18 @@ export default function EditRecipePage() {
             posterUrl: r.posterUrl ?? "",
             ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
           });
+        else setRecipe(null);
       })
-      .catch(() => setRecipe(null))
+      .catch(() => {
+        setRecipe(null);
+        toast("Impossible de charger la recette", "error");
+      })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, isNew, toast]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const update = (updates: Partial<RecipeForm>) => {
     setRecipe((prev) => (prev ? { ...prev, ...updates } : prev));
@@ -103,33 +134,102 @@ export default function EditRecipePage() {
     );
   };
 
+  const buildPayload = () => {
+    if (!recipe) return null;
+    const payload: Record<string, unknown> = {
+      title: recipe.title.trim(),
+      imageUrl: recipe.imageUrl.trim() || undefined,
+      images: recipe.images.filter(Boolean),
+      videoSource: recipe.videoSource || undefined,
+      videoUrl: recipe.videoUrl.trim() || undefined,
+      posterUrl: recipe.posterUrl.trim() || undefined,
+      ingredients: recipe.ingredients.filter(Boolean).length ? recipe.ingredients.filter(Boolean) : undefined,
+    };
+    const c = parseInt(recipe.calories, 10);
+    const p = parseInt(recipe.protein, 10);
+    const g = parseInt(recipe.carbs, 10);
+    const f = parseInt(recipe.fat, 10);
+    if (Number.isNaN(c) || c < 0) return { error: "Indiquez des calories valides (≥ 0)." } as const;
+    payload.calories = c;
+    if (!Number.isNaN(p) && p >= 0) payload.protein = p;
+    if (!Number.isNaN(g) && g >= 0) payload.carbs = g;
+    if (!Number.isNaN(f) && f >= 0) payload.fat = f;
+    return { payload } as const;
+  };
+
   const save = async () => {
     if (!recipe) return;
+    const title = recipe.title.trim();
+    if (!title) {
+      toast("Le titre est obligatoire", "error");
+      return;
+    }
+    const built = buildPayload();
+    if (!built) {
+      toast("Données invalides", "error");
+      return;
+    }
+    if ("error" in built) {
+      toast(String(built.error || "Données invalides"), "error");
+      return;
+    }
+    const { payload } = built;
     setSaving(true);
     try {
-      const payload: any = {
-        title: recipe.title || undefined,
-        imageUrl: recipe.imageUrl || undefined,
-        images: recipe.images.filter(Boolean),
-        videoSource: recipe.videoSource || undefined,
-        videoUrl: recipe.videoUrl || undefined,
-        posterUrl: recipe.posterUrl || undefined,
-        ingredients: recipe.ingredients.filter(Boolean).length ? recipe.ingredients.filter(Boolean) : undefined,
-      };
-      const c = parseInt(recipe.calories, 10);
-      const p = parseInt(recipe.protein, 10);
-      const g = parseInt(recipe.carbs, 10);
-      const f = parseInt(recipe.fat, 10);
-      if (!Number.isNaN(c)) payload.calories = c;
-      if (!Number.isNaN(p)) payload.protein = p;
-      if (!Number.isNaN(g)) payload.carbs = g;
-      if (!Number.isNaN(f)) payload.fat = f;
-      await api.updateAdminRecipe(id, payload);
+      if (isNew) {
+        await api.createAdminRecipe({
+          title,
+          calories: payload.calories as number,
+          protein: payload.protein as number | undefined,
+          carbs: payload.carbs as number | undefined,
+          fat: payload.fat as number | undefined,
+          imageUrl: payload.imageUrl as string | undefined,
+          images: payload.images as string[],
+          videoSource: payload.videoSource as "upload" | "youtube" | undefined,
+          videoUrl: payload.videoUrl as string | undefined,
+          posterUrl: payload.posterUrl as string | undefined,
+          ingredients: payload.ingredients as string[] | undefined,
+        });
+        toast("Recette créée", "success");
+      } else {
+        await api.updateAdminRecipe(id, {
+          title,
+          calories: payload.calories as number,
+          protein: payload.protein as number | undefined,
+          carbs: payload.carbs as number | undefined,
+          fat: payload.fat as number | undefined,
+          imageUrl: payload.imageUrl as string | undefined,
+          images: payload.images as string[],
+          videoSource: payload.videoSource as "upload" | "youtube" | undefined,
+          videoUrl: payload.videoUrl as string | undefined,
+          posterUrl: payload.posterUrl as string | undefined,
+          ingredients: payload.ingredients as string[] | undefined,
+        });
+        toast("Recette enregistrée", "success");
+      }
       router.push("/admin/recipes");
-    } catch (e) {
-      console.error(e);
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string; errors?: unknown } } })?.response?.data?.message ??
+        (isNew ? "Création impossible" : "Enregistrement impossible");
+      toast(msg, "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (isNew) return;
+    if (!confirm("Supprimer cette recette ? Les favoris associés seront retirés.")) return;
+    setDeleting(true);
+    try {
+      await api.deleteAdminRecipe(id);
+      toast("Recette supprimée", "success");
+      router.push("/admin/recipes");
+    } catch {
+      toast("Suppression impossible", "error");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -137,11 +237,19 @@ export default function EditRecipePage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/admin/recipes")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-2xl font-bold">Modifier la recette</h1>
+      <div className="flex flex-wrap items-center gap-4 justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.push("/admin/recipes")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">{isNew ? "Nouvelle recette" : "Modifier la recette"}</h1>
+        </div>
+        {!isNew && (
+          <Button variant="destructive" onClick={remove} disabled={deleting}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            {deleting ? "…" : "Supprimer"}
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -155,7 +263,7 @@ export default function EditRecipePage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-4">
             <div className="space-y-2">
-              <Label>Calories</Label>
+              <Label>Calories (kcal) *</Label>
               <Input type="number" min={0} value={recipe.calories} onChange={(e) => update({ calories: e.target.value })} />
             </div>
             <div className="space-y-2">
@@ -171,6 +279,10 @@ export default function EditRecipePage() {
               <Input type="number" min={0} value={recipe.fat} onChange={(e) => update({ fat: e.target.value })} />
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Astuce : si vos recettes n’ont que les calories en base, lancez{" "}
+            <code className="rounded bg-muted px-1">npm run seed:recipe-macros</code> côté backend pour estimer P / G / L.
+          </p>
           <div className="space-y-2">
             <Label>Image principale (URL)</Label>
             <Input value={recipe.imageUrl} onChange={(e) => update({ imageUrl: e.target.value })} placeholder="https://…" />
@@ -187,7 +299,14 @@ export default function EditRecipePage() {
             <div key={i} className="flex gap-2 items-center">
               {img && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={img} alt="" className="h-10 w-10 rounded object-cover flex-shrink-0 border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <img
+                  src={img}
+                  alt=""
+                  className="h-10 w-10 rounded object-cover flex-shrink-0 border"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
               )}
               <Input value={img} onChange={(e) => updateImage(i, e.target.value)} placeholder="https://…" className="flex-1" />
               <Button type="button" variant="outline" size="icon" onClick={() => removeImage(i)}>
@@ -209,7 +328,10 @@ export default function EditRecipePage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Source vidéo</Label>
-            <Select value={recipe.videoSource || "none"} onValueChange={(v) => update({ videoSource: v === "none" ? "" : (v as "youtube" | "upload") })}>
+            <Select
+              value={recipe.videoSource || "none"}
+              onValueChange={(v) => update({ videoSource: v === "none" ? "" : (v as "youtube" | "upload") })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Aucune" />
               </SelectTrigger>
@@ -222,7 +344,11 @@ export default function EditRecipePage() {
           </div>
           <div className="space-y-2">
             <Label>URL vidéo (YouTube ou lien direct)</Label>
-            <Input value={recipe.videoUrl} onChange={(e) => update({ videoUrl: e.target.value })} placeholder="https://youtube.com/… ou https://…" />
+            <Input
+              value={recipe.videoUrl}
+              onChange={(e) => update({ videoUrl: e.target.value })}
+              placeholder="https://youtube.com/… ou https://…"
+            />
           </div>
           <div className="space-y-2">
             <Label>Poster / miniature (URL)</Label>
@@ -251,10 +377,10 @@ export default function EditRecipePage() {
         </CardContent>
       </Card>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button onClick={save} disabled={saving}>
           <Save className="h-4 w-4 mr-2" />
-          {saving ? fr.status.saving : fr.buttons.save}
+          {saving ? fr.status.saving : isNew ? "Créer" : fr.buttons.save}
         </Button>
         <Button variant="outline" onClick={() => router.push("/admin/recipes")}>
           {fr.buttons.cancel}

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog"
 
 const PAGE_SIZE = 20
-const LEVEL_OPTIONS = ["Intiate", "Fighter", "Warrior", "Champion", "Elite"] as const
+const LEVEL_OPTIONS = ["Intiate", "Fighter", "Champion", "Elite"] as const
 
 export default function UsersPage() {
   const { toast } = useToast()

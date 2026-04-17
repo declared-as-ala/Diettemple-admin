@@ -4,6 +4,14 @@ import { getApiBaseUrl } from './apiBaseUrl';
 
 const API_BASE_URL = getApiBaseUrl();
 
+export type LevelHomeContentItem = {
+  levelSlug: string;
+  title?: string;
+  instructions?: string;
+  videoUrl?: string;
+  isActive?: boolean;
+};
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -81,6 +89,48 @@ class ApiClient {
   async deleteLevelTemplate(id: string) {
     const response = await this.client.delete(`/admin/level-templates/${id}`);
     return response.data;
+  }
+
+  // Level home content
+  async getLevelHomeContent() {
+    const response = await this.client.get('/admin/level-home-content');
+    return response.data as { items: LevelHomeContentItem[] };
+  }
+
+  async upsertLevelHomeContent(
+    levelSlug: string,
+    data: {
+      title?: string;
+      instructions?: string;
+      videoUrl?: string;
+      isActive?: boolean;
+    }
+  ) {
+    const response = await this.client.put(`/admin/level-home-content/${levelSlug}`, data);
+    return response.data as { item: LevelHomeContentItem };
+  }
+
+  async uploadLevelHomeVideo(levelSlug: string, videoFile: File, onUploadProgress?: (percent: number) => void) {
+    const formData = new FormData();
+    formData.append('video', videoFile);
+    const token = this.getToken();
+    const response = await axios.post(
+      `${API_BASE_URL}/admin/level-home-content/${encodeURIComponent(levelSlug)}/video`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+        onUploadProgress: onUploadProgress
+          ? (e) => {
+              const percent = e.total ? Math.round((e.loaded / e.total) * 100) : 0;
+              onUploadProgress(percent);
+            }
+          : undefined,
+      }
+    );
+    return response.data as { item: LevelHomeContentItem; videoUrl: string; message?: string };
   }
 
   // Session Templates (coaching)
@@ -546,6 +596,24 @@ class ApiClient {
     return response.data;
   }
 
+  async createAdminRecipe(data: {
+    title: string;
+    calories: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    imageUrl?: string;
+    images?: string[];
+    tags?: string[];
+    videoSource?: 'upload' | 'youtube';
+    videoUrl?: string;
+    posterUrl?: string;
+    ingredients?: string[];
+  }) {
+    const response = await this.client.post('/admin/recipes', data);
+    return response.data;
+  }
+
   async updateAdminRecipe(
     id: string,
     data: {
@@ -564,6 +632,11 @@ class ApiClient {
     }
   ) {
     const response = await this.client.put(`/admin/recipes/${id}`, data);
+    return response.data;
+  }
+
+  async deleteAdminRecipe(id: string) {
+    const response = await this.client.delete(`/admin/recipes/${id}`);
     return response.data;
   }
 

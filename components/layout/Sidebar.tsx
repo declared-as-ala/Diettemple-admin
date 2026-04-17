@@ -18,6 +18,7 @@ import {
   ChefHat,
   Package,
   ShoppingCart,
+  Video,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -32,7 +33,10 @@ const TRAINING_ITEMS = [
   { href: "/admin/session-templates", label: fr.sidebar.sessionTemplates, icon: LayoutList },
   { href: "/admin/exercises", label: fr.sidebar.exercises, icon: Activity },
 ]
-const NUTRITION_ITEMS = [{ href: "/admin/recipes", label: fr.sidebar.recipes, icon: ChefHat }]
+const NUTRITION_ITEMS = [
+  { href: "/admin/recipes", label: fr.sidebar.recipes, icon: ChefHat },
+  { href: "/admin/level-home-content", label: "Contenu Home (Niveau)", icon: Video },
+]
 const BOUTIQUE_ITEMS = [
   { href: "/admin/products", label: fr.sidebar.products, icon: Package },
   { href: "/admin/orders", label: fr.sidebar.orders, icon: ShoppingCart },

@@ -7,7 +7,8 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChefHat, Edit, Video, Utensils, Search } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { ChefHat, Edit, Video, Utensils, Search, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { fr } from "@/lib/i18n/fr";
 
@@ -27,18 +28,35 @@ interface Recipe {
 }
 
 export default function AdminRecipesPage() {
+  const { toast } = useToast();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [videoFilter, setVideoFilter] = useState<"all" | "with_video" | "without_video">("all");
 
   useEffect(() => {
+    setLoading(true);
     api
       .getAdminRecipes()
       .then((data: { recipes?: Recipe[] }) => setRecipes(data.recipes || []))
-      .catch(() => setRecipes([]))
+      .catch(() => {
+        setRecipes([]);
+        toast("Impossible de charger les recettes", "error");
+      })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount load only
   }, []);
+
+  const removeRecipe = async (rid: string, title: string) => {
+    if (!confirm(`Supprimer « ${title} » ? Les favoris utilisateurs seront retirés.`)) return;
+    try {
+      await api.deleteAdminRecipe(rid);
+      setRecipes((prev) => prev.filter((r) => r._id !== rid));
+      toast("Recette supprimée", "success");
+    } catch {
+      toast("Suppression impossible", "error");
+    }
+  };
 
   const filteredRecipes = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -61,7 +79,15 @@ export default function AdminRecipesPage() {
     <div className="flex flex-col gap-6 p-6 animate-in fade-in duration-200">
       <PageHeader
         title={fr.sidebar.recipes}
-        subtitle="Gérer les recettes (reels, vidéo YouTube, ingrédients)"
+        subtitle="CRUD recettes : macros (P / G / L), médias, ingrédients. Script macros : npm run seed:recipe-macros"
+        actions={
+          <Button asChild>
+            <Link href="/admin/recipes/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle recette
+            </Link>
+          </Button>
+        }
       />
 
       {!loading && (
@@ -122,8 +148,9 @@ export default function AdminRecipesPage() {
                 <thead>
                   <tr className="border-b border-border text-xs text-muted-foreground">
                     <th className="text-left px-4 py-3 font-medium">Recette</th>
+                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">P / G / L</th>
                     <th className="text-left px-4 py-3 font-medium">Média</th>
-                    <th className="text-right px-4 py-3 font-medium">Action</th>
+                    <th className="text-right px-4 py-3 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -134,6 +161,13 @@ export default function AdminRecipesPage() {
                           <p className="font-semibold text-foreground truncate">{r.title}</p>
                           <p className="text-xs text-muted-foreground">{r.calories ?? "—"} kcal</p>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+                        {r.protein != null ? `${r.protein} P` : "—"}
+                        <span className="mx-1">·</span>
+                        {r.carbs != null ? `${r.carbs} G` : "—"}
+                        <span className="mx-1">·</span>
+                        {r.fat != null ? `${r.fat} L` : "—"}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -148,12 +182,23 @@ export default function AdminRecipesPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Link href={`/admin/recipes/${r._id}`}>
-                          <Button variant="outline" size="sm" className="gap-1">
-                            <Edit className="h-4 w-4" />
-                            Modifier
+                        <div className="flex justify-end gap-1 flex-wrap">
+                          <Link href={`/admin/recipes/${r._id}`}>
+                            <Button variant="outline" size="sm" className="gap-1">
+                              <Edit className="h-4 w-4" />
+                              Modifier
+                            </Button>
+                          </Link>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive hover:bg-destructive/10"
+                            onClick={() => removeRecipe(r._id, r.title)}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

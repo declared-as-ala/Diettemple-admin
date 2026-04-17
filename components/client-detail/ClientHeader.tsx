@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { getLevelImageUrl, LEVELS } from "@/lib/levelAssets"
+import { getLevelImageUrl, LEVELS, normalizeLevelName } from "@/lib/levelAssets"
 import {
   ArrowLeft, Check, RefreshCw, MessageSquarePlus, User, Users, Phone, Mail,
   Activity, ListOrdered, UtensilsCrossed, Calendar, Clock, Trophy,
@@ -47,9 +47,10 @@ export default function ClientHeader({
   const meta = profile.profileMeta
   const levelName = sub?.levelTemplateId?.name ?? ""
   const levelGender = sub?.levelTemplateId?.gender ?? ""
-  const heroLevel = clientLevel || levelName || "Intiate"
+  const tierForUi = normalizeLevelName(clientLevel || levelName)
+  const heroLevel = tierForUi || levelName || "Intiate"
   const gradientClass =
-    LEVEL_COLORS[clientLevel] ?? LEVEL_COLORS[levelName] ?? "from-slate-800 via-slate-900 to-black"
+    LEVEL_COLORS[tierForUi] ?? LEVEL_COLORS[clientLevel] ?? LEVEL_COLORS[levelName] ?? "from-slate-800 via-slate-900 to-black"
   const isActive = sub?.effectiveStatus === "ACTIVE"
   const isExpired = sub?.effectiveStatus === "EXPIRED"
   const daysLeft = sub ? daysUntil(sub.endAt) : 0
@@ -167,10 +168,10 @@ export default function ClientHeader({
             {/* Name + meta */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                {clientLevel && (
+                {tierForUi && (
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-white/70 bg-white/10 backdrop-blur px-2 py-0.5 rounded-md border border-white/15">
                     <Trophy className="inline h-3 w-3 mr-1 -mt-0.5" />
-                    {clientLevel}
+                    {tierForUi}
                   </span>
                 )}
                 {sub && (
@@ -262,7 +263,7 @@ export default function ClientHeader({
               Niveau du client
             </span>
             {LEVEL_NAMES.map((lvl) => {
-              const isCurrent = clientLevel === lvl
+              const isCurrent = tierForUi === lvl
               return (
                 <button
                   key={lvl}
