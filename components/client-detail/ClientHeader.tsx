@@ -188,11 +188,6 @@ export default function ClientHeader({
                     {isActive ? "Abonné actif" : isExpired ? "Expiré" : sub.effectiveStatus}
                   </span>
                 )}
-                {typeof client.xp === "number" && client.xp > 0 && (
-                  <span className="text-[11px] text-white/60 bg-white/8 px-2 py-0.5 rounded-md">
-                    {client.xp} XP
-                  </span>
-                )}
               </div>
 
               <h1 className="mt-1.5 text-2xl md:text-3xl font-bold text-white truncate leading-tight tracking-tight">

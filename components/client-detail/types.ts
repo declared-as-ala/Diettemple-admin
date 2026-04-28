@@ -18,7 +18,6 @@ export interface ClientData {
   objectif?: string
   level?: string
   photoUri?: string
-  xp?: number
   createdAt?: string
   updatedAt?: string
   nutritionTarget?: {
