@@ -1,11 +1,12 @@
 "use client"
 
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogBody, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loader2 } from "lucide-react"
+import { Loader2, Salad } from "lucide-react"
 import type { NutritionPlan } from "./types"
 import { GOAL_LABELS } from "./utils"
 
@@ -26,11 +27,21 @@ export default function NutritionTemplateModal({
 }: NutritionTemplateModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Appliquer un modèle nutrition</DialogTitle>
+          <div className="flex items-start gap-4">
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Salad className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <DialogTitle>Appliquer un modèle nutrition</DialogTitle>
+              <DialogDescription className="mt-1">
+                Sélectionnez un plan à affecter à ce client.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
-        <div className="py-2 space-y-2 max-h-96 overflow-y-auto">
+        <DialogBody className="space-y-2">
           {plansLoading ? (
             <div className="py-8 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
@@ -64,7 +75,7 @@ export default function NutritionTemplateModal({
               </button>
             ))
           )}
-        </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fermer

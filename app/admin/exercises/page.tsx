@@ -12,8 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 import { PageLoader } from "@/components/ui/loading"
-import { Plus, Search, Video, Edit, Trash2, Dumbbell, Play, Upload, X } from "lucide-react"
-import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { Plus, Search, Video, Edit, Trash2, Dumbbell, Play, Upload, X, Loader2 } from "lucide-react"
+import { Dialog, DialogBody, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Field, FieldGroup } from "@/components/ui/field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -410,26 +410,26 @@ export default function ExercisesPage() {
               Nouvel exercice
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl">
+          <DialogContent size="lg">
             <DialogHeader>
               <DialogTitle>Créer un exercice</DialogTitle>
               <DialogDescription>
                 Ajoutez un exercice à la bibliothèque. Remplissez les champs requis puis cliquez sur créer.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 overflow-y-auto px-6 py-4 bg-white dark:bg-[#121212]">
+            <DialogBody>
               <FieldGroup>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-3">Basic Information</h3>
+                    <h3 className="text-sm font-semibold text-foreground mb-3">Informations de base</h3>
                     <div className="space-y-4">
                       <Field>
-                        <Label htmlFor="exercise-name">Exercise Name *</Label>
+                        <Label htmlFor="exercise-name">Nom de l'exercice *</Label>
                         <Input
                           id="exercise-name"
                           value={newExercise.name}
                           onChange={(e) => setNewExercise({ ...newExercise, name: e.target.value })}
-                          placeholder="e.g., Bench Press"
+                          placeholder="Ex: Développé couché"
                         />
                       </Field>
                       <Field>
@@ -439,7 +439,7 @@ export default function ExercisesPage() {
                           onValueChange={(value) => setNewExercise({ ...newExercise, muscleGroup: value })}
                         >
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select muscle group" />
+                            <SelectValue placeholder="Sélectionner le groupe musculaire" />
                           </SelectTrigger>
                           <SelectContent>
                             {muscleGroups.map((group) => (
@@ -476,7 +476,7 @@ export default function ExercisesPage() {
                         />
                       </Field>
                       <Field>
-                        <Label htmlFor="reps">Default Reps</Label>
+                        <Label htmlFor="reps">Répétitions par défaut</Label>
                         <Input
                           id="reps"
                           type="number"
@@ -496,7 +496,7 @@ export default function ExercisesPage() {
                         />
                       </Field>
                       <Field>
-                        <Label htmlFor="weight">Default Weight (kg)</Label>
+                        <Label htmlFor="weight">Poids par défaut (kg)</Label>
                         <Input
                           id="weight"
                           type="number"
@@ -550,39 +550,44 @@ export default function ExercisesPage() {
                       </Card>
                     </Field>
                   </div>
+
+                  {creatingExercise && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>{selectedVideoFile ? "Création et envoi de la vidéo…" : "Création…"}</span>
+                        {selectedVideoFile && uploadProgress > 0 && <span>{uploadProgress}%</span>}
+                      </div>
+                      {(selectedVideoFile && uploadProgress > 0) && (
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-[width] duration-200 ease-out"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </FieldGroup>
-            </div>
-            {creatingExercise && (
-              <div className="px-6 pb-2 space-y-1">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{selectedVideoFile ? "Création et envoi de la vidéo…" : "Création…"}</span>
-                  {selectedVideoFile && uploadProgress > 0 && <span>{uploadProgress}%</span>}
-                </div>
-                {(selectedVideoFile && uploadProgress > 0) && (
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-[width] duration-200 ease-out"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            </DialogBody>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="ghost" disabled={creatingExercise}>{fr.buttons.cancel}</Button>
+                <Button variant="outline" disabled={creatingExercise}>{fr.buttons.cancel}</Button>
               </DialogClose>
               <Button
                 onClick={handleCreateExercise}
                 type="button"
                 disabled={creatingExercise}
+                className="gap-2"
               >
                 {creatingExercise ? (
-                  <>Création…</>
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Création…
+                  </>
                 ) : (
                   <>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4" />
                     {fr.buttons.createExercise}
                   </>
                 )}
@@ -791,18 +796,18 @@ export default function ExercisesPage() {
         setShowEditDialog(open)
         if (!open) resetForm()
       }}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>{fr.buttons.editExercise}</DialogTitle>
             <DialogDescription>
               Modifiez l&apos;exercice ci-dessous. Cliquez sur Enregistrer quand vous avez terminé.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto px-6 py-4 bg-white dark:bg-[#121212]">
+          <DialogBody>
             <FieldGroup>
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Basic Information</h3>
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Informations de base</h3>
                   <div className="space-y-4">
                     <Field>
                       <Label htmlFor="edit-exercise-name">Nom de l'exercice *</Label>
@@ -810,17 +815,17 @@ export default function ExercisesPage() {
                         id="edit-exercise-name"
                         value={newExercise.name}
                         onChange={(e) => setNewExercise({ ...newExercise, name: e.target.value })}
-                        placeholder="e.g., Bench Press"
+                        placeholder="Ex: Développé couché"
                       />
                     </Field>
                     <Field>
-                      <Label>Muscle Group *</Label>
+                      <Label>Groupe musculaire *</Label>
                       <Select
                         value={newExercise.muscleGroup || undefined}
                         onValueChange={(value) => setNewExercise({ ...newExercise, muscleGroup: value })}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select muscle group" />
+                          <SelectValue placeholder="Sélectionner le groupe musculaire" />
                         </SelectTrigger>
                         <SelectContent>
                           {muscleGroups.map((group) => (
@@ -844,10 +849,10 @@ export default function ExercisesPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Exercise Parameters</h3>
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Paramètres</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field>
-                        <Label htmlFor="edit-sets">Séries par défaut</Label>
+                      <Label htmlFor="edit-sets">Séries par défaut</Label>
                       <Input
                         id="edit-sets"
                         type="number"
@@ -857,7 +862,7 @@ export default function ExercisesPage() {
                       />
                     </Field>
                     <Field>
-                      <Label htmlFor="edit-reps">Default Reps</Label>
+                      <Label htmlFor="edit-reps">Répétitions par défaut</Label>
                       <Input
                         id="edit-reps"
                         type="number"
@@ -867,7 +872,7 @@ export default function ExercisesPage() {
                       />
                     </Field>
                     <Field>
-                        <Label htmlFor="edit-rest-time">Temps de repos (secondes)</Label>
+                      <Label htmlFor="edit-rest-time">Temps de repos (secondes)</Label>
                       <Input
                         id="edit-rest-time"
                         type="number"
@@ -877,7 +882,7 @@ export default function ExercisesPage() {
                       />
                     </Field>
                     <Field>
-                      <Label htmlFor="edit-weight">Default Weight (kg)</Label>
+                      <Label htmlFor="edit-weight">Poids par défaut (kg)</Label>
                       <Input
                         id="edit-weight"
                         type="number"
@@ -891,13 +896,13 @@ export default function ExercisesPage() {
                 </div>
               </div>
             </FieldGroup>
-          </div>
-            <DialogFooter>
+          </DialogBody>
+          <DialogFooter>
             <DialogClose asChild>
-              <Button variant="ghost">{fr.buttons.cancel}</Button>
+              <Button variant="outline">{fr.buttons.cancel}</Button>
             </DialogClose>
-            <Button onClick={handleUpdateExercise} type="button">
-              <Edit className="h-4 w-4 mr-2" />
+            <Button onClick={handleUpdateExercise} type="button" className="gap-2">
+              <Edit className="h-4 w-4" />
               {fr.buttons.save}
             </Button>
           </DialogFooter>
@@ -915,20 +920,20 @@ export default function ExercisesPage() {
           }
         }
       }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Vidéo de l'exercice</DialogTitle>
             <DialogDescription>
               Envoyez un fichier vidéo ou collez une URL pour {selectedExercise?.name || "cet exercice"}.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto px-6 py-4 bg-white dark:bg-[#121212]">
+          <DialogBody>
             <FieldGroup>
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-3">Téléverser</h3>
                   <Field>
-                    <Card className="border-2 border-dashed hover:border-primary transition-colors bg-white dark:bg-[#121212]">
+                    <Card className="border-2 border-dashed hover:border-primary transition-colors bg-muted/30">
                       <CardContent className="p-6">
                         <input
                           ref={fileInputRef}
@@ -942,15 +947,15 @@ export default function ExercisesPage() {
                           htmlFor="video-upload"
                           className="cursor-pointer flex flex-col items-center gap-3"
                         >
-                          <div className="rounded-full bg-white dark:bg-[#121212] p-3 border border-border">
+                          <div className="rounded-full bg-muted p-3 border border-border">
                             <Upload className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <div className="text-center space-y-1">
                             <p className="text-sm font-medium text-foreground">
-                              {selectedVideoFile ? selectedVideoFile.name : "Click to upload or drag and drop"}
+                              {selectedVideoFile ? selectedVideoFile.name : "Cliquez pour envoyer ou glisser-déposer"}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              MP4, MOV, AVI, WEBM (Max 100MB)
+                              MP4, MOV, AVI, WEBM (max 100 Mo)
                             </p>
                           </div>
                         </label>
@@ -967,7 +972,7 @@ export default function ExercisesPage() {
                             }}
                           >
                             <X className="h-4 w-4 mr-2" />
-                            Remove file
+                            Retirer le fichier
                           </Button>
                         )}
                       </CardContent>
@@ -979,7 +984,7 @@ export default function ExercisesPage() {
                   <div>
                     <h3 className="text-sm font-semibold text-foreground mb-3">Aperçu</h3>
                     <Field>
-                      <div className="relative bg-white dark:bg-[#121212] rounded-lg overflow-hidden aspect-video border border-border">
+                      <div className="relative rounded-lg overflow-hidden aspect-video border border-border bg-muted">
                         {selectedVideoFile ? (
                           <video
                             src={URL.createObjectURL(selectedVideoFile)}
@@ -997,37 +1002,42 @@ export default function ExercisesPage() {
                     </Field>
                   </div>
                 )}
+
+                {uploadingVideo && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Envoi en cours…</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-[width] duration-200 ease-out"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </FieldGroup>
-          </div>
-          {uploadingVideo && (
-            <div className="px-6 pb-2 space-y-1">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Envoi en cours…</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-[width] duration-200 ease-out"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
+          </DialogBody>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="ghost" disabled={uploadingVideo}>{fr.buttons.cancel}</Button>
+              <Button variant="outline" disabled={uploadingVideo}>{fr.buttons.cancel}</Button>
             </DialogClose>
             <Button
               onClick={handleUploadVideo}
               disabled={uploadingVideo || !selectedVideoFile}
               type="button"
+              className="gap-2"
             >
               {uploadingVideo ? (
-                <>Envoi en cours…</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Envoi en cours…
+                </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Upload className="h-4 w-4" />
                   {selectedExercise?.videoUrl ? "Mettre à jour la vidéo" : "Envoyer la vidéo"}
                 </>
               )}
@@ -1038,11 +1048,11 @@ export default function ExercisesPage() {
 
       {/* Video Player Dialog */}
       <Dialog open={showVideoPlayer} onOpenChange={setShowVideoPlayer}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent size="xl">
           <DialogHeader>
             <DialogTitle>Lecteur vidéo</DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-4 bg-white dark:bg-[#121212]">
+          <DialogBody>
             {selectedVideoUrl && (
               <div className="aspect-video bg-black rounded-lg overflow-hidden border border-border">
                 <video
@@ -1053,7 +1063,7 @@ export default function ExercisesPage() {
                 />
               </div>
             )}
-          </div>
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

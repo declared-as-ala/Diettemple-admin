@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogOverlay,
   DialogPortal,
+  DialogSection,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
@@ -23,6 +24,7 @@ export const AppDialog = AppDialogRoot
 export const AppDialogContent = DialogContent
 export const AppDialogHeader = DialogHeader
 export const AppDialogBody = DialogBody
+export const AppDialogSection = DialogSection
 export const AppDialogFooter = DialogFooter
 export const AppDialogTitle = DialogTitle
 export const AppDialogDescription = DialogDescription

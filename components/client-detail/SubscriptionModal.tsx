@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogBody, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { Loader2, User, Users } from "lucide-react"
 import type { LevelTemplate, SubscriptionData } from "./types"
@@ -88,46 +89,47 @@ export default function SubscriptionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {sub ? "Gerer l'abonnement client" : "Configurer l'abonnement"}
+            {sub ? "Gérer l'abonnement client" : "Configurer l'abonnement"}
           </DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          <DialogDescription>
             {sub
-              ? "Choisis une action claire: prolonger, changer de plan, ou recreer une affectation."
+              ? "Choisis une action claire : prolonger, changer de plan, ou recréer une affectation."
               : "Assigne un premier abonnement avec dates et plan."}
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
-        {/* Scenario tabs */}
-        {sub && (
-          <div className="grid grid-cols-1 gap-2 border-b border-border pb-3 sm:grid-cols-3">
-            {(
-              [
-                { key: "renew", label: SCENARIO_META.renew.label },
-                { key: "change", label: SCENARIO_META.change.label },
-                { key: "new", label: SCENARIO_META.new.label },
-              ] as const
-            ).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => onScenarioChange(key)}
-                className={cn(
-                  "rounded-lg border px-3 py-2 text-left transition-colors",
-                  scenario === key
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border text-muted-foreground hover:bg-muted"
-                )}
-              >
-                <p className="text-sm font-semibold">{label}</p>
-                <p className="text-xs opacity-80 mt-0.5">{SCENARIO_META[key].title}</p>
-              </button>
-            ))}
-          </div>
-        )}
+        <DialogBody className="space-y-4">
+          {/* Scenario tabs */}
+          {sub && (
+            <div className="grid grid-cols-1 gap-2 border-b border-border/60 pb-4 sm:grid-cols-3">
+              {(
+                [
+                  { key: "renew", label: SCENARIO_META.renew.label },
+                  { key: "change", label: SCENARIO_META.change.label },
+                  { key: "new", label: SCENARIO_META.new.label },
+                ] as const
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => onScenarioChange(key)}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-left transition-colors",
+                    scenario === key
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <p className="text-sm font-semibold">{label}</p>
+                  <p className="text-xs opacity-80 mt-0.5">{SCENARIO_META[key].title}</p>
+                </button>
+              ))}
+            </div>
+          )}
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4">
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
             <p className="text-sm font-semibold text-foreground">{activeScenario.title}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{activeScenario.description}</p>
@@ -306,20 +308,15 @@ export default function SubscriptionModal({
             />
           </div>
         </div>
+        </DialogBody>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Annuler
           </Button>
-          <Button onClick={onSave} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Enregistrement...
-              </>
-            ) : (
-              activeScenario.cta
-            )}
+          <Button onClick={onSave} disabled={saving} className="gap-2">
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saving ? "Enregistrement…" : activeScenario.cta}
           </Button>
         </DialogFooter>
       </DialogContent>

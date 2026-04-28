@@ -12,9 +12,10 @@ import { SearchInput } from "@/components/ui/SearchInput"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 import { PageLoader } from "@/components/ui/loading"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, Loader2 } from "lucide-react"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -230,7 +231,7 @@ export default function UsersPage() {
             <DialogTitle>{fr.pages.addUser}</DialogTitle>
             <DialogDescription>{fr.pages.addUserDesc}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <DialogBody className="space-y-4">
             <div>
               <Label>{fr.pages.name}</Label>
               <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={fr.pages.optional} className="mt-1" />
@@ -257,10 +258,13 @@ export default function UsersPage() {
                 {LEVEL_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
-            <DialogClose asChild><Button variant="ghost">Annuler</Button></DialogClose>
-            <Button onClick={handleCreate} disabled={saving}>{saving ? "Création…" : "Créer"}</Button>
+            <DialogClose asChild><Button variant="outline" disabled={saving}>Annuler</Button></DialogClose>
+            <Button onClick={handleCreate} disabled={saving} className="gap-2">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? "Création…" : "Créer"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -273,7 +277,7 @@ export default function UsersPage() {
             <DialogDescription>Modifiez les informations et le niveau.</DialogDescription>
           </DialogHeader>
           {editUser && (
-            <div className="space-y-4 py-2">
+            <DialogBody className="space-y-4">
               <div>
                 <Label>Nom</Label>
                 <Input value={editUser.name || ""} onChange={(e) => setEditUser((u: any) => ({ ...u, name: e.target.value }))} className="mt-1" />
@@ -300,25 +304,29 @@ export default function UsersPage() {
                 <Label>{fr.pages.newPasswordOptional}</Label>
                 <Input type="password" value={editUser.newPassword || ""} onChange={(e) => setEditUser((u: any) => ({ ...u, newPassword: e.target.value }))} placeholder={fr.pages.optional} className="mt-1" />
               </div>
-            </div>
+            </DialogBody>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditUser(null)}>{fr.buttons.cancel}</Button>
-            <Button onClick={handleUpdate} disabled={saving}>{saving ? fr.status.savingShort : fr.buttons.save}</Button>
+            <Button variant="outline" onClick={() => setEditUser(null)} disabled={saving}>{fr.buttons.cancel}</Button>
+            <Button onClick={handleUpdate} disabled={saving} className="gap-2">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? fr.status.savingShort : fr.buttons.save}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete confirm */}
       <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <DialogContent>
+        <DialogContent size="sm" showCloseButton={!deleting}>
           <DialogHeader>
             <DialogTitle>{fr.pages.deleteUser}</DialogTitle>
             <DialogDescription>{fr.deleteDialog.description}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteId(null)}>{fr.buttons.cancel}</Button>
-            <Button variant="destructive" disabled={deleting} onClick={() => deleteId && handleDelete(deleteId)}>
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>{fr.buttons.cancel}</Button>
+            <Button variant="destructive" disabled={deleting} onClick={() => deleteId && handleDelete(deleteId)} className="gap-2">
+              {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
               {deleting ? fr.status.deleting : fr.deleteDialog.confirm}
             </Button>
           </DialogFooter>
