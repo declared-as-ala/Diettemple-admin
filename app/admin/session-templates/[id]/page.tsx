@@ -57,7 +57,6 @@ interface WarmupItemConfig {
   durationSeconds?: number
   reps?: number
   notes?: string
-  mediaUrl?: string
   order: number
 }
 
@@ -110,7 +109,6 @@ export default function SessionTemplateBuilderPage() {
           durationSeconds: w.durationSeconds ?? undefined,
           reps: w.reps ?? undefined,
           notes: w.notes ?? "",
-          mediaUrl: w.mediaUrl ?? "",
           order: w.order ?? idx,
         }))
       )
@@ -184,7 +182,6 @@ export default function SessionTemplateBuilderPage() {
                 durationSeconds: w.durationSeconds,
                 reps: w.reps,
                 notes: w.notes || undefined,
-                mediaUrl: w.mediaUrl || undefined,
                 order: idx,
               })),
             }
@@ -432,7 +429,7 @@ export default function SessionTemplateBuilderPage() {
             onClick={() => {
               setWarmupItems((prev) => [
                 ...prev,
-                { title: "", durationSeconds: 60, reps: undefined, notes: "", mediaUrl: "", order: prev.length },
+                { title: "", durationSeconds: 60, reps: undefined, notes: "", order: prev.length },
               ])
               setDirty(true)
             }}
@@ -465,7 +462,7 @@ export default function SessionTemplateBuilderPage() {
             </p>
           )}
           {warmupItems.map((w, idx) => (
-            <div key={`warmup-${idx}`} className="grid grid-cols-1 md:grid-cols-[1.3fr_100px_100px_1fr_1fr_40px] gap-2 items-center border border-border rounded-md p-2">
+            <div key={`warmup-${idx}`} className="grid grid-cols-1 md:grid-cols-[1.3fr_100px_100px_1fr_40px] gap-2 items-center border border-border rounded-md p-2">
               <Input
                 value={w.title}
                 onChange={(e) => {
@@ -507,16 +504,6 @@ export default function SessionTemplateBuilderPage() {
                   setDirty(true)
                 }}
                 placeholder="Instructions"
-              />
-              <Input
-                value={w.mediaUrl ?? ""}
-                onChange={(e) => {
-                  const next = [...warmupItems]
-                  next[idx] = { ...next[idx], mediaUrl: e.target.value }
-                  setWarmupItems(next)
-                  setDirty(true)
-                }}
-                placeholder="Image/Vidéo URL"
               />
               <Button
                 variant="ghost"
