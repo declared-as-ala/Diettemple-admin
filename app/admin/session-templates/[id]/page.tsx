@@ -52,6 +52,15 @@ interface SessionItemConfig {
   order: number
 }
 
+interface WarmupItemConfig {
+  title: string
+  durationSeconds?: number
+  reps?: number
+  notes?: string
+  mediaUrl?: string
+  order: number
+}
+
 function normalizeTargetReps(v: any): number | { min: number; max: number } {
   if (typeof v === "number") return v
   if (v && typeof v === "object" && typeof v.min === "number" && typeof v.max === "number") return { min: v.min, max: v.max }
@@ -78,6 +87,9 @@ export default function SessionTemplateBuilderPage() {
   const [editDifficulty, setEditDifficulty] = useState("")
   const [editDurationMinutes, setEditDurationMinutes] = useState<number | "">("")
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [warmupTitle, setWarmupTitle] = useState("Échauffement")
+  const [warmupNotes, setWarmupNotes] = useState("")
+  const [warmupItems, setWarmupItems] = useState<WarmupItemConfig[]>([])
 
   const loadSession = useCallback(async () => {
     if (!id) return
@@ -90,6 +102,18 @@ export default function SessionTemplateBuilderPage() {
       setEditDescription(t.description ?? "")
       setEditDifficulty(t.difficulty ?? "")
       setEditDurationMinutes(t.durationMinutes ?? "")
+      setWarmupTitle(t.warmup?.title ?? "Échauffement")
+      setWarmupNotes(t.warmup?.notes ?? "")
+      setWarmupItems(
+        (t.warmup?.items || []).map((w: any, idx: number) => ({
+          title: w.title ?? "",
+          durationSeconds: w.durationSeconds ?? undefined,
+          reps: w.reps ?? undefined,
+          notes: w.notes ?? "",
+          mediaUrl: w.mediaUrl ?? "",
+          order: w.order ?? idx,
+        }))
+      )
       const raw = t.items || []
       setItems(raw.map((it: any, idx: number) => ({
         _id: it._id,
@@ -151,6 +175,20 @@ export default function SessionTemplateBuilderPage() {
         difficulty: editDifficulty || undefined,
         durationMinutes: editDurationMinutes === "" ? undefined : Number(editDurationMinutes),
         items: payload,
+        warmup: warmupItems.length > 0
+          ? {
+              title: warmupTitle || "Échauffement",
+              notes: warmupNotes || undefined,
+              items: warmupItems.map((w, idx) => ({
+                title: w.title,
+                durationSeconds: w.durationSeconds,
+                reps: w.reps,
+                notes: w.notes || undefined,
+                mediaUrl: w.mediaUrl || undefined,
+                order: idx,
+              })),
+            }
+          : undefined,
       })
       setDirty(false)
       setSaveSuccess(true)
@@ -381,6 +419,119 @@ export default function SessionTemplateBuilderPage() {
 
           </div>
         </DndContext>
+      </div>
+
+      {/* Warm-up editor */}
+      <div className="border-t border-border p-4 space-y-3 bg-card/20">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm text-foreground">Échauffement (avant séance)</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1"
+            onClick={() => {
+              setWarmupItems((prev) => [
+                ...prev,
+                { title: "", durationSeconds: 60, reps: undefined, notes: "", mediaUrl: "", order: prev.length },
+              ])
+              setDirty(true)
+            }}
+          >
+            <Plus className="h-3 w-3" /> Ajouter mouvement
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Titre échauffement</Label>
+            <Input
+              value={warmupTitle}
+              onChange={(e) => { setWarmupTitle(e.target.value); setDirty(true) }}
+              placeholder="Ex: Activation générale"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Notes globales</Label>
+            <Input
+              value={warmupNotes}
+              onChange={(e) => { setWarmupNotes(e.target.value); setDirty(true) }}
+              placeholder="Consignes optionnelles"
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          {warmupItems.length === 0 && (
+            <p className="text-xs text-muted-foreground border border-dashed border-border rounded-md p-3">
+              Aucun échauffement défini. Si vide, la séance démarre directement dans l'app mobile.
+            </p>
+          )}
+          {warmupItems.map((w, idx) => (
+            <div key={`warmup-${idx}`} className="grid grid-cols-1 md:grid-cols-[1.3fr_100px_100px_1fr_1fr_40px] gap-2 items-center border border-border rounded-md p-2">
+              <Input
+                value={w.title}
+                onChange={(e) => {
+                  const next = [...warmupItems]
+                  next[idx] = { ...next[idx], title: e.target.value }
+                  setWarmupItems(next)
+                  setDirty(true)
+                }}
+                placeholder={`Mouvement ${idx + 1}`}
+              />
+              <Input
+                type="number"
+                value={w.durationSeconds ?? ""}
+                onChange={(e) => {
+                  const next = [...warmupItems]
+                  next[idx] = { ...next[idx], durationSeconds: e.target.value === "" ? undefined : Number(e.target.value) }
+                  setWarmupItems(next)
+                  setDirty(true)
+                }}
+                placeholder="Sec"
+              />
+              <Input
+                type="number"
+                value={w.reps ?? ""}
+                onChange={(e) => {
+                  const next = [...warmupItems]
+                  next[idx] = { ...next[idx], reps: e.target.value === "" ? undefined : Number(e.target.value) }
+                  setWarmupItems(next)
+                  setDirty(true)
+                }}
+                placeholder="Reps"
+              />
+              <Input
+                value={w.notes ?? ""}
+                onChange={(e) => {
+                  const next = [...warmupItems]
+                  next[idx] = { ...next[idx], notes: e.target.value }
+                  setWarmupItems(next)
+                  setDirty(true)
+                }}
+                placeholder="Instructions"
+              />
+              <Input
+                value={w.mediaUrl ?? ""}
+                onChange={(e) => {
+                  const next = [...warmupItems]
+                  next[idx] = { ...next[idx], mediaUrl: e.target.value }
+                  setWarmupItems(next)
+                  setDirty(true)
+                }}
+                placeholder="Image/Vidéo URL"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+                onClick={() => {
+                  setWarmupItems((prev) => prev.filter((_, i) => i !== idx).map((x, i) => ({ ...x, order: i })))
+                  setDirty(true)
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Config dialog */}
