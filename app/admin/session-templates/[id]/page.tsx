@@ -46,7 +46,6 @@ interface SessionItemConfig {
   alternatives: string[]
   sets: number
   targetReps: number | { min: number; max: number }
-  restTimeSeconds: number
   recommendedStartingWeightKg?: number
   progressionRules: Array<{ condition: string; value: number | { min: number; max: number }; action: string; weightChange?: number; message?: string }>
   order: number
@@ -119,7 +118,6 @@ export default function SessionTemplateBuilderPage() {
         alternatives: (it.alternatives || []).map((a: any) => (typeof a === "object" ? a._id : a)),
         sets: it.sets ?? 3,
         targetReps: normalizeTargetReps(it.targetReps),
-        restTimeSeconds: it.restTimeSeconds ?? 60,
         recommendedStartingWeightKg: it.recommendedStartingWeightKg,
         progressionRules: Array.isArray(it.progressionRules) ? it.progressionRules : [],
         order: it.order ?? idx,
@@ -162,7 +160,6 @@ export default function SessionTemplateBuilderPage() {
         alternatives: it.alternatives.slice(0, 3),
         sets: it.sets,
         targetReps: it.targetReps,
-        restTimeSeconds: it.restTimeSeconds,
         recommendedStartingWeightKg: it.recommendedStartingWeightKg,
         progressionRules: it.progressionRules,
         order: idx,
@@ -208,7 +205,7 @@ export default function SessionTemplateBuilderPage() {
       const exerciseId = aid.replace("lib-", "")
       if (oid === "session-list" || oid.startsWith("item-")) {
         if (items.some(i => i.exerciseId === exerciseId)) return
-        setItems(prev => [...prev, { exerciseId, alternatives: [], sets: 3, targetReps: 10, restTimeSeconds: 60, progressionRules: [], order: prev.length }])
+        setItems(prev => [...prev, { exerciseId, alternatives: [], sets: 3, targetReps: 10, progressionRules: [], order: prev.length }])
         setDirty(true)
       }
       return
@@ -227,7 +224,7 @@ export default function SessionTemplateBuilderPage() {
 
   const addExercise = (exerciseId: string) => {
     if (items.some(i => i.exerciseId === exerciseId)) return
-    setItems(prev => [...prev, { exerciseId, alternatives: [], sets: 3, targetReps: 10, restTimeSeconds: 60, progressionRules: [], order: prev.length }])
+    setItems(prev => [...prev, { exerciseId, alternatives: [], sets: 3, targetReps: 10, progressionRules: [], order: prev.length }])
     setDirty(true)
   }
 
@@ -251,8 +248,7 @@ export default function SessionTemplateBuilderPage() {
   const totalSets = items.reduce((s, it) => s + (it.sets || 0), 0)
   const estimatedMinutes = Math.ceil(
     items.reduce((s, it) =>
-      s + (it.sets || 0) * (typeof it.targetReps === "number" ? it.targetReps : (it.targetReps as any)?.max ?? 10) * 4 / 60
-        + (it.restTimeSeconds || 0) * (it.sets || 0) / 60,
+      s + (it.sets || 0) * (typeof it.targetReps === "number" ? it.targetReps : (it.targetReps as any)?.max ?? 10) * 4 / 60,
       0)
   )
   const diffCfg = DIFFICULTY_OPTIONS.find(d => d.value === editDifficulty)
@@ -626,9 +622,6 @@ function SessionListItem({ index, item, exercise, onOpenConfig, onRemove }: {
   const repsStr = typeof item.targetReps === "number"
     ? `${item.targetReps} reps`
     : `${(item.targetReps as any)?.min}–${(item.targetReps as any)?.max} reps`
-  const restStr = item.restTimeSeconds >= 60
-    ? `${Math.floor(item.restTimeSeconds / 60)}min${item.restTimeSeconds % 60 ? `${item.restTimeSeconds % 60}s` : ""}`
-    : `${item.restTimeSeconds}s`
 
   return (
     <div
@@ -661,9 +654,6 @@ function SessionListItem({ index, item, exercise, onOpenConfig, onRemove }: {
         <span className="px-2 py-0.5 rounded-md bg-muted text-xs font-semibold text-foreground">
           {item.sets}×{repsStr.split(" ")[0]}
         </span>
-        <span className="px-2 py-0.5 rounded-md bg-muted text-xs text-muted-foreground">
-          {restStr} repos
-        </span>
         {item.progressionRules.length > 0 && (
           <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-xs text-primary font-semibold border border-primary/20">
             {item.progressionRules.length} règle{item.progressionRules.length > 1 ? "s" : ""}
@@ -691,7 +681,6 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
   const [sets, setSets] = useState(config.sets)
   const [targetReps, setTargetReps] = useState<number | { min: number; max: number }>(config.targetReps)
   const [useRange, setUseRange] = useState(typeof config.targetReps === "object")
-  const [restTimeSeconds, setRestTimeSeconds] = useState(config.restTimeSeconds)
   const [recommendedWeight, setRecommendedWeight] = useState<number | "">(config.recommendedStartingWeightKg ?? "")
   const [alternatives, setAlternatives] = useState<string[]>(config.alternatives.slice(0, 3))
 
@@ -699,7 +688,6 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
     setSets(config.sets)
     setTargetReps(config.targetReps)
     setUseRange(typeof config.targetReps === "object")
-    setRestTimeSeconds(config.restTimeSeconds)
     setRecommendedWeight(config.recommendedStartingWeightKg ?? "")
     setAlternatives(config.alternatives.slice(0, 3))
   }, [config])
@@ -708,7 +696,7 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
     const reps = useRange
       ? (typeof targetReps === "object" ? targetReps : { min: 10, max: 12 })
       : (typeof targetReps === "number" ? targetReps : 10)
-    onUpdate({ sets, targetReps: reps, restTimeSeconds, recommendedStartingWeightKg: recommendedWeight === "" ? undefined : Number(recommendedWeight), alternatives: alternatives.filter(Boolean) })
+    onUpdate({ sets, targetReps: reps, recommendedStartingWeightKg: recommendedWeight === "" ? undefined : Number(recommendedWeight), alternatives: alternatives.filter(Boolean) })
     onClose()
   }
 
@@ -739,23 +727,13 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
 
         <div className="space-y-5 py-2">
 
-          {/* Sets + Rest */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Séries</Label>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setSets(s => Math.max(1, s - 1))} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center font-bold text-lg">−</button>
-                <Input type="number" min={1} value={sets} onChange={e => setSets(Number(e.target.value) || 1)} className="text-center font-bold h-8" />
-                <button onClick={() => setSets(s => s + 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center font-bold text-lg">+</button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Repos (sec)</Label>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setRestTimeSeconds(s => Math.max(0, s - 15))} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center font-bold">−</button>
-                <Input type="number" min={0} value={restTimeSeconds} onChange={e => setRestTimeSeconds(Number(e.target.value) || 0)} className="text-center font-bold h-8" />
-                <button onClick={() => setRestTimeSeconds(s => s + 15)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center font-bold">+</button>
-              </div>
+          {/* Sets */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Séries</Label>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setSets(s => Math.max(1, s - 1))} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center font-bold text-lg">−</button>
+              <Input type="number" min={1} value={sets} onChange={e => setSets(Number(e.target.value) || 1)} className="text-center font-bold h-8" />
+              <button onClick={() => setSets(s => s + 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center font-bold text-lg">+</button>
             </div>
           </div>
 
