@@ -21,8 +21,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  ArrowLeft,
   CalendarDays,
   ChevronRight,
+  Folder,
+  FolderOpen,
   LayoutGrid,
   Loader2,
   Plus,
@@ -33,6 +36,8 @@ import {
   User,
   Users,
 } from "lucide-react"
+
+type FolderType = "male" | "female" | "unclassified" | null
 
 type LevelTemplateRow = {
   _id: string
@@ -67,6 +72,7 @@ export default function LevelTemplatesPage() {
   const [list, setList] = useState<LevelTemplateRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [selectedFolder, setSelectedFolder] = useState<FolderType>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState("")
@@ -74,6 +80,37 @@ export default function LevelTemplatesPage() {
   const [newDescription, setNewDescription] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<LevelTemplateRow | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const filteredList = useCallback(() => {
+    if (!selectedFolder) return list
+    if (selectedFolder === "male") return list.filter((t) => (t.gender || "M") === "M")
+    if (selectedFolder === "female") return list.filter((t) => t.gender === "F")
+    return list.filter((t) => !t.gender || (t.gender !== "M" && t.gender !== "F"))
+  }, [list, selectedFolder])
+
+  const folderStats = useCallback(() => {
+    const male = list.filter((t) => (t.gender || "M") === "M")
+    const female = list.filter((t) => t.gender === "F")
+    const unclassified = list.filter((t) => !t.gender || (t.gender !== "M" && t.gender !== "F"))
+    return {
+      male: { count: male.length, sessions: male.reduce((s, t) => s + countSessions(t), 0) },
+      female: { count: female.length, sessions: female.reduce((s, t) => s + countSessions(t), 0) },
+      unclassified: { count: unclassified.length, sessions: unclassified.reduce((s, t) => s + countSessions(t), 0) },
+    }
+  }, [list])
+
+  const handleOpenFolder = (folder: FolderType) => {
+    setSelectedFolder(folder)
+    setSearch("")
+    if (folder === "male") setNewGender("M")
+    else if (folder === "female") setNewGender("F")
+    else setNewGender("M")
+  }
+
+  const handleBack = () => {
+    setSelectedFolder(null)
+    setSearch("")
+  }
 
   const load = useCallback(async (searchQuery: string) => {
     setLoading(true)
@@ -114,7 +151,9 @@ export default function LevelTemplatesPage() {
       setCreateOpen(false)
       setNewName("")
       setNewDescription("")
-      setNewGender("M")
+      if (selectedFolder === "male") setNewGender("M")
+      else if (selectedFolder === "female") setNewGender("F")
+      else setNewGender("M")
       if (created?._id) {
         router.push(`/admin/level-templates/${created._id}`)
       } else {
@@ -144,14 +183,35 @@ export default function LevelTemplatesPage() {
     }
   }
 
+  const stats = folderStats()
+  const currentList = filteredList()
+
+  const folderSearchPlaceholder = !selectedFolder
+    ? "Rechercher un dossier…"
+    : `Rechercher dans ${selectedFolder === "male" ? "Dossier Hommes" : selectedFolder === "female" ? "Dossier Femmes" : "Dossier non classé"}…`
+
   return (
     <div className="space-y-6 p-6 animate-in fade-in duration-200">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Plans</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Créez des plans (5 semaines), ajoutez des séances, puis affectez un plan à chaque client.
-          </p>
+          {!selectedFolder ? (
+            <>
+              <h1 className="text-2xl font-bold text-foreground">Plans</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Organisez vos plans par catégorie — Hommes, Femmes ou non classé.
+              </p>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={handleBack} className="-ml-2">
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Retour aux dossiers
+              </Button>
+              <h1 className="text-2xl font-bold text-foreground">
+                {selectedFolder === "male" ? "Dossier Hommes" : selectedFolder === "female" ? "Dossier Femmes" : "Dossier non classé"}
+              </h1>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => void load(search)} disabled={loading}>
@@ -160,7 +220,7 @@ export default function LevelTemplatesPage() {
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Créer un plan
+            {selectedFolder ? "Créer un plan" : "Créer un plan"}
           </Button>
         </div>
       </div>
@@ -169,34 +229,146 @@ export default function LevelTemplatesPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Rechercher par nom ou description…"
+            placeholder={folderSearchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9"
           />
         </div>
-        <p className="text-sm text-muted-foreground">{list.length} plan{list.length !== 1 ? "s" : ""}</p>
+        <p className="text-sm text-muted-foreground">
+          {!selectedFolder
+            ? `${list.length} dossier${list.length !== 1 ? "s" : ""}`
+            : `${currentList.length} plan${currentList.length !== 1 ? "s" : ""}`}
+        </p>
       </div>
 
-      {loading && list.length === 0 ? (
+{loading && list.length === 0 ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : list.length === 0 ? (
+      ) : !selectedFolder ? (
+        list.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+            <p className="text-sm font-medium text-foreground">Aucun dossier</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+              Créez un plan puis ajoutez les séances sur les 5 semaines. Depuis la fiche client, vous pourrez affecter ce plan
+              à l'abonnement.
+            </p>
+            <Button className="mt-4" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Créer un plan
+            </Button>
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {stats.male.count > 0 && (
+              <button
+                onClick={() => handleOpenFolder("male")}
+                className="group relative flex flex-col items-center p-8 rounded-2xl border border-border bg-card hover:bg-accent hover:border-yellow-500/50 transition-all duration-200 text-left"
+              >
+                <div className="absolute top-4 right-4">
+                  <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20">
+                    {stats.male.count} plan{stats.male.count !== 1 ? "s" : ""}
+                  </Badge>
+                </div>
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Folder className="w-10 h-10 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground mb-1">Dossier Hommes</h3>
+                <p className="text-sm text-muted-foreground mb-3">{stats.male.sessions} séance{stats.male.sessions !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
+                  Plans d'entraînement masculins
+                </p>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-yellow-600 dark:text-yellow-400 group-hover:underline">
+                  Ouvrir le dossier
+                  <ChevronRight className="h-4 w-4" />
+                </span>
+              </button>
+            )}
+            {stats.female.count > 0 && (
+              <button
+                onClick={() => handleOpenFolder("female")}
+                className="group relative flex flex-col items-center p-8 rounded-2xl border border-border bg-card hover:bg-accent hover:border-pink-500/50 transition-all duration-200 text-left"
+              >
+                <div className="absolute top-4 right-4">
+                  <Badge variant="secondary" className="bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20">
+                    {stats.female.count} plan{stats.female.count !== 1 ? "s" : ""}
+                  </Badge>
+                </div>
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-600/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Folder className="w-10 h-10 text-pink-600 dark:text-pink-400" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground mb-1">Dossier Femmes</h3>
+                <p className="text-sm text-muted-foreground mb-3">{stats.female.sessions} séance{stats.female.sessions !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
+                  Plans d'entraînement féminins
+                </p>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-pink-600 dark:text-pink-400 group-hover:underline">
+                  Ouvrir le dossier
+                  <ChevronRight className="h-4 w-4" />
+                </span>
+              </button>
+            )}
+            {stats.unclassified.count > 0 && (
+              <button
+                onClick={() => handleOpenFolder("unclassified")}
+                className="group relative flex flex-col items-center p-8 rounded-2xl border border-border bg-card hover:bg-accent hover:border-gray-500/50 transition-all duration-200 text-left"
+              >
+                <div className="absolute top-4 right-4">
+                  <Badge variant="secondary" className="bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20">
+                    {stats.unclassified.count} plan{stats.unclassified.count !== 1 ? "s" : ""}
+                  </Badge>
+                </div>
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-500/20 to-gray-600/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Folder className="w-10 h-10 text-gray-600 dark:text-gray-400" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground mb-1">Dossier non classé</h3>
+                <p className="text-sm text-muted-foreground mb-3">{stats.unclassified.sessions} séance{stats.unclassified.sessions !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
+                  Plans sans genre assigné
+                </p>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:underline">
+                  Ouvrir le dossier
+                  <ChevronRight className="h-4 w-4" />
+                </span>
+              </button>
+            )}
+            {(stats.male.count === 0 && stats.female.count === 0 && stats.unclassified.count === 0) && (
+              <div className="col-span-full rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+                <p className="text-sm font-medium text-foreground">Aucun plan</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                  Créez un plan puis ajoutez les séances sur les 5 semaines.
+                </p>
+                <Button className="mt-4" onClick={() => setCreateOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer un plan
+                </Button>
+              </div>
+            )}
+          </div>
+        )
+      ) : currentList.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
-          <p className="text-sm font-medium text-foreground">Aucun plan</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-            Créez un plan puis ajoutez les séances sur les 5 semaines. Depuis la fiche client, vous pourrez affecter ce plan
-            à l’abonnement.
+          <p className="text-sm font-medium text-foreground">
+            {search ? "Aucun résultat" : "Aucun plan"}
           </p>
-          <Button className="mt-4" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Créer un plan
-          </Button>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+            {search
+              ? "Essayez avec un autre terme de recherche."
+              : selectedFolder === "unclassified"
+              ? "Aucun plan sans genre assigné."
+              : `Créez un plan ${selectedFolder === "male" ? "masculin" : selectedFolder === "female" ? "féminin" : ""} puis ajoutez les séances.`}
+          </p>
+          {!search && (
+            <Button className="mt-4" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Créer un plan
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {list.map((t) => {
+          {currentList.map((t) => {
             const sessions = countSessions(t)
             const weeks = countConfiguredWeeks(t)
             const gender = t.gender === "F" ? "F" : "M"
@@ -261,12 +433,14 @@ export default function LevelTemplatesPage() {
         </div>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+<Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nouveau plan</DialogTitle>
             <DialogDescription>
-              Nom et genre (homme / femme) identifient le plan côté serveur. Vous pourrez ensuite remplir les 5 semaines.
+              {selectedFolder
+                ? `Nouveau plan pour ${selectedFolder === "male" ? "hommes" : selectedFolder === "female" ? "femmes" : "genre non classé"}. Ajoutez les séances sur les 5 semaines.`
+                : "Nom et genre (homme / femme) identifient le plan côté serveur. Vous pourrez ensuite remplir les 5 semaines."}
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-4 pt-0">
@@ -280,40 +454,84 @@ export default function LevelTemplatesPage() {
                 autoFocus
               />
             </div>
-            <div className="space-y-2">
-              <Label>Genre</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={newGender === "M" ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setNewGender("M")}
-                  disabled={creating}
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Homme
-                </Button>
-                <Button
-                  type="button"
-                  variant={newGender === "F" ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setNewGender("F")}
-                  disabled={creating}
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Femme
-                </Button>
+            {selectedFolder === "unclassified" ? (
+              <div className="space-y-2">
+                <Label>Genre</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={newGender === "M" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setNewGender("M")}
+                    disabled={creating}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Homme
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={newGender === "F" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setNewGender("F")}
+                    disabled={creating}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Femme
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : selectedFolder ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                {selectedFolder === "male" ? (
+                  <>
+                    <User className="h-4 w-4 text-yellow-600" />
+                    <span className="text-sm font-medium">Plan masculin</span>
+                  </>
+                ) : (
+                  <>
+                    <Users className="h-4 w-4 text-pink-600" />
+                    <span className="text-sm font-medium">Plan féminin</span>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Genre</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={newGender === "M" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setNewGender("M")}
+                    disabled={creating}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Homme
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={newGender === "F" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setNewGender("F")}
+                    disabled={creating}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Femme
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="plan-desc">Description (optionnel)</Label>
               <Input
                 id="plan-desc"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Courte note pour l’équipe"
+                placeholder="Courte note pour l'équipe"
               />
             </div>
           </DialogBody>
