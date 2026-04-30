@@ -15,6 +15,7 @@ import TrainingTab from "@/components/client-detail/TrainingTab"
 import DietTab from "@/components/client-detail/DietTab"
 import TimelineTab from "@/components/client-detail/TimelineTab"
 import SubscriptionModal from "@/components/client-detail/SubscriptionModal"
+import WorkoutPlanModal from "@/components/client-detail/WorkoutPlanModal"
 import NoteModal from "@/components/client-detail/NoteModal"
 import NutritionTemplateModal from "@/components/client-detail/NutritionTemplateModal"
 import ClientDetailSkeleton from "@/components/client-detail/ClientDetailSkeleton"
@@ -38,6 +39,7 @@ export default function AdminClientProfilePage() {
     exerciseHistory, exerciseHistoryLoading,
     levelTemplates, levelTemplatesLoading, loadLevelTemplates,
     nutritionPlans, nutritionPlansLoading, loadNutritionPlans,
+    planAssignment, planAssignmentLoading, refetchPlanAssignment,
     ensureTabData, invalidateTimeline,
   } = useClientProfile(id)
 
@@ -67,6 +69,14 @@ export default function AdminClientProfilePage() {
   const [subNote, setSubNote] = useState("")
   const [subSaving, setSubSaving] = useState(false)
   const [restartS1Saving, setRestartS1Saving] = useState(false)
+
+  // ─── Workout plan modal state ──────────────────────────────────────────
+  const [planModal, setPlanModal] = useState(false)
+  const [planTemplate, setPlanTemplate] = useState("")
+  const [planLevelGender, setPlanLevelGender] = useState<"M" | "F">("M")
+  const [planStartDate, setPlanStartDate] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [planNote, setPlanNote] = useState("")
+  const [planSaving, setPlanSaving] = useState(false)
 
   // ─── Note modal state ──────────────────────────────────────────────────
   const [noteModal, setNoteModal] = useState(false)
@@ -125,6 +135,61 @@ export default function AdminClientProfilePage() {
     setSubModal(true)
     loadLevelTemplates()
   }, [loadLevelTemplates])
+
+  // ─── Workout plan (PlanAssignment) handlers ────────────────────────────
+
+  const handleOpenAssignWorkoutPlan = useCallback(() => {
+    setPlanTemplate("")
+    setPlanLevelGender("M")
+    setPlanStartDate(format(new Date(), "yyyy-MM-dd"))
+    setPlanNote("")
+    setPlanModal(true)
+    loadLevelTemplates()
+  }, [loadLevelTemplates])
+
+  const handleOpenChangeWorkoutPlan = useCallback(() => {
+    // Pre-fill with current assignment's gender if available
+    if (planAssignment?.levelGender) {
+      setPlanLevelGender((planAssignment.levelGender as "M" | "F") ?? "M")
+    }
+    setPlanTemplate(planAssignment?.planTemplateId ?? "")
+    setPlanStartDate(format(new Date(), "yyyy-MM-dd"))
+    setPlanNote("")
+    setPlanModal(true)
+    loadLevelTemplates()
+  }, [planAssignment, loadLevelTemplates])
+
+  const handleSaveWorkoutPlan = useCallback(async () => {
+    if (!planTemplate) { toast("Choisissez un programme", "error"); return }
+    if (!planStartDate) { toast("Choisissez une date de début", "error"); return }
+    setPlanSaving(true)
+    try {
+      if (planAssignment) {
+        await api.changeWorkoutPlan(id, {
+          planTemplateId: planTemplate,
+          startDate: planStartDate + "T00:00:00.000Z",
+          note: planNote || undefined,
+        })
+        toast("Programme changé ✓", "success")
+      } else {
+        await api.assignWorkoutPlan({
+          userId: id,
+          planTemplateId: planTemplate,
+          startDate: planStartDate + "T00:00:00.000Z",
+          note: planNote || undefined,
+        })
+        toast("Programme assigné ✓", "success")
+      }
+      setPlanModal(false)
+      await refetchPlanAssignment()
+      invalidateTimeline()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string }
+      toast(e?.response?.data?.message || e?.message || "Erreur", "error")
+    } finally {
+      setPlanSaving(false)
+    }
+  }, [id, planTemplate, planStartDate, planNote, planAssignment, toast, refetchPlanAssignment, invalidateTimeline])
 
   const handleSaveSubscription = useCallback(async () => {
     const sub = profile?.subscription
@@ -442,11 +507,14 @@ export default function AdminClientProfilePage() {
         {tab === "training" && (
           <TrainingTab
             profile={profile}
+            planAssignment={planAssignment}
+            planAssignmentLoading={planAssignmentLoading}
             exerciseHistory={exerciseHistory}
             exerciseHistoryLoading={exerciseHistoryLoading}
             restartS1Saving={restartS1Saving}
             onOpenSubModal={handleOpenSubModal}
-            onChangePlan={handleChangePlan}
+            onAssignWorkoutPlan={handleOpenAssignWorkoutPlan}
+            onChangeWorkoutPlan={handleOpenChangeWorkoutPlan}
             onRestartWeek1={handleRestartProgramWeek1}
           />
         )}
@@ -526,6 +594,25 @@ export default function AdminClientProfilePage() {
         plans={nutritionPlans}
         plansLoading={nutritionPlansLoading}
         onApply={handleApplyTemplate}
+      />
+
+      <WorkoutPlanModal
+        open={planModal}
+        onOpenChange={setPlanModal}
+        clientId={id}
+        currentAssignment={planAssignment}
+        templates={levelTemplates}
+        templatesLoading={levelTemplatesLoading}
+        selectedTemplate={planTemplate}
+        onSelectTemplate={(tid, _name, gender) => { setPlanTemplate(tid); setPlanLevelGender(gender) }}
+        selectedGender={planLevelGender}
+        onGenderChange={setPlanLevelGender}
+        startDate={planStartDate}
+        onStartDateChange={setPlanStartDate}
+        note={planNote}
+        onNoteChange={setPlanNote}
+        saving={planSaving}
+        onSave={handleSaveWorkoutPlan}
       />
     </div>
   )

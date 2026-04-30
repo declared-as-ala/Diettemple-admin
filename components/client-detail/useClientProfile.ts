@@ -5,7 +5,7 @@ import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 import type {
   ProfileData, ClientOrder, ExerciseLoadHistoryItem, NutritionLog,
-  TimelineEvent, LevelTemplate, NutritionPlan, TabId,
+  TimelineEvent, LevelTemplate, NutritionPlan, TabId, PlanAssignmentData,
 } from "./types"
 
 // Centralized data + action hook for the client detail page.
@@ -39,6 +39,9 @@ export function useClientProfile(id: string) {
 
   const [nutritionPlans, setNutritionPlans] = useState<NutritionPlan[]>([])
   const [nutritionPlansLoading, setNutritionPlansLoading] = useState(false)
+
+  const [planAssignment, setPlanAssignment] = useState<PlanAssignmentData | null>(null)
+  const [planAssignmentLoading, setPlanAssignmentLoading] = useState(false)
 
   // ─── Loaders ──────────────────────────────────────────────────────────────
 
@@ -127,6 +130,31 @@ export function useClientProfile(id: string) {
     }
   }, [levelTemplates.length])
 
+  const loadPlanAssignment = useCallback(async () => {
+    if (!id) return
+    setPlanAssignmentLoading(true)
+    try {
+      const data = await api.getWorkoutPlan(id)
+      if (data?.assignment) {
+        setPlanAssignment({
+          id: data.assignment.id,
+          startDate: data.assignment.startDate,
+          endDate: data.assignment.endDate,
+          durationWeeks: 5,
+          status: data.assignment.status,
+          levelName: data.plan?.name,
+          levelGender: data.plan?.gender,
+        })
+      } else {
+        setPlanAssignment(null)
+      }
+    } catch {
+      setPlanAssignment(null)
+    } finally {
+      setPlanAssignmentLoading(false)
+    }
+  }, [id])
+
   const loadNutritionPlans = useCallback(async () => {
     if (nutritionPlans.length > 0) return
     setNutritionPlansLoading(true)
@@ -150,14 +178,15 @@ export function useClientProfile(id: string) {
       if (tab === "overview") loadOrders()
       if (tab === "diet") loadLogs()
       if (tab === "timeline") loadTimeline()
-      if (tab === "training") loadExerciseHistory()
+      if (tab === "training") { loadExerciseHistory(); loadPlanAssignment() }
     },
-    [loadOrders, loadLogs, loadTimeline, loadExerciseHistory]
+    [loadOrders, loadLogs, loadTimeline, loadExerciseHistory, loadPlanAssignment]
   )
 
   // ─── Invalidate caches after mutations ───────────────────────────────────
 
   const invalidateTimeline = useCallback(() => setTimelineLoaded(false), [])
+  const refetchPlanAssignment = useCallback(() => loadPlanAssignment(), [loadPlanAssignment])
 
   return {
     profile,
@@ -181,6 +210,10 @@ export function useClientProfile(id: string) {
     nutritionPlans,
     nutritionPlansLoading,
     loadNutritionPlans,
+
+    planAssignment,
+    planAssignmentLoading,
+    refetchPlanAssignment,
 
     ensureTabData,
     invalidateTimeline,

@@ -314,6 +314,33 @@ class ApiClient {
     return response.data;
   }
 
+  // ── Workout Plan Assignment (PlanAssignment — 5-week plans, separate from Subscription) ──
+
+  async getWorkoutPlan(userId: string) {
+    const response = await this.client.get(`/admin/workout-plan/${userId}`);
+    return response.data;
+  }
+
+  async assignWorkoutPlan(data: { userId: string; planTemplateId: string; startDate: string; note?: string }) {
+    const response = await this.client.post('/admin/workout-plan/assign', data);
+    return response.data;
+  }
+
+  async changeWorkoutPlan(userId: string, data: { planTemplateId: string; startDate: string; note?: string }) {
+    const response = await this.client.post(`/admin/workout-plan/${userId}/change`, data);
+    return response.data;
+  }
+
+  async pauseWorkoutPlan(userId: string) {
+    const response = await this.client.post(`/admin/workout-plan/${userId}/pause`);
+    return response.data;
+  }
+
+  async archiveWorkoutPlan(userId: string) {
+    const response = await this.client.post(`/admin/workout-plan/${userId}/archive`);
+    return response.data;
+  }
+
   // Assignments board
   async getAssignmentsBoard(params?: { search?: string; status?: string; page?: number; limit?: number }) {
     const response = await this.client.get('/admin/assignments/board', { params });

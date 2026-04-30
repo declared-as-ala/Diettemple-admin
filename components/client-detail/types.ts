@@ -2,6 +2,19 @@
 
 export type TabId = "overview" | "training" | "diet" | "timeline"
 
+export interface PlanAssignmentData {
+  id: string
+  startDate: string
+  endDate: string
+  durationWeeks: 5
+  status: "active" | "completed" | "paused" | "archived"
+  planTemplateId?: string
+  levelName?: string
+  levelGender?: string
+  assignedAt?: string
+  note?: string
+}
+
 export type OrderFilter = "all" | "paid" | "unpaid" | "delivered"
 
 export type SubScenario = "renew" | "change" | "new"
