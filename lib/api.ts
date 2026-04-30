@@ -341,6 +341,11 @@ class ApiClient {
     return response.data;
   }
 
+  async restartWorkoutPlanWeek1(userId: string) {
+    const response = await this.client.post(`/admin/workout-plan/${userId}/restart-week1`);
+    return response.data;
+  }
+
   // Assignments board
   async getAssignmentsBoard(params?: { search?: string; status?: string; page?: number; limit?: number }) {
     const response = await this.client.get('/admin/assignments/board', { params });

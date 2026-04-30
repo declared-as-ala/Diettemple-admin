@@ -13,6 +13,15 @@ export interface PlanAssignmentData {
   levelGender?: string
   assignedAt?: string
   note?: string
+  progress?: {
+    currentWeek?: number
+    totalWeeks?: number
+    totalScheduledSessions?: number
+    completedSessions?: number
+    completionPercent?: number
+    remainingDays?: number
+    status?: "active" | "expired" | "not_started"
+  }
 }
 
 export type OrderFilter = "all" | "paid" | "unpaid" | "delivered"

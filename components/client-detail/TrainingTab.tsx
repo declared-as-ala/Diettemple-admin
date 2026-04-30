@@ -7,13 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getLevelImageUrl } from "@/lib/levelAssets"
 import {
   Activity, TrendingUp, Loader2, ChevronDown, ChevronUp,
-  Calendar, CheckCircle2, Clock, AlertCircle, PauseCircle, Archive,
+  Calendar, CheckCircle2, Clock, PauseCircle, Archive,
 } from "lucide-react"
-import type { ProfileData, ExerciseLoadHistoryItem, PlanAssignmentData } from "./types"
-import { fmtDate, calcCurrentWeek } from "./utils"
+import type { ExerciseLoadHistoryItem, PlanAssignmentData } from "./types"
+import { fmtDate } from "./utils"
 
 interface TrainingTabProps {
-  profile: ProfileData
   planAssignment: PlanAssignmentData | null
   planAssignmentLoading: boolean
   exerciseHistory: ExerciseLoadHistoryItem[]
@@ -127,7 +126,6 @@ const STATUS_META: Record<string, { label: string; color: string; icon: React.Re
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function TrainingTab({
-  profile,
   planAssignment,
   planAssignmentLoading,
   exerciseHistory,
@@ -138,9 +136,6 @@ export default function TrainingTab({
   onChangeWorkoutPlan,
   onRestartWeek1,
 }: TrainingTabProps) {
-  const sub = profile.subscription
-  const isActive = sub?.effectiveStatus === "ACTIVE"
-
   // ── Workout plan section (PlanAssignment) ──────────────────────────────────
 
   const renderWorkoutPlanCard = () => {
@@ -180,12 +175,12 @@ export default function TrainingTab({
     const todayMs = Date.now()
     const startMs = startD.getTime()
     const endMs = endD.getTime()
-    const totalMs = endMs - startMs
+    const totalMs = Math.max(1, endMs - startMs)
     const elapsedMs = Math.max(0, Math.min(totalMs, todayMs - startMs))
-    const progressPct = totalMs > 0 ? Math.round((elapsedMs / totalMs) * 100) : 0
+    const progressPct = planAssignment.progress?.completionPercent ?? Math.round((elapsedMs / totalMs) * 100)
     const dayElapsed = Math.floor(elapsedMs / (24 * 60 * 60 * 1000))
-    const currentWeekNum = Math.min(5, Math.max(1, Math.floor(dayElapsed / 7) + 1))
-    const daysLeft = Math.max(0, Math.ceil((endMs - todayMs) / (24 * 60 * 60 * 1000)))
+    const currentWeekNum = planAssignment.progress?.currentWeek ?? Math.min(5, Math.max(1, Math.floor(dayElapsed / 7) + 1))
+    const daysLeft = planAssignment.progress?.remainingDays ?? Math.max(0, Math.ceil((endMs - todayMs) / (24 * 60 * 60 * 1000)))
 
     return (
       <Card>
@@ -241,7 +236,7 @@ export default function TrainingTab({
               <p className="text-sm text-muted-foreground">
                 {planAssignment.levelGender === "F" ? "Programme Femme" : "Programme Homme"}
                 {" · "}
-                <Clock className="h-3 w-3 inline" /> 5 semaines fixes
+                <Clock className="h-3 w-3 inline" /> Durée: 5 semaines fixes
               </p>
             </div>
           </div>
@@ -301,76 +296,26 @@ export default function TrainingTab({
                 {daysLeft}j restants
               </span>
             )}
+            <span className="flex items-center gap-1">
+              <TrendingUp className="h-3 w-3" />
+              <strong className="text-foreground ml-1">
+                {planAssignment.progress?.completedSessions ?? 0}/{planAssignment.progress?.totalScheduledSessions ?? 0} séances
+              </strong>
+            </span>
           </div>
         </CardContent>
       </Card>
     )
   }
 
-  // ── Legacy subscription plan info (fallback when no PlanAssignment) ────────
+  // ── No assignment yet ───────────────────────────────────────────────────────
 
-  const renderLegacyPlanCard = () => {
-    if (!sub || planAssignment) return null
-    const levelName = sub.levelTemplateId?.name ?? ""
-    const currentWeek = calcCurrentWeek(sub.startAt)
-    return (
-      <Card className="border-amber-200 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-amber-500" />
-            Plan lié à l&apos;abonnement (legacy)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Ce client utilise encore le système legacy où le programme est lié à l&apos;abonnement.
-            Migrez-le vers un programme indépendant en cliquant sur «&nbsp;Assigner un programme&nbsp;».
-          </p>
-          <div className="flex items-center gap-3">
-            {levelName && (
-              <img
-                src={getLevelImageUrl(levelName)}
-                alt={levelName}
-                className="h-10 w-10 rounded-lg object-cover border border-border"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
-              />
-            )}
-            <div>
-              <p className="font-medium text-sm">{levelName || "—"}</p>
-              <p className="text-xs text-muted-foreground">
-                {isActive ? `Semaine ${currentWeek} / 5` : "Abonnement expiré"}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" onClick={onAssignWorkoutPlan} className="h-7 text-xs gap-1">
-              <Activity className="h-3 w-3" />
-              Assigner un programme
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-muted-foreground gap-1.5"
-              disabled={!isActive || restartS1Saving}
-              onClick={onRestartWeek1}
-            >
-              {restartS1Saving && <Loader2 className="h-3 w-3 animate-spin" />}
-              Repartir S1
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // ── No subscription at all ─────────────────────────────────────────────────
-
-  if (!sub && !planAssignment && !planAssignmentLoading) {
+  if (!planAssignment && !planAssignmentLoading) {
     return (
       <Card>
         <CardContent className="py-12 text-center space-y-3">
           <Activity className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-          <p className="text-muted-foreground">Aucun abonnement actif.</p>
+          <p className="text-muted-foreground">Aucun programme d&apos;entraînement actif.</p>
           <div className="flex gap-2 justify-center">
             <Button onClick={onOpenSubModal}>Configurer l&apos;abonnement</Button>
             <Button variant="outline" onClick={onAssignWorkoutPlan}>Assigner un programme</Button>
@@ -384,9 +329,6 @@ export default function TrainingTab({
     <div className="space-y-4">
       {/* ── Workout plan (PlanAssignment) card ─────────────────────────── */}
       {renderWorkoutPlanCard()}
-
-      {/* ── Legacy plan fallback ─────────────────────────────────────── */}
-      {renderLegacyPlanCard()}
 
       {/* ── Exercise load history ─────────────────────────────────────── */}
       <Card>

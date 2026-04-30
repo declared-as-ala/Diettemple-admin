@@ -256,28 +256,27 @@ export default function AdminClientProfilePage() {
   ])
 
   const handleRestartProgramWeek1 = useCallback(async () => {
-    const s = profile?.subscription
-    if (!s?._id) return
+    if (!planAssignment?.id) return
     if (
       !confirm(
-        "Repartir à la semaine 1 ? La date de début du programme sera fixée à aujourd'hui (côté serveur). La date de fin d'abonnement ne change pas."
+        "Redémarrer le programme en semaine 1 ? La date de début du programme sera fixée à aujourd'hui. L'abonnement n'est pas modifié."
       )
     ) {
       return
     }
     setRestartS1Saving(true)
     try {
-      await api.restartSubscriptionProgramWeek1(s._id)
-      toast("Programme repositionné en semaine 1 ✓", "success")
+      await api.restartWorkoutPlanWeek1(id)
+      toast("Programme redémarré en semaine 1 ✓", "success")
       invalidateTimeline()
-      await refetchProfile()
+      await refetchPlanAssignment()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string }
       toast(e?.response?.data?.message || e?.message || "Erreur", "error")
     } finally {
       setRestartS1Saving(false)
     }
-  }, [profile, toast, invalidateTimeline, refetchProfile])
+  }, [planAssignment?.id, id, toast, invalidateTimeline, refetchPlanAssignment])
 
   const handleAddNote = useCallback(async () => {
     if (!noteMessage.trim()) return
@@ -506,7 +505,6 @@ export default function AdminClientProfilePage() {
 
         {tab === "training" && (
           <TrainingTab
-            profile={profile}
             planAssignment={planAssignment}
             planAssignmentLoading={planAssignmentLoading}
             exerciseHistory={exerciseHistory}

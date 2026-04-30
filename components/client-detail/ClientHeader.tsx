@@ -231,7 +231,7 @@ export default function ClientHeader({
             {sub && (
               <div className="hidden sm:flex flex-col items-end text-right bg-white/8 backdrop-blur rounded-xl border border-white/10 px-4 py-3 flex-shrink-0">
                 <p className="text-[10px] uppercase tracking-wider text-white/50 font-semibold">
-                  {isActive ? "Expire le" : "Expiré le"}
+                  {isActive ? "Abonnement expire le" : "Abonnement expiré le"}
                 </p>
                 <p className="text-white font-bold text-sm mt-0.5">
                   {fmtDate(sub.endAt)}

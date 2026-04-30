@@ -144,6 +144,15 @@ export function useClientProfile(id: string) {
           status: data.assignment.status,
           levelName: data.plan?.name,
           levelGender: data.plan?.gender,
+          progress: {
+            currentWeek: data.progress?.currentWeek != null ? Number(data.progress.currentWeek) + 1 : undefined,
+            totalWeeks: data.progress?.totalWeeks,
+            totalScheduledSessions: data.progress?.totalScheduledSessions,
+            completedSessions: data.progress?.completedSessions,
+            completionPercent: data.progress?.completionPercent,
+            remainingDays: data.progress?.remainingDays,
+            status: data.progress?.status,
+          },
         })
       } else {
         setPlanAssignment(null)
