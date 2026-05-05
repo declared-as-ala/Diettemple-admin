@@ -640,7 +640,12 @@ class ApiClient {
     videoSource?: 'upload' | 'youtube';
     videoUrl?: string;
     posterUrl?: string;
-    ingredients?: string[];
+    preparationTimeMinutes?: number | null;
+    mealPrepDays?: number[];
+    isBatchCookingFriendly?: boolean;
+    servings?: number;
+    storageInstructions?: string;
+    ingredients?: Array<{ name: string; quantity?: number; unit?: string }>;
   }) {
     const response = await this.client.post('/admin/recipes', data);
     return response.data;
@@ -660,7 +665,12 @@ class ApiClient {
       videoSource?: 'upload' | 'youtube';
       videoUrl?: string;
       posterUrl?: string;
-      ingredients?: string[];
+      preparationTimeMinutes?: number | null;
+      mealPrepDays?: number[];
+      isBatchCookingFriendly?: boolean;
+      servings?: number;
+      storageInstructions?: string;
+      ingredients?: Array<{ name: string; quantity?: number; unit?: string }>;
     }
   ) {
     const response = await this.client.put(`/admin/recipes/${id}`, data);

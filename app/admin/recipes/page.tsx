@@ -24,7 +24,10 @@ interface Recipe {
   videoSource?: string;
   videoUrl?: string;
   posterUrl?: string;
-  ingredients?: string[];
+  preparationTimeMinutes?: number | null;
+  mealPrepDays?: number[];
+  isBatchCookingFriendly?: boolean;
+  ingredients?: Array<{ name: string; normalizedName?: string; quantity?: number; unit?: string }>;
 }
 
 export default function AdminRecipesPage() {
@@ -33,6 +36,9 @@ export default function AdminRecipesPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [videoFilter, setVideoFilter] = useState<"all" | "with_video" | "without_video">("all");
+  const [prepFilter, setPrepFilter] = useState<"all" | "quick" | "medium" | "long" | "very_long">("all");
+  const [batchFilter, setBatchFilter] = useState<"all" | "yes" | "no">("all");
+  const [mealPrepDaysFilter, setMealPrepDaysFilter] = useState<"all" | "2" | "3" | "4">("all");
 
   useEffect(() => {
     setLoading(true);
@@ -71,9 +77,30 @@ export default function AdminRecipesPage() {
           : videoFilter === "with_video"
             ? hasVideo
             : !hasVideo;
-      return matchesQuery && matchesVideo;
+      const prep = r.preparationTimeMinutes ?? null;
+      const matchesPrep =
+        prepFilter === "all"
+          ? true
+          : prepFilter === "quick"
+            ? prep != null && prep <= 15
+            : prepFilter === "medium"
+              ? prep != null && prep > 15 && prep <= 30
+              : prepFilter === "long"
+                ? prep != null && prep > 30 && prep <= 45
+                : prep != null && prep > 45;
+      const matchesBatch =
+        batchFilter === "all"
+          ? true
+          : batchFilter === "yes"
+            ? !!r.isBatchCookingFriendly
+            : !r.isBatchCookingFriendly;
+      const matchesDays =
+        mealPrepDaysFilter === "all"
+          ? true
+          : (r.mealPrepDays || []).includes(Number(mealPrepDaysFilter));
+      return matchesQuery && matchesVideo && matchesPrep && matchesBatch && matchesDays;
     });
-  }, [recipes, query, videoFilter]);
+  }, [recipes, query, videoFilter, prepFilter, batchFilter, mealPrepDaysFilter]);
 
   return (
     <div className="flex flex-col gap-6 p-6 animate-in fade-in duration-200">
@@ -91,7 +118,7 @@ export default function AdminRecipesPage() {
       />
 
       {!loading && (
-        <div className="rounded-xl border border-border bg-card p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="rounded-xl border border-border bg-card p-3 flex flex-col gap-3">
           <div className="relative w-full md:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -101,7 +128,7 @@ export default function AdminRecipesPage() {
               className="pl-9"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             {([
               { id: "all", label: "Toutes" },
               { id: "with_video", label: "Avec vidéo" },
@@ -117,6 +144,59 @@ export default function AdminRecipesPage() {
                 }`}
               >
                 {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {([
+              { id: "all", label: "Temps: Tous" },
+              { id: "quick", label: "Rapide ≤ 15 min" },
+              { id: "medium", label: "Moyen 15-30 min" },
+              { id: "long", label: "Long 30-45 min" },
+              { id: "very_long", label: "Très long +45 min" },
+            ] as const).map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setPrepFilter(f.id)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  prepFilter === f.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {([
+              { id: "all", label: "Batch: Tous" },
+              { id: "yes", label: "Batch: Oui" },
+              { id: "no", label: "Batch: Non" },
+            ] as const).map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setBatchFilter(f.id)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  batchFilter === f.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+            {(["2", "3", "4"] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setMealPrepDaysFilter((prev) => (prev === d ? "all" : d))}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  mealPrepDaysFilter === d
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {d} jours
               </button>
             ))}
           </div>
@@ -150,6 +230,7 @@ export default function AdminRecipesPage() {
                     <th className="text-left px-4 py-3 font-medium">Recette</th>
                     <th className="text-right px-4 py-3 font-medium whitespace-nowrap">P / G / L</th>
                     <th className="text-left px-4 py-3 font-medium">Média</th>
+                    <th className="text-left px-4 py-3 font-medium">Temps</th>
                     <th className="text-right px-4 py-3 font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -180,6 +261,10 @@ export default function AdminRecipesPage() {
                             {r.ingredients?.length ?? 0}
                           </span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        <div>{r.preparationTimeMinutes != null ? `${r.preparationTimeMinutes} min` : "—"}</div>
+                        <div>{r.isBatchCookingFriendly ? `Batch ${((r.mealPrepDays || []).join(", ")) || "—"}j` : "Sans batch"}</div>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1 flex-wrap">

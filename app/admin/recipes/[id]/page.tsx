@@ -24,7 +24,12 @@ interface RecipeForm {
   videoSource: "youtube" | "upload" | "";
   videoUrl: string;
   posterUrl: string;
-  ingredients: string[];
+  preparationTimeMinutes: string;
+  mealPrepDays: number[];
+  isBatchCookingFriendly: boolean;
+  servings: string;
+  storageInstructions: string;
+  ingredients: Array<{ name: string; quantity: string; unit: string }>;
 }
 
 function emptyForm(): RecipeForm {
@@ -39,6 +44,11 @@ function emptyForm(): RecipeForm {
     videoSource: "",
     videoUrl: "",
     posterUrl: "",
+    preparationTimeMinutes: "",
+    mealPrepDays: [],
+    isBatchCookingFriendly: false,
+    servings: "",
+    storageInstructions: "",
     ingredients: [],
   };
 }
@@ -63,21 +73,39 @@ export default function EditRecipePage() {
     setLoading(true);
     api
       .getAdminRecipe(id)
-      .then((data: { recipe?: any }) => {
+      .then((data: { recipe?: Record<string, unknown> }) => {
         const r = data.recipe;
         if (r)
           setRecipe({
-            title: r.title ?? "",
+            title: String(r.title ?? ""),
             calories: r.calories != null ? String(r.calories) : "",
             protein: r.protein != null ? String(r.protein) : "",
             carbs: r.carbs != null ? String(r.carbs) : "",
             fat: r.fat != null ? String(r.fat) : "",
-            imageUrl: r.imageUrl ?? "",
-            images: Array.isArray(r.images) ? r.images : [],
-            videoSource: r.videoSource ?? "",
-            videoUrl: r.videoUrl ?? "",
-            posterUrl: r.posterUrl ?? "",
-            ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
+            imageUrl: String(r.imageUrl ?? ""),
+            images: Array.isArray(r.images) ? (r.images as string[]) : [],
+            videoSource: (r.videoSource as "youtube" | "upload" | "") ?? "",
+            videoUrl: String(r.videoUrl ?? ""),
+            posterUrl: String(r.posterUrl ?? ""),
+            preparationTimeMinutes: r.preparationTimeMinutes != null ? String(r.preparationTimeMinutes) : "",
+            mealPrepDays: Array.isArray(r.mealPrepDays) ? (r.mealPrepDays as number[]) : [],
+            isBatchCookingFriendly: Boolean(r.isBatchCookingFriendly),
+            servings: r.servings != null ? String(r.servings) : "",
+            storageInstructions: String(r.storageInstructions ?? ""),
+            ingredients: Array.isArray(r.ingredients)
+              ? r.ingredients.map((i: unknown) =>
+                  typeof i === "string"
+                    ? { name: i, quantity: "", unit: "" }
+                    : {
+                        name: String((i as { name?: unknown })?.name ?? ""),
+                        quantity:
+                          (i as { quantity?: unknown })?.quantity != null
+                            ? String((i as { quantity?: unknown }).quantity)
+                            : "",
+                        unit: String((i as { unit?: unknown })?.unit ?? ""),
+                      }
+                )
+              : [],
           });
         else setRecipe(null);
       })
@@ -97,14 +125,14 @@ export default function EditRecipePage() {
   };
 
   const addIngredient = () => {
-    setRecipe((prev) => (prev ? { ...prev, ingredients: [...prev.ingredients, ""] } : prev));
+    setRecipe((prev) => (prev ? { ...prev, ingredients: [...prev.ingredients, { name: "", quantity: "", unit: "" }] } : prev));
   };
 
-  const updateIngredient = (index: number, value: string) => {
+  const updateIngredient = (index: number, key: "name" | "quantity" | "unit", value: string) => {
     setRecipe((prev) => {
       if (!prev) return prev;
       const next = [...prev.ingredients];
-      next[index] = value;
+      next[index] = { ...next[index], [key]: value };
       return { ...prev, ingredients: next };
     });
   };
@@ -143,7 +171,21 @@ export default function EditRecipePage() {
       videoSource: recipe.videoSource || undefined,
       videoUrl: recipe.videoUrl.trim() || undefined,
       posterUrl: recipe.posterUrl.trim() || undefined,
-      ingredients: recipe.ingredients.filter(Boolean).length ? recipe.ingredients.filter(Boolean) : undefined,
+      ingredients: recipe.ingredients
+        .map((i) => ({
+          name: i.name.trim(),
+          quantity: i.quantity.trim() === "" ? undefined : Number(i.quantity),
+          unit: i.unit.trim() || undefined,
+        }))
+        .filter((i) => i.name.length > 0),
+      preparationTimeMinutes:
+        recipe.preparationTimeMinutes.trim() === ""
+          ? null
+          : Number(recipe.preparationTimeMinutes),
+      mealPrepDays: recipe.mealPrepDays,
+      isBatchCookingFriendly: recipe.isBatchCookingFriendly,
+      servings: recipe.servings.trim() === "" ? undefined : Number(recipe.servings),
+      storageInstructions: recipe.storageInstructions.trim() || undefined,
     };
     const c = parseInt(recipe.calories, 10);
     const p = parseInt(recipe.protein, 10);
@@ -154,6 +196,13 @@ export default function EditRecipePage() {
     if (!Number.isNaN(p) && p >= 0) payload.protein = p;
     if (!Number.isNaN(g) && g >= 0) payload.carbs = g;
     if (!Number.isNaN(f) && f >= 0) payload.fat = f;
+    if (Array.isArray(payload.ingredients) && payload.ingredients.length === 0) {
+      payload.ingredients = undefined;
+    }
+    if (payload.preparationTimeMinutes != null) {
+      const prep = Number(payload.preparationTimeMinutes);
+      if (!Number.isFinite(prep) || prep <= 0) return { error: "Temps de préparation invalide." } as const;
+    }
     return { payload } as const;
   };
 
@@ -188,7 +237,12 @@ export default function EditRecipePage() {
           videoSource: payload.videoSource as "upload" | "youtube" | undefined,
           videoUrl: payload.videoUrl as string | undefined,
           posterUrl: payload.posterUrl as string | undefined,
-          ingredients: payload.ingredients as string[] | undefined,
+          preparationTimeMinutes: payload.preparationTimeMinutes as number | null | undefined,
+          mealPrepDays: payload.mealPrepDays as number[] | undefined,
+          isBatchCookingFriendly: payload.isBatchCookingFriendly as boolean | undefined,
+          servings: payload.servings as number | undefined,
+          storageInstructions: payload.storageInstructions as string | undefined,
+          ingredients: payload.ingredients as Array<{ name: string; quantity?: number; unit?: string }> | undefined,
         });
         toast("Recette créée", "success");
       } else {
@@ -203,7 +257,12 @@ export default function EditRecipePage() {
           videoSource: payload.videoSource as "upload" | "youtube" | undefined,
           videoUrl: payload.videoUrl as string | undefined,
           posterUrl: payload.posterUrl as string | undefined,
-          ingredients: payload.ingredients as string[] | undefined,
+          preparationTimeMinutes: payload.preparationTimeMinutes as number | null | undefined,
+          mealPrepDays: payload.mealPrepDays as number[] | undefined,
+          isBatchCookingFriendly: payload.isBatchCookingFriendly as boolean | undefined,
+          servings: payload.servings as number | undefined,
+          storageInstructions: payload.storageInstructions as string | undefined,
+          ingredients: payload.ingredients as Array<{ name: string; quantity?: number; unit?: string }> | undefined,
         });
         toast("Recette enregistrée", "success");
       }
@@ -287,6 +346,55 @@ export default function EditRecipePage() {
             <Label>Image principale (URL)</Label>
             <Input value={recipe.imageUrl} onChange={(e) => update({ imageUrl: e.target.value })} placeholder="https://…" />
           </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Temps de préparation (min)</Label>
+              <Input type="number" min={1} value={recipe.preparationTimeMinutes} onChange={(e) => update({ preparationTimeMinutes: e.target.value })} placeholder="Ex: 25" />
+            </div>
+            <div className="space-y-2">
+              <Label>Nombre de portions</Label>
+              <Input type="number" min={1} value={recipe.servings} onChange={(e) => update({ servings: e.target.value })} placeholder="Ex: 4" />
+            </div>
+            <div className="space-y-2">
+              <Label>Adaptée au batch cooking</Label>
+              <Button
+                type="button"
+                variant={recipe.isBatchCookingFriendly ? "default" : "outline"}
+                onClick={() => update({ isBatchCookingFriendly: !recipe.isBatchCookingFriendly })}
+                className="w-full"
+              >
+                {recipe.isBatchCookingFriendly ? "Oui" : "Non"}
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Préparer pour plusieurs jours</Label>
+            <div className="flex gap-2">
+              {[2, 3, 4].map((d) => (
+                <Button
+                  key={d}
+                  type="button"
+                  variant={recipe.mealPrepDays.includes(d) ? "default" : "outline"}
+                  onClick={() =>
+                    update({
+                      mealPrepDays: recipe.mealPrepDays.includes(d)
+                        ? recipe.mealPrepDays.filter((x) => x !== d)
+                        : [...recipe.mealPrepDays, d].sort((a, b) => a - b),
+                    })
+                  }
+                >
+                  {d} jours
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Indique si cette recette peut être préparée à l’avance pour plusieurs jours.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Instructions de conservation</Label>
+            <Input value={recipe.storageInstructions} onChange={(e) => update({ storageInstructions: e.target.value })} placeholder="Ex: Se conserve 3 jours au réfrigérateur dans une boîte hermétique." />
+          </div>
         </CardContent>
       </Card>
 
@@ -363,8 +471,10 @@ export default function EditRecipePage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {recipe.ingredients.map((ing, i) => (
-            <div key={i} className="flex gap-2">
-              <Input value={ing} onChange={(e) => updateIngredient(i, e.target.value)} placeholder="ex. 100 g poulet" />
+            <div key={i} className="grid grid-cols-12 gap-2">
+              <Input className="col-span-6" value={ing.name} onChange={(e) => updateIngredient(i, "name", e.target.value)} placeholder="Nom (ex: poulet)" />
+              <Input className="col-span-3" value={ing.quantity} onChange={(e) => updateIngredient(i, "quantity", e.target.value)} placeholder="Qté" />
+              <Input className="col-span-2" value={ing.unit} onChange={(e) => updateIngredient(i, "unit", e.target.value)} placeholder="Unité" />
               <Button type="button" variant="outline" size="icon" onClick={() => removeIngredient(i)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
