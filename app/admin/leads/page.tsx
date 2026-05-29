@@ -85,7 +85,7 @@ export default function LeadsPage() {
       const params: Record<string, unknown> = { page, limit: 20 };
       if (statusFilter !== "all") params.status = statusFilter;
       const data = await api.getLeads(params as Parameters<typeof api.getLeads>[0]);
-      setLeads(data.leads);
+      setLeads(data.leads as Lead[]);
       setTotalPages(data.pagination.pages);
       setTotal(data.pagination.total);
     } catch (e) {
