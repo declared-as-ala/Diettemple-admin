@@ -19,6 +19,7 @@ import {
   Package,
   ShoppingCart,
   Video,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -41,6 +42,9 @@ const BOUTIQUE_ITEMS = [
   { href: "/admin/products", label: fr.sidebar.products, icon: Package },
   { href: "/admin/orders", label: fr.sidebar.orders, icon: ShoppingCart },
 ]
+const MARKETING_ITEMS = [
+  { href: "/admin/leads", label: "Leads Website", icon: Users },
+]
 
 const ALL_SECTIONS = [
   { label: "OVERVIEW", items: OVERVIEW_ITEMS },
@@ -48,6 +52,7 @@ const ALL_SECTIONS = [
   { label: fr.sidebar.training, items: TRAINING_ITEMS },
   { label: fr.sidebar.nutritionSection, items: NUTRITION_ITEMS },
   { label: fr.sidebar.boutique, items: BOUTIQUE_ITEMS },
+  { label: "MARKETING", items: MARKETING_ITEMS },
 ]
 
 export function Sidebar() {

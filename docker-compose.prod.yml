@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: diettemple_mongodb
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - diettemple_net
+
+  backend:
+    image: ghcr.io/declared-as-ala/diettemple-backend:latest
+    container_name: diettemple_backend
+    restart: always
+    expose:
+      - "5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/diettemple
+      - PORT=5000
+    depends_on:
+      - mongodb
+    networks:
+      - diettemple_net
+
+  website:
+    image: ghcr.io/declared-as-ala/dietemple-frontend:latest
+    container_name: diettemple_website
+    restart: always
+    expose:
+      - "3000"
+    networks:
+      - diettemple_net
+
+  admin:
+    image: ghcr.io/declared-as-ala/diettemple-admin:latest
+    container_name: diettemple_admin
+    restart: always
+    expose:
+      - "3000"
+    networks:
+      - diettemple_net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: diettemple_proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - website
+      - admin
+    networks:
+      - diettemple_net
+
+volumes:
+  mongo_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  diettemple_net:
+    driver: bridge

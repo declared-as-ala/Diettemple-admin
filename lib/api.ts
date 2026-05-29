@@ -732,6 +732,23 @@ class ApiClient {
     const response = await this.client.get(`/admin/analytics/weight-lifted/${userId}`);
     return response.data;
   }
+
+  async getLeads(params?: { page?: number; limit?: number; status?: string }): Promise<{
+    leads: Array<{
+      _id: string; name: string; email: string; phone: string;
+      goal: string; plan: string; status: string; notes: string;
+      source: string; createdAt: string;
+    }>;
+    pagination: { page: number; limit: number; total: number; pages: number };
+  }> {
+    const response = await this.client.get('/admin/leads', { params });
+    return response.data;
+  }
+
+  async updateLeadStatus(id: string, status: string, notes?: string): Promise<{ lead: Record<string, unknown> }> {
+    const response = await this.client.patch(`/admin/leads/${id}/status`, { status, notes });
+    return response.data;
+  }
 }
 
 export const api = new ApiClient();
