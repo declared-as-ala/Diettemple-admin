@@ -27,7 +27,7 @@ services:
       - diettemple_net
 
   website:
-    image: ghcr.io/declared-as-ala/dietemple-frontend:latest
+    image: ghcr.io/declared-as-ala/frontend-diettemple:latest
     container_name: diettemple_website
     restart: always
     expose:
