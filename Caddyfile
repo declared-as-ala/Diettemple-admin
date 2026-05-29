@@ -3,25 +3,14 @@
 # ==============================================================================
 
 # --- OPTION A: Domain Names (Production with Automatic HTTPS) ---
-# diettemple.com, www.diettemple.com {
-#     reverse_proxy website:3000
-# }
-# admin.diettemple.com {
-#     reverse_proxy admin:3000
-# }
-# api.diettemple.com {
-#     reverse_proxy backend:5000
-# }
-
-# --- OPTION B: Fallback / Test with IP Address (No SSL) ---
-http://178.105.255.135 {
+diettemple.tn, www.diettemple.tn {
     reverse_proxy website:3000
 }
 
-http://178.105.255.135:5000 {
-    reverse_proxy backend:5000
+admin.diettemple.tn {
+    reverse_proxy admin:3000
 }
 
-http://178.105.255.135:3001 {
-    reverse_proxy admin:3000
+api.diettemple.tn {
+    reverse_proxy backend:5000
 }
