@@ -69,11 +69,11 @@ export default function LandingVideosPage() {
     setError(p => ({ ...p, [gender]: "" }))
     try {
       const cfg = configs[gender]
+      // videoUrl intentionally excluded — only the upload endpoint sets it
       await api.upsertLandingVideo(gender, {
         title: cfg.title,
         description: cfg.description,
         isActive: cfg.isActive,
-        videoUrl: cfg.videoUrl, // preserve existing URL
       })
       flash(gender, "success", "Informations sauvegardées.")
     } catch {
