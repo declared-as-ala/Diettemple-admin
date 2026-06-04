@@ -1,5 +1,5 @@
 // Default backend endpoint (production)
-const DEFAULT_API_BASE = 'https://next.protein.tn/api';
+const DEFAULT_API_BASE = 'https://api.diettemple.tn/api';
 
 function trimTrailingSlash(url: string): string {
   return url.replace(/\/$/, '');

@@ -44,6 +44,7 @@ const BOUTIQUE_ITEMS = [
 ]
 const MARKETING_ITEMS = [
   { href: "/admin/leads", label: "Leads Website", icon: Users },
+  { href: "/admin/landing-videos", label: "Vidéos Landing", icon: Video },
 ]
 
 const ALL_SECTIONS = [

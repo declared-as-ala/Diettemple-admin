@@ -133,6 +133,40 @@ class ApiClient {
     return response.data as { item: LevelHomeContentItem; videoUrl: string; message?: string };
   }
 
+  // Landing Videos
+  async getLandingVideos() {
+    const response = await this.client.get('/admin/landing-videos');
+    return response.data as { videos: Array<{ gender: string; title: string; description: string; videoUrl: string; isActive: boolean }> };
+  }
+
+  async upsertLandingVideo(gender: 'homme' | 'femme', data: { title?: string; description?: string; videoUrl?: string; isActive?: boolean }) {
+    const response = await this.client.put(`/admin/landing-videos/${gender}`, data);
+    return response.data as { video: { gender: string; title: string; description: string; videoUrl: string; isActive: boolean } };
+  }
+
+  async uploadLandingVideo(gender: 'homme' | 'femme', videoFile: File, onUploadProgress?: (percent: number) => void) {
+    const formData = new FormData();
+    formData.append('video', videoFile);
+    const token = this.getToken();
+    const response = await axios.post(
+      `${API_BASE_URL}/admin/landing-videos/${gender}/video`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+        onUploadProgress: onUploadProgress
+          ? (e) => {
+              const percent = e.total ? Math.round((e.loaded / e.total) * 100) : 0;
+              onUploadProgress(percent);
+            }
+          : undefined,
+      }
+    );
+    return response.data as { video: { videoUrl: string }; videoUrl: string };
+  }
+
   // Session Templates (coaching)
   async getSessionTemplates(params?: { page?: number; limit?: number; search?: string; difficulty?: string }) {
     const response = await this.client.get('/admin/session-templates', { params });
