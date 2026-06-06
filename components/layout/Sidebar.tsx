@@ -43,7 +43,7 @@ const BOUTIQUE_ITEMS = [
   { href: "/admin/orders", label: fr.sidebar.orders, icon: ShoppingCart },
 ]
 const MARKETING_ITEMS = [
-  { href: "/admin/leads", label: "Leads Website", icon: Users },
+  { href: "/admin/leads", label: "Rendez-vous", icon: Users },
   { href: "/admin/landing-videos", label: "Vidéos Landing", icon: Video },
 ]
 

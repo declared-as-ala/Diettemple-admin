@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Phone, Mail, Target, CreditCard, MessageSquare, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Phone, Mail, Target, MessageSquare, Users, Smartphone, Globe, User } from "lucide-react";
 import { format } from "date-fns";
 import { fr as dateFr } from "date-fns/locale";
 
@@ -31,7 +31,8 @@ interface Lead {
   email: string;
   phone: string;
   goal: string;
-  plan: string;
+  plan?: string;
+  gender?: string;
   status: LeadStatus;
   notes: string;
   source: string;
@@ -60,12 +61,6 @@ const GOAL_LABELS: Record<string, string> = {
   "wellness":   "Santé & longévité",
 };
 
-const PLAN_LABELS: Record<string, string> = {
-  "fondation":  "Fondation · 590 TND/mois",
-  "ascension":  "Ascension · 990 TND/mois",
-  "elite":      "Elite · sur entretien",
-  "undecided":  "À déterminer",
-};
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -128,9 +123,9 @@ export default function LeadsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Leads Website</h1>
+          <h1 className="text-2xl font-bold">Demandes de Rendez-vous</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Demandes de rappel soumises via le site DietTemple
+            Demandes reçues via le site web et l&apos;application mobile DietTemple
           </p>
         </div>
         <Badge variant="outline" className="text-base px-4 py-1">
@@ -192,7 +187,8 @@ export default function LeadsPage() {
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nom</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground hidden md:table-cell">Contact</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground hidden lg:table-cell">Objectif</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground hidden lg:table-cell">Formule</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground hidden lg:table-cell">Genre</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground hidden xl:table-cell">Source</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Statut</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground hidden md:table-cell">Date</th>
                     <th className="text-right py-3 px-4 font-medium text-muted-foreground">Action</th>
@@ -209,7 +205,21 @@ export default function LeadsPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 hidden lg:table-cell text-muted-foreground text-xs">{GOAL_LABELS[lead.goal] ?? lead.goal}</td>
-                      <td className="py-3 px-4 hidden lg:table-cell text-muted-foreground text-xs">{PLAN_LABELS[lead.plan] ?? lead.plan}</td>
+                      <td className="py-3 px-4 hidden lg:table-cell text-xs">
+                        {lead.gender ? (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <User className="w-3 h-3" />
+                            {lead.gender === 'homme' ? 'Homme' : lead.gender === 'femme' ? 'Femme' : lead.gender}
+                          </span>
+                        ) : <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                      <td className="py-3 px-4 hidden xl:table-cell text-xs">
+                        {lead.source === 'mobile' ? (
+                          <span className="flex items-center gap-1 text-blue-400"><Smartphone className="w-3 h-3" />Mobile</span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground"><Globe className="w-3 h-3" />Site web</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[lead.status as LeadStatus]}`}>
                           {STATUS_LABELS[lead.status as LeadStatus] ?? lead.status}
@@ -255,7 +265,13 @@ export default function LeadsPage() {
                 <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" />{selected.phone}</div>
                 <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" />{selected.email}</div>
                 <div className="flex items-center gap-2 text-muted-foreground col-span-2"><Target className="w-4 h-4" />{GOAL_LABELS[selected.goal] ?? selected.goal}</div>
-                <div className="flex items-center gap-2 text-muted-foreground col-span-2"><CreditCard className="w-4 h-4" />{PLAN_LABELS[selected.plan] ?? selected.plan}</div>
+                {selected.gender && (
+                  <div className="flex items-center gap-2 text-muted-foreground"><User className="w-4 h-4" />{selected.gender === 'homme' ? 'Homme' : selected.gender === 'femme' ? 'Femme' : selected.gender}</div>
+                )}
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  {selected.source === 'mobile' ? <Smartphone className="w-4 h-4 text-blue-400" /> : <Globe className="w-4 h-4" />}
+                  {selected.source === 'mobile' ? 'Application Mobile' : 'Site Web'}
+                </div>
               </div>
 
               <div className="space-y-1">
