@@ -783,6 +783,37 @@ class ApiClient {
     const response = await this.client.patch(`/admin/leads/${id}/status`, { status, notes });
     return response.data;
   }
+
+  async getSupport(params?: { page?: number; limit?: number; status?: string; priority?: string }): Promise<{
+    tickets: Array<{
+      _id: string; name: string; email: string; subject: string;
+      category: string; priority: string; status: string;
+      message: string; adminNotes?: string; createdAt: string;
+    }>;
+    pagination: { page: number; limit: number; total: number; pages: number };
+  }> {
+    const response = await this.client.get('/admin/support', { params });
+    return response.data;
+  }
+
+  async getSupportDetail(id: string): Promise<{
+    ticket: {
+      _id: string; name: string; email: string; subject: string;
+      category: string; priority: string; status: string;
+      message: string; adminNotes?: string; createdAt: string; updatedAt: string;
+    };
+  }> {
+    const response = await this.client.get(`/admin/support/${id}`);
+    return response.data;
+  }
+
+  async updateSupportTicket(
+    id: string,
+    updates: { status?: string; priority?: string; adminNotes?: string }
+  ): Promise<{ ticket: Record<string, unknown> }> {
+    const response = await this.client.patch(`/admin/support/${id}`, updates);
+    return response.data;
+  }
 }
 
 export const api = new ApiClient();
