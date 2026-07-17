@@ -19,6 +19,8 @@ import WorkoutPlanModal from "@/components/client-detail/WorkoutPlanModal"
 import NoteModal from "@/components/client-detail/NoteModal"
 import NutritionTemplateModal from "@/components/client-detail/NutritionTemplateModal"
 import ClientDetailSkeleton from "@/components/client-detail/ClientDetailSkeleton"
+import BodyCompositionTab from "@/components/client-detail/BodyCompositionTab"
+import WeeklyProgressTab from "@/components/client-detail/WeeklyProgressTab"
 import { useClientProfile } from "@/components/client-detail/useClientProfile"
 import type {
   TabId, OrderFilter, SubScenario, Recommendation, NutritionPlan,
@@ -40,6 +42,8 @@ export default function AdminClientProfilePage() {
     levelTemplates, levelTemplatesLoading, loadLevelTemplates,
     nutritionPlans, nutritionPlansLoading, loadNutritionPlans,
     planAssignment, planAssignmentLoading, refetchPlanAssignment,
+    weeklyValidation, weeklyValidationLoading,
+    weeklyValidationHistory, weeklyValidationHistoryLoading,
     ensureTabData, invalidateTimeline,
   } = useClientProfile(id)
 
@@ -500,6 +504,14 @@ export default function AdminClientProfilePage() {
             onOpenNoteModal={handleOpenNoteModal}
             onGoToDiet={() => setTab("diet")}
             onGoToTraining={() => setTab("training")}
+            onRefetchProfile={refetchProfile}
+          />
+        )}
+
+        {tab === "bodyComposition" && (
+          <BodyCompositionTab
+            profile={profile}
+            onRefetchProfile={refetchProfile}
           />
         )}
 
@@ -535,6 +547,15 @@ export default function AdminClientProfilePage() {
             }}
             logs={logs}
             logsLoading={logsLoading}
+          />
+        )}
+
+        {tab === "weeklyProgress" && (
+          <WeeklyProgressTab
+            weeklyValidation={weeklyValidation}
+            weeklyValidationLoading={weeklyValidationLoading}
+            weeklyValidationHistory={weeklyValidationHistory}
+            weeklyValidationHistoryLoading={weeklyValidationHistoryLoading}
           />
         )}
 

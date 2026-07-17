@@ -6,16 +6,16 @@ export interface AdminUser {
   email?: string;
   phone?: string;
   name?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'employee' | 'user';
 }
 
 export const auth = {
   login: async (emailOrPhone: string, password: string): Promise<{ user: AdminUser; token: string }> => {
     const response = await api.login(emailOrPhone, password);
     
-    // Check if user is admin
-    if (response.user.role !== 'admin') {
-      throw new Error('Admin access required');
+    // Check if user is admin or employee
+    if (response.user.role !== 'admin' && response.user.role !== 'employee') {
+      throw new Error('Accès réservé aux administrateurs et employés');
     }
 
     // Store token

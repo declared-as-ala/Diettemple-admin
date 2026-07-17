@@ -1,12 +1,12 @@
 // ─── Client 360 shared types ─────────────────────────────────────────────────
 
-export type TabId = "overview" | "training" | "diet" | "timeline"
+export type TabId = "overview" | "bodyComposition" | "diet" | "training" | "weeklyProgress" | "timeline"
 
 export interface PlanAssignmentData {
   id: string
   startDate: string
   endDate: string
-  durationWeeks: 5
+  durationWeeks: number
   status: "active" | "completed" | "paused" | "archived"
   planTemplateId?: string
   levelName?: string
@@ -33,7 +33,7 @@ export interface ClientData {
   name?: string
   email?: string
   phone?: string
-  sexe?: string
+  sexe?: 'M' | 'F'
   age?: string
   taille?: string
   poids?: string
@@ -42,6 +42,18 @@ export interface ClientData {
   photoUri?: string
   createdAt?: string
   updatedAt?: string
+  fitnessLevel?: 'A' | 'B'
+  bodyComposition?: {
+    bodyFatPercentage?: number
+    muscleMassPercentage?: number
+  }
+  nutritionGoal?: {
+    calorieMode?: 'SURPLUS' | 'DEFICIT'
+    calorieAdjustment?: number;
+    proteinGrams?: number;
+    carbohydrateGrams?: number;
+    fatGrams?: number;
+  }
   nutritionTarget?: {
     dailyCalories?: number
     proteinG?: number

@@ -41,16 +41,20 @@ export default function LoginPage() {
         throw new Error(data.message || 'Login failed')
       }
 
-      // Check if user is admin
-      if (data.user.role !== 'admin') {
-        throw new Error('Accès administrateur requis')
+      // Check if user is admin or employee
+      if (data.user.role !== 'admin' && data.user.role !== 'employee') {
+        throw new Error('Accès administrateur ou employé requis')
       }
 
       // Store token using document.cookie
       document.cookie = `admin_token=${data.token}; expires=${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString()}; path=/`
       
-      // Redirect to dashboard
-      router.push("/admin/level-templates")
+      // Redirect depending on role
+      if (data.user.role === 'employee') {
+        router.push("/admin/clients")
+      } else {
+        router.push("/admin/level-templates")
+      }
     } catch (err: any) {
       setError(err.message || "Échec de la connexion. Vérifiez vos identifiants.")
     } finally {

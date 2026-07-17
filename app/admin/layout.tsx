@@ -30,11 +30,39 @@ export default function AdminLayout({
     const checkAuth = () => {
       const authenticated = auth.isAuthenticated()
       setIsAuthenticated(authenticated)
-      setLoading(false)
       
       if (!authenticated) {
         router.push("/admin/login")
+        setLoading(false)
+        return
       }
+
+      const token = auth.getToken()
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]))
+          const role = payload.role || "admin"
+          if (role === "employee") {
+            const forbiddenPaths = [
+              "/admin/dashboard",
+              "/admin/orders",
+              "/admin/subscriptions",
+              "/admin/assignments",
+              "/admin/nutrition-plans",
+              "/admin/nutrition-assignments",
+              "/admin/landing-videos",
+              "/admin/level-home-content",
+              "/admin/support",
+              "/admin/leads"
+            ];
+            const isForbidden = forbiddenPaths.some(p => pathname === p || pathname.startsWith(p + "/"));
+            if (isForbidden) {
+              router.push("/admin/clients")
+            }
+          }
+        } catch {}
+      }
+      setLoading(false)
     }
 
     checkAuth()

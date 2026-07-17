@@ -43,6 +43,14 @@ export function useClientProfile(id: string) {
   const [planAssignment, setPlanAssignment] = useState<PlanAssignmentData | null>(null)
   const [planAssignmentLoading, setPlanAssignmentLoading] = useState(false)
 
+  const [weeklyValidation, setWeeklyValidation] = useState<any>(null)
+  const [weeklyValidationLoading, setWeeklyValidationLoading] = useState(false)
+  const [weeklyValidationLoaded, setWeeklyValidationLoaded] = useState(false)
+
+  const [weeklyValidationHistory, setWeeklyValidationHistory] = useState<any[]>([])
+  const [weeklyValidationHistoryLoading, setWeeklyValidationHistoryLoading] = useState(false)
+  const [weeklyValidationHistoryLoaded, setWeeklyValidationHistoryLoaded] = useState(false)
+
   // ─── Loaders ──────────────────────────────────────────────────────────────
 
   const loadProfile = useCallback(async () => {
@@ -140,7 +148,7 @@ export function useClientProfile(id: string) {
           id: data.assignment.id,
           startDate: data.assignment.startDate,
           endDate: data.assignment.endDate,
-          durationWeeks: 5,
+          durationWeeks: data.assignment.durationWeeks || 5,
           status: data.assignment.status,
           levelName: data.plan?.name,
           levelGender: data.plan?.gender,
@@ -177,6 +185,34 @@ export function useClientProfile(id: string) {
     }
   }, [nutritionPlans.length])
 
+  const loadWeeklyValidation = useCallback(async () => {
+    if (!id || weeklyValidationLoaded) return
+    setWeeklyValidationLoading(true)
+    try {
+      const data = await api.getClientWeeklyValidation(id)
+      setWeeklyValidation(data)
+      setWeeklyValidationLoaded(true)
+    } catch {
+      setWeeklyValidation(null)
+    } finally {
+      setWeeklyValidationLoading(false)
+    }
+  }, [id, weeklyValidationLoaded])
+
+  const loadWeeklyValidationHistory = useCallback(async () => {
+    if (!id || weeklyValidationHistoryLoaded) return
+    setWeeklyValidationHistoryLoading(true)
+    try {
+      const data = await api.getClientWeeklyValidationHistory(id)
+      setWeeklyValidationHistory(data?.history || [])
+      setWeeklyValidationHistoryLoaded(true)
+    } catch {
+      setWeeklyValidationHistory([])
+    } finally {
+      setWeeklyValidationHistoryLoading(false)
+    }
+  }, [id, weeklyValidationHistoryLoaded])
+
   useEffect(() => {
     loadProfile()
   }, [loadProfile])
@@ -188,8 +224,9 @@ export function useClientProfile(id: string) {
       if (tab === "diet") loadLogs()
       if (tab === "timeline") loadTimeline()
       if (tab === "training") { loadExerciseHistory(); loadPlanAssignment() }
+      if (tab === "weeklyProgress") { loadWeeklyValidation(); loadWeeklyValidationHistory() }
     },
-    [loadOrders, loadLogs, loadTimeline, loadExerciseHistory, loadPlanAssignment]
+    [loadOrders, loadLogs, loadTimeline, loadExerciseHistory, loadPlanAssignment, loadWeeklyValidation, loadWeeklyValidationHistory]
   )
 
   // ─── Invalidate caches after mutations ───────────────────────────────────
@@ -223,6 +260,14 @@ export function useClientProfile(id: string) {
     planAssignment,
     planAssignmentLoading,
     refetchPlanAssignment,
+
+    weeklyValidation,
+    weeklyValidationLoading,
+    refetchWeeklyValidation: () => { setWeeklyValidationLoaded(false); loadWeeklyValidation() },
+
+    weeklyValidationHistory,
+    weeklyValidationHistoryLoading,
+    refetchWeeklyValidationHistory: () => { setWeeklyValidationHistoryLoaded(false); loadWeeklyValidationHistory() },
 
     ensureTabData,
     invalidateTimeline,

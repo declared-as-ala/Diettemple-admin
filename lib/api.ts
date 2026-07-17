@@ -440,6 +440,21 @@ class ApiClient {
     return response.data;
   }
 
+  async updateClientProfile(clientId: string, data: any) {
+    const response = await this.client.put(`/admin/clients/${clientId}`, data);
+    return response.data;
+  }
+
+  async getClientWeeklyValidation(clientId: string, date?: string) {
+    const response = await this.client.get(`/admin/clients/${clientId}/weekly-validation`, { params: date ? { date } : undefined });
+    return response.data;
+  }
+
+  async getClientWeeklyValidationHistory(clientId: string) {
+    const response = await this.client.get(`/admin/clients/${clientId}/weekly-validation/history`);
+    return response.data;
+  }
+
   async getDashboardInactive(params?: { days?: number }) {
     const response = await this.client.get('/admin/dashboard/inactive', { params: params || { days: 7 } });
     return response.data;

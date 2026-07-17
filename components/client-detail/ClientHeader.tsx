@@ -13,10 +13,12 @@ import { LEVEL_COLORS, daysUntil, fmtDate, fmtRelative } from "./utils"
 const LEVEL_NAMES = [...LEVELS]
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: "overview", label: "Aperçu", icon: ListOrdered },
-  { id: "training", label: "Entraînement", icon: Activity },
-  { id: "diet", label: "Diet", icon: UtensilsCrossed },
-  { id: "timeline", label: "Timeline", icon: Calendar },
+  { id: "overview", label: "Profil", icon: User },
+  { id: "bodyComposition", label: "Composition corporelle", icon: Activity },
+  { id: "diet", label: "Objectifs nutritionnels", icon: UtensilsCrossed },
+  { id: "training", label: "Plan", icon: Trophy },
+  { id: "weeklyProgress", label: "Progression hebdomadaire", icon: Check },
+  { id: "timeline", label: "Journal", icon: Clock },
 ]
 
 interface ClientHeaderProps {

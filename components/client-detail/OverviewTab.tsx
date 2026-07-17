@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,17 @@ import {
   fmtDate, fmtRelative, calcProfileCompletion, getMissingFields,
   COMPLETION_FIELD_LABELS, formatMoney,
 } from "./utils"
+import { api } from "@/lib/api"
+import { useToast } from "@/components/ui/toast"
+import {
+  Dialog, DialogBody, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select"
 
 // ─── Profile Completion Ring ─────────────────────────────────────────────────
 
@@ -118,6 +129,7 @@ interface OverviewTabProps {
   onOpenNoteModal: () => void
   onGoToDiet: () => void
   onGoToTraining: () => void
+  onRefetchProfile: () => void
 }
 
 export default function OverviewTab({
@@ -131,6 +143,7 @@ export default function OverviewTab({
   onOpenNoteModal,
   onGoToDiet,
   onGoToTraining,
+  onRefetchProfile,
 }: OverviewTabProps) {
   const sub = profile.subscription
   const client = profile.client
@@ -143,6 +156,50 @@ export default function OverviewTab({
   const completionPct = calcProfileCompletion(meta?.profileCompletion)
   const missing = getMissingFields(meta?.profileCompletion)
   const commerce = profile.commerceSummary
+
+  const { toast } = useToast()
+  const [editOpen, setEditOpen] = useState(false)
+  const [editName, setEditName] = useState(client.name || "")
+  const [editSexe, setEditSexe] = useState<"M" | "F">((client.sexe as "M" | "F") || "M")
+  const [editAge, setEditAge] = useState(client.age || "")
+  const [editTaille, setEditTaille] = useState(client.taille || "")
+  const [editPoids, setEditPoids] = useState(client.poids || "")
+  const [editObjectif, setEditObjectif] = useState(client.objectif || "")
+  const [editFitnessLevel, setEditFitnessLevel] = useState<"A" | "B">((client.fitnessLevel as "A" | "B") || "A")
+  const [editSaving, setEditSaving] = useState(false)
+
+  const handleEditProfile = () => {
+    setEditName(client.name || "")
+    setEditSexe((client.sexe as "M" | "F") || "M")
+    setEditAge(client.age || "")
+    setEditTaille(client.taille || "")
+    setEditPoids(client.poids || "")
+    setEditObjectif(client.objectif || "")
+    setEditFitnessLevel((client.fitnessLevel as "A" | "B") || "A")
+    setEditOpen(true)
+  }
+
+  const handleSaveProfile = async () => {
+    setEditSaving(true)
+    try {
+      await api.updateClientProfile(client._id, {
+        name: editName,
+        sexe: editSexe,
+        age: editAge,
+        taille: editTaille,
+        poids: editPoids,
+        objectif: editObjectif,
+        fitnessLevel: editFitnessLevel,
+      })
+      toast("Profil mis à jour ✓", "success")
+      setEditOpen(false)
+      onRefetchProfile()
+    } catch (e: any) {
+      toast(e.message || "Erreur de mise à jour", "error")
+    } finally {
+      setEditSaving(false)
+    }
+  }
 
   const filteredOrders = useMemo(() => {
     if (orderFilter === "all") return orders
@@ -249,11 +306,12 @@ export default function OverviewTab({
           <CardContent>
             <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">
               {[
-                { label: "Sexe", value: meta?.sexe || client.sexe },
-                { label: "Âge", value: meta?.age || client.age },
-                { label: "Taille", value: meta?.taille || client.taille ? `${meta?.taille || client.taille} cm` : null },
-                { label: "Poids", value: meta?.poids || client.poids ? `${meta?.poids || client.poids} kg` : null },
-                { label: "Objectif", value: meta?.objectif || client.objectif },
+                { label: "Sexe", value: client.sexe === "M" ? "Homme" : client.sexe === "F" ? "Femme" : null },
+                { label: "Âge", value: client.age ? `${client.age} ans` : null },
+                { label: "Taille", value: client.taille ? `${client.taille} cm` : null },
+                { label: "Poids", value: client.poids ? `${client.poids} kg` : null },
+                { label: "Objectif", value: client.objectif },
+                { label: "Niveau", value: client.fitnessLevel ? `Niveau ${client.fitnessLevel}` : null },
               ].map(({ label, value }) => (
                 <div key={label} className="contents">
                   <span className="text-muted-foreground py-0.5">{label}</span>
@@ -285,6 +343,14 @@ export default function OverviewTab({
                 </div>
               </div>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full h-8 text-xs mt-3"
+              onClick={handleEditProfile}
+            >
+              Modifier le profil
+            </Button>
           </CardContent>
         </Card>
 
@@ -613,6 +679,123 @@ export default function OverviewTab({
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le profil du client</DialogTitle>
+            <DialogDescription>
+              Mettez à jour les informations personnelles du client ci-dessous.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogBody className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="editName">Nom complet</Label>
+              <Input
+                id="editName"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Ex: Jean Dupont"
+                className="h-9"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="editSexe">Sexe</Label>
+                <Select
+                  value={editSexe}
+                  onValueChange={(val: "M" | "F") => setEditSexe(val)}
+                >
+                  <SelectTrigger id="editSexe" className="h-9 w-full">
+                    <SelectValue placeholder="Choisir" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="M">Homme</SelectItem>
+                    <SelectItem value="F">Femme</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="editAge">Âge</Label>
+                <Input
+                  id="editAge"
+                  type="number"
+                  value={editAge}
+                  onChange={(e) => setEditAge(e.target.value)}
+                  placeholder="Ex: 30"
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="editTaille">Taille (cm)</Label>
+                <Input
+                  id="editTaille"
+                  type="number"
+                  value={editTaille}
+                  onChange={(e) => setEditTaille(e.target.value)}
+                  placeholder="Ex: 175"
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="editPoids">Poids (kg)</Label>
+                <Input
+                  id="editPoids"
+                  type="number"
+                  value={editPoids}
+                  onChange={(e) => setEditPoids(e.target.value)}
+                  placeholder="Ex: 78"
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="editFitnessLevel">Niveau Fitness</Label>
+              <Select
+                value={editFitnessLevel}
+                onValueChange={(val: "A" | "B") => setEditFitnessLevel(val)}
+              >
+                <SelectTrigger id="editFitnessLevel" className="h-9 w-full">
+                  <SelectValue placeholder="Choisir" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A">Niveau A</SelectItem>
+                  <SelectItem value="B">Niveau B</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="editObjectif">Objectif principal</Label>
+              <Input
+                id="editObjectif"
+                value={editObjectif}
+                onChange={(e) => setEditObjectif(e.target.value)}
+                placeholder="Ex: Perte de poids, Prise de masse"
+                className="h-9"
+              />
+            </div>
+          </DialogBody>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={editSaving}>
+              Annuler
+            </Button>
+            <Button onClick={handleSaveProfile} disabled={editSaving} className="gap-2">
+              {editSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {editSaving ? "Enregistrement…" : "Enregistrer les modifications"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

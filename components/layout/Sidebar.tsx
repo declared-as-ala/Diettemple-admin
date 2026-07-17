@@ -60,14 +60,36 @@ export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [userName, setUserName] = useState("Admin")
+  const [userRole, setUserRole] = useState("admin")
   useEffect(() => {
     const token = auth.getToken()
     if (!token) return
     try {
       const payload = JSON.parse(atob(token.split(".")[1]))
       setUserName(payload.name || "Admin")
+      setUserRole(payload.role || "admin")
     } catch {}
   }, [])
+
+  const visibleSections = ALL_SECTIONS.map(section => {
+    if (userRole === "employee") {
+      if (section.label === "OVERVIEW" || section.label === "MARKETING") {
+        return null;
+      }
+      const filteredItems = section.items.filter(item => {
+        if (section.label === fr.sidebar.nutritionSection) {
+          return item.href === "/admin/recipes";
+        }
+        if (section.label === fr.sidebar.boutique) {
+          return item.href === "/admin/products";
+        }
+        return true;
+      });
+      if (filteredItems.length === 0) return null;
+      return { ...section, items: filteredItems };
+    }
+    return section;
+  }).filter(Boolean) as typeof ALL_SECTIONS;
 
   return (
     <aside
@@ -99,7 +121,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {ALL_SECTIONS.map((section, si) => (
+        {visibleSections.map((section, si) => (
           <div key={si} className={si > 0 ? "mt-4" : ""}>
             {!collapsed && (
               <h3 className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -145,7 +167,9 @@ export function Sidebar() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm text-sidebar-foreground truncate">{userName}</p>
-              <p className="text-xs text-muted-foreground truncate">{fr.sidebar.admin}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {userRole === "employee" ? "Employé" : fr.sidebar.admin}
+              </p>
             </div>
           </div>
         ) : (
