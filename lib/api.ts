@@ -400,7 +400,19 @@ class ApiClient {
     return response.data;
   }
 
-  async createClient(data: { name?: string; email?: string; phone?: string; password: string }) {
+  async createClient(data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    password?: string;
+    sexe?: 'M' | 'F';
+    age?: string;
+    taille?: string;
+    poids?: string;
+    objectif?: string;
+    fitnessLevel?: 'A' | 'B';
+    bodyComposition?: { bodyFatPercentage?: number; muscleMassPercentage?: number };
+  }) {
     const response = await this.client.post('/admin/clients', data);
     return response.data;
   }

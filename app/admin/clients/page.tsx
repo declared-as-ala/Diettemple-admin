@@ -210,6 +210,14 @@ export default function AdminClientsPage() {
   const [addEmail, setAddEmail] = useState("");
   const [addPhone, setAddPhone] = useState("");
   const [addPassword, setAddPassword] = useState("");
+  const [addSexe, setAddSexe] = useState<"M" | "F" | "">("");
+  const [addAge, setAddAge] = useState("");
+  const [addTaille, setAddTaille] = useState("");
+  const [addPoids, setAddPoids] = useState("");
+  const [addObjectif, setAddObjectif] = useState("");
+  const [addFitnessLevel, setAddFitnessLevel] = useState<"A" | "B" | "">("");
+  const [addBodyFat, setAddBodyFat] = useState("");
+  const [addMuscleMass, setAddMuscleMass] = useState("");
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
 
@@ -245,9 +253,25 @@ export default function AdminClientsPage() {
     setAddLoading(true);
     setAddError("");
     try {
-      await api.createClient({ name: addName || undefined, email: addEmail || undefined, phone: addPhone || undefined, password: addPassword });
+      await api.createClient({
+        name: addName || undefined,
+        email: addEmail || undefined,
+        phone: addPhone || undefined,
+        password: addPassword,
+        sexe: addSexe || undefined,
+        age: addAge || undefined,
+        taille: addTaille || undefined,
+        poids: addPoids || undefined,
+        objectif: addObjectif || undefined,
+        fitnessLevel: addFitnessLevel || undefined,
+        bodyComposition: (addBodyFat || addMuscleMass) ? {
+          bodyFatPercentage: addBodyFat ? parseFloat(addBodyFat) : undefined,
+          muscleMassPercentage: addMuscleMass ? parseFloat(addMuscleMass) : undefined,
+        } : undefined,
+      });
       setAddOpen(false);
       setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword("");
+      setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass("");
       loadClients();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
@@ -378,8 +402,8 @@ export default function AdminClientsPage() {
       </div>
 
       {/* ── ADD CLIENT MODAL ── */}
-      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) { setAddError(""); setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword(""); } }}>
-        <DialogContent>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) { setAddError(""); setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword(""); setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass(""); } }}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -392,7 +416,7 @@ export default function AdminClientsPage() {
             </div>
           </DialogHeader>
 
-          <DialogBody className="space-y-5">
+          <DialogBody className="space-y-4">
             {addError && (
               <div className="flex items-start gap-2.5 rounded-xl bg-destructive/10 border border-destructive/20 px-3.5 py-3 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -441,9 +465,110 @@ export default function AdminClientsPage() {
               />
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Après la création, assignez un plan d&apos;entraînement et un diet depuis la fiche client.
-            </p>
+            {/* Profil Physique (Sexe, Âge, Taille, Poids) */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Profil Physique</Label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <Label htmlFor="add-sexe" className="text-xs text-muted-foreground mb-1 block">Sexe</Label>
+                  <select
+                    id="add-sexe"
+                    value={addSexe}
+                    onChange={(e) => setAddSexe(e.target.value as any)}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring animate-none"
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="M">Homme (M)</option>
+                    <option value="F">Femme (F)</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="add-age" className="text-xs text-muted-foreground mb-1 block">Âge</Label>
+                  <Input
+                    id="add-age"
+                    type="number"
+                    value={addAge}
+                    onChange={(e) => setAddAge(e.target.value)}
+                    placeholder="Ex: 28"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="add-taille" className="text-xs text-muted-foreground mb-1 block">Taille (cm)</Label>
+                  <Input
+                    id="add-taille"
+                    type="number"
+                    value={addTaille}
+                    onChange={(e) => setAddTaille(e.target.value)}
+                    placeholder="Ex: 175"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="add-poids" className="text-xs text-muted-foreground mb-1 block">Poids (kg)</Label>
+                  <Input
+                    id="add-poids"
+                    type="number"
+                    value={addPoids}
+                    onChange={(e) => setAddPoids(e.target.value)}
+                    placeholder="Ex: 78"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Objectif & Niveau */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="add-objectif" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Objectif</Label>
+                <Input
+                  id="add-objectif"
+                  value={addObjectif}
+                  onChange={(e) => setAddObjectif(e.target.value)}
+                  placeholder="Ex: Perte de poids"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="add-level" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Niveau d'activité</Label>
+                <select
+                  id="add-level"
+                  value={addFitnessLevel}
+                  onChange={(e) => setAddFitnessLevel(e.target.value as any)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring animate-none"
+                >
+                  <option value="">Sélectionner...</option>
+                  <option value="A">Niveau A</option>
+                  <option value="B">Niveau B</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Composition Corporelle */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Composition Corporelle (%)</Label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <Label htmlFor="add-fat" className="text-xs text-muted-foreground mb-1 block">Masse grasse (%)</Label>
+                  <Input
+                    id="add-fat"
+                    type="number"
+                    step="0.1"
+                    value={addBodyFat}
+                    onChange={(e) => setAddBodyFat(e.target.value)}
+                    placeholder="Ex: 18.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="add-muscle" className="text-xs text-muted-foreground mb-1 block">Masse musculaire (%)</Label>
+                  <Input
+                    id="add-muscle"
+                    type="number"
+                    step="0.1"
+                    value={addMuscleMass}
+                    onChange={(e) => setAddMuscleMass(e.target.value)}
+                    placeholder="Ex: 42.1"
+                  />
+                </div>
+              </div>
+            </div>
           </DialogBody>
 
           <DialogFooter>
