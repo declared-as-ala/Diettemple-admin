@@ -259,7 +259,7 @@ export default function AdminClientsPage() {
         limit: 100,
         search: addPlanSearch || undefined,
       });
-      setAddPlans(data.templates || []);
+      setAddPlans(data.levelTemplates || []);
     } catch (e) {
       console.error("Failed to load plans:", e);
       setAddPlans([]);
@@ -628,7 +628,7 @@ export default function AdminClientsPage() {
                       )}
                     >
                       <div className="font-medium">{plan.name}</div>
-                      <div className="text-xs opacity-70">{plan.level}</div>
+                      <div className="text-xs opacity-70">{plan.description || (plan as any).gender || 'Plan'}</div>
                     </button>
                   ))}
                 </div>
