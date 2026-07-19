@@ -218,6 +218,10 @@ export default function AdminClientsPage() {
   const [addFitnessLevel, setAddFitnessLevel] = useState<"A" | "B" | "">("");
   const [addBodyFat, setAddBodyFat] = useState("");
   const [addMuscleMass, setAddMuscleMass] = useState("");
+  const [addSelectedPlanId, setAddSelectedPlanId] = useState("");
+  const [addPlanSearch, setAddPlanSearch] = useState("");
+  const [addPlans, setAddPlans] = useState<Array<{ _id: string; name: string; level: string }>>([]);
+  const [addPlansLoading, setAddPlansLoading] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
 
@@ -247,6 +251,29 @@ export default function AdminClientsPage() {
   useEffect(() => { loadClients(); }, [loadClients]);
   useEffect(() => { setPagination((p) => ({ ...p, page: 1 })); }, [effectiveQuery, segment]);
 
+  const loadPlans = useCallback(async () => {
+    setAddPlansLoading(true);
+    try {
+      const data = await api.getLevelTemplates({
+        page: 1,
+        limit: 100,
+        search: addPlanSearch || undefined,
+      });
+      setAddPlans(data.templates || []);
+    } catch (e) {
+      console.error("Failed to load plans:", e);
+      setAddPlans([]);
+    } finally {
+      setAddPlansLoading(false);
+    }
+  }, [addPlanSearch]);
+
+  useEffect(() => {
+    if (addOpen) {
+      loadPlans();
+    }
+  }, [addOpen, loadPlans]);
+
   const handleAddClient = async () => {
     if (!addEmail && !addPhone) { setAddError("Email ou téléphone requis"); return; }
     if (!addPassword || addPassword.length < 6) { setAddError(fr.clientsPage.passwordMinLength); return; }
@@ -264,6 +291,7 @@ export default function AdminClientsPage() {
         poids: addPoids || undefined,
         objectif: addObjectif || undefined,
         fitnessLevel: addFitnessLevel || undefined,
+        assignedPlanId: addSelectedPlanId || undefined,
         bodyComposition: (addBodyFat || addMuscleMass) ? {
           bodyFatPercentage: addBodyFat ? parseFloat(addBodyFat) : undefined,
           muscleMassPercentage: addMuscleMass ? parseFloat(addMuscleMass) : undefined,
@@ -271,7 +299,7 @@ export default function AdminClientsPage() {
       });
       setAddOpen(false);
       setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword("");
-      setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass("");
+      setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass(""); setAddSelectedPlanId(""); setAddPlanSearch("");
       loadClients();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
@@ -402,7 +430,7 @@ export default function AdminClientsPage() {
       </div>
 
       {/* ── ADD CLIENT MODAL ── */}
-      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) { setAddError(""); setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword(""); setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass(""); } }}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) { setAddError(""); setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword(""); setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass(""); setAddSelectedPlanId(""); setAddPlanSearch(""); } }}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
@@ -568,6 +596,50 @@ export default function AdminClientsPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Plan Selection */}
+            <div className="space-y-1.5 border-t border-border pt-4">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Plan d'entraînement (Optionnel)</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={addPlanSearch}
+                  onChange={(e) => setAddPlanSearch(e.target.value)}
+                  placeholder="Rechercher un plan..."
+                  className="pl-9"
+                />
+              </div>
+              {addPlansLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : addPlans.length > 0 ? (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto border border-border rounded-lg p-2">
+                  {addPlans.map((plan) => (
+                    <button
+                      key={plan._id}
+                      onClick={() => setAddSelectedPlanId(plan._id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-md transition-colors text-sm",
+                        addSelectedPlanId === plan._id
+                          ? "bg-primary text-primary-foreground font-medium"
+                          : "bg-muted hover:bg-muted/80 text-foreground"
+                      )}
+                    >
+                      <div className="font-medium">{plan.name}</div>
+                      <div className="text-xs opacity-70">{plan.level}</div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground py-2">Aucun plan disponible</p>
+              )}
+              {addSelectedPlanId && (
+                <div className="text-xs text-muted-foreground">
+                  Plan sélectionné: <span className="font-medium text-foreground">{addPlans.find(p => p._id === addSelectedPlanId)?.name}</span>
+                </div>
+              )}
             </div>
           </DialogBody>
 

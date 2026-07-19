@@ -411,6 +411,7 @@ class ApiClient {
     poids?: string;
     objectif?: string;
     fitnessLevel?: 'A' | 'B';
+    assignedPlanId?: string;
     bodyComposition?: { bodyFatPercentage?: number; muscleMassPercentage?: number };
   }) {
     const response = await this.client.post('/admin/clients', data);
