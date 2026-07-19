@@ -1,16 +1,14 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { getLevelImageUrl, LEVELS, normalizeLevelName } from "@/lib/levelAssets"
+import { getLevelImageUrl, normalizeLevelName } from "@/lib/levelAssets"
 import {
-  ArrowLeft, Check, RefreshCw, MessageSquarePlus, User, Users, Phone, Mail,
-  Activity, ListOrdered, UtensilsCrossed, Calendar, Clock, Trophy,
+  ArrowLeft, RefreshCw, MessageSquarePlus, User, Users, Phone, Mail,
+  Activity, UtensilsCrossed, Clock, Trophy,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { ProfileData, TabId } from "./types"
-import { LEVEL_COLORS, daysUntil, fmtDate, fmtRelative } from "./utils"
-
-const LEVEL_NAMES = [...LEVELS]
+import { daysUntil, fmtDate, fmtRelative } from "./utils"
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "overview", label: "Profil", icon: User },
@@ -29,8 +27,6 @@ interface ClientHeaderProps {
   onBack: () => void
   onOpenSubModal: () => void
   onOpenNoteModal: () => void
-  onUpdateLevel: (level: string) => void
-  levelSaving: boolean
 }
 
 export default function ClientHeader({
@@ -41,8 +37,6 @@ export default function ClientHeader({
   onBack,
   onOpenSubModal,
   onOpenNoteModal,
-  onUpdateLevel,
-  levelSaving,
 }: ClientHeaderProps) {
   const sub = profile.subscription
   const client = profile.client
@@ -254,43 +248,7 @@ export default function ClientHeader({
             )}
           </div>
 
-          {/* Level selector pills */}
-          <div className="mt-6 flex flex-wrap items-center gap-1.5">
-            <span className="text-white/40 text-[10px] font-semibold uppercase tracking-wider mr-1">
-              Niveau du client
-            </span>
-            {LEVEL_NAMES.map((lvl) => {
-              const isCurrent = tierForUi === lvl
-              return (
-                <button
-                  key={lvl}
-                  disabled={levelSaving}
-                  onClick={() => onUpdateLevel(lvl)}
-                  className={cn(
-                    "group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border backdrop-blur transition-all",
-                    isCurrent
-                      ? "bg-white/25 text-white border-white/40 shadow-lg"
-                      : "bg-white/5 text-white/50 border-white/10 hover:bg-white/15 hover:text-white/90",
-                    levelSaving && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  <img
-                    src={getLevelImageUrl(lvl)}
-                    alt={lvl}
-                    className={cn(
-                      "h-5 w-5 rounded-full object-cover transition-transform",
-                      isCurrent && "scale-110"
-                    )}
-                    onError={(e) => {
-                      ;(e.target as HTMLImageElement).style.display = "none"
-                    }}
-                  />
-                  {lvl}
-                  {isCurrent && <Check className="h-3 w-3" />}
-                </button>
-              )
-            })}
-          </div>
+          {/* Level is now read-only, derived from assigned plan */}
         </div>
       </div>
 

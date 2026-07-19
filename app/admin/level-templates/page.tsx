@@ -78,6 +78,9 @@ export default function LevelTemplatesPage() {
   const [newName, setNewName] = useState("")
   const [newGender, setNewGender] = useState<"M" | "F">("M")
   const [newDescription, setNewDescription] = useState("")
+  const [newLevel, setNewLevel] = useState<'INITIATE' | 'FIGHTER' | 'WARRIOR' | 'CHAMPION' | 'ELITE'>('INITIATE')
+  const [newMinSessions, setNewMinSessions] = useState(3)
+  const [newMaxSessions, setNewMaxSessions] = useState(5)
   const [deleteTarget, setDeleteTarget] = useState<LevelTemplateRow | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -139,18 +142,32 @@ export default function LevelTemplatesPage() {
       toast("Indiquez un nom de plan", "error")
       return
     }
+    if (!newLevel) {
+      toast("Sélectionnez un niveau", "error")
+      return
+    }
+    if (newMaxSessions < newMinSessions) {
+      toast("Le maximum doit être ≥ au minimum", "error")
+      return
+    }
     setCreating(true)
     try {
       const data = await api.createLevelTemplate({
         name,
+        level: newLevel,
         gender: newGender,
         description: newDescription.trim() || undefined,
+        minimumSessionsPerWeek: newMinSessions,
+        maximumSessionsPerWeek: newMaxSessions,
       })
       const created = (data as { levelTemplate?: { _id: string } })?.levelTemplate
       toast("Plan créé", "success")
       setCreateOpen(false)
       setNewName("")
       setNewDescription("")
+      setNewLevel('INITIATE')
+      setNewMinSessions(3)
+      setNewMaxSessions(5)
       if (selectedFolder === "male") setNewGender("M")
       else if (selectedFolder === "female") setNewGender("F")
       else setNewGender("M")
@@ -533,6 +550,48 @@ export default function LevelTemplatesPage() {
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Courte note pour l'équipe"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="level">Niveau du plan *</Label>
+              <select
+                id="level"
+                value={newLevel}
+                onChange={(e) => setNewLevel(e.target.value as 'INITIATE' | 'FIGHTER' | 'WARRIOR' | 'CHAMPION' | 'ELITE')}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+              >
+                <option value="INITIATE">Initiate</option>
+                <option value="FIGHTER">Fighter</option>
+                <option value="WARRIOR">Warrior</option>
+                <option value="CHAMPION">Champion</option>
+                <option value="ELITE">Elite</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="minSessions">Minimum jours/semaine</Label>
+              <input
+                id="minSessions"
+                type="number"
+                min="1"
+                max="7"
+                value={newMinSessions}
+                onChange={(e) => setNewMinSessions(parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="maxSessions">Maximum jours/semaine</Label>
+              <input
+                id="maxSessions"
+                type="number"
+                min="1"
+                max="7"
+                value={newMaxSessions}
+                onChange={(e) => setNewMaxSessions(parseInt(e.target.value) || 7)}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+              />
+              {newMaxSessions < newMinSessions && (
+                <p className="text-sm text-red-500">Le maximum doit être ≥ au minimum</p>
+              )}
             </div>
           </DialogBody>
           <DialogFooter>
