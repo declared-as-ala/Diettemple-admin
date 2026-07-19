@@ -487,8 +487,6 @@ export default function AdminClientProfilePage() {
         onBack={() => router.push("/admin/clients")}
         onOpenSubModal={handleOpenSubModal}
         onOpenNoteModal={handleOpenNoteModal}
-        onUpdateLevel={handleUpdateLevel}
-        levelSaving={levelSaving}
       />
 
       <div className="flex-1 px-6 py-6">

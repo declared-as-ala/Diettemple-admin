@@ -4,18 +4,26 @@ import { cn } from "@/lib/utils"
 import { getLevelImageUrl, normalizeLevelName } from "@/lib/levelAssets"
 import {
   ArrowLeft, RefreshCw, MessageSquarePlus, User, Users, Phone, Mail,
-  Activity, UtensilsCrossed, Clock, Trophy,
+  Activity, UtensilsCrossed, Clock, Trophy, TrendingUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { ProfileData, TabId } from "./types"
 import { daysUntil, fmtDate, fmtRelative } from "./utils"
+
+const LEVEL_COLORS: Record<string, string> = {
+  'Initiate': 'from-blue-600 via-blue-700 to-blue-800',
+  'Fighter': 'from-amber-600 via-amber-700 to-amber-800',
+  'Warrior': 'from-purple-600 via-purple-700 to-purple-800',
+  'Champion': 'from-rose-600 via-rose-700 to-rose-800',
+  'Elite': 'from-yellow-600 via-yellow-700 to-yellow-800',
+}
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "overview", label: "Profil", icon: User },
   { id: "bodyComposition", label: "Composition corporelle", icon: Activity },
   { id: "diet", label: "Objectifs nutritionnels", icon: UtensilsCrossed },
   { id: "training", label: "Plan", icon: Trophy },
-  { id: "weeklyProgress", label: "Progression hebdomadaire", icon: Check },
+  { id: "weeklyProgress", label: "Progression hebdomadaire", icon: TrendingUp },
   { id: "timeline", label: "Journal", icon: Clock },
 ]
 

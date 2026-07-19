@@ -71,7 +71,7 @@ class ApiClient {
     return response.data;
   }
 
-  async createLevelTemplate(data: { name: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; isActive?: boolean }) {
+  async createLevelTemplate(data: { name: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; isActive?: boolean; level?: string; minimumSessionsPerWeek?: number; maximumSessionsPerWeek?: number }) {
     const response = await this.client.post('/admin/level-templates', data);
     return response.data;
   }
