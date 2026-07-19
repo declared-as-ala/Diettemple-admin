@@ -220,7 +220,7 @@ export default function AdminClientsPage() {
   const [addMuscleMass, setAddMuscleMass] = useState("");
   const [addSelectedPlanId, setAddSelectedPlanId] = useState("");
   const [addPlanSearch, setAddPlanSearch] = useState("");
-  const [addPlans, setAddPlans] = useState<Array<{ _id: string; name: string; level: string }>>([]);
+  const [addPlans, setAddPlans] = useState<Array<{ _id: string; name: string; level?: string; description?: string; gender?: string }>>([]);
   const [addPlansLoading, setAddPlansLoading] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
