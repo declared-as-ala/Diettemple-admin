@@ -63,8 +63,8 @@ export function WeekPlanner({
   onChange,
   sessionTemplateById,
   librarySessions,
-  maxSessionsPerWeek = 7,
-  minSessionsPerWeek = 4,
+  maxSessionsPerWeek = 999, // No practical limit - derived from planned sessions
+  minSessionsPerWeek = 0,   // No minimum - each week is self-contained
   disabled = false,
 }: WeekPlannerProps) {
   const sensors = useSensors(
@@ -128,8 +128,8 @@ export function WeekPlanner({
       <div className="flex gap-3 overflow-x-auto pb-3">
         {weeks.map((week, wi) => {
           const total = countWeekSessions(week);
-          const pct = Math.round((total / maxSessionsPerWeek) * 100);
-          const isValid = total === 0 || (total >= minSessionsPerWeek && total <= maxSessionsPerWeek);
+          const pct = Math.min(Math.round((total / Math.max(maxSessionsPerWeek, 4)) * 100), 100);
+          const isValid = true; // All configurations are valid - no min/max enforcement
           return (
             <div
               key={week.weekNumber}
@@ -142,8 +142,8 @@ export function WeekPlanner({
               <div className="px-3 pt-3 pb-2">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-bold text-foreground">Semaine {week.weekNumber}</span>
-                  <span className={cn("text-xs font-semibold tabular-nums", isValid ? "text-muted-foreground" : "text-destructive")}>
-                    {total}/{maxSessionsPerWeek}
+                  <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                    {total} séance{total !== 1 ? 's' : ''}
                   </span>
                 </div>
                 <div className="h-1 rounded-full bg-muted overflow-hidden">

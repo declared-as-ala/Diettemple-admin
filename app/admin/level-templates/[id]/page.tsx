@@ -124,8 +124,7 @@ export default function LevelTemplateEditorPage() {
   };
 
   const handleSaveWeeks = async () => {
-    const invalid = weeks.some((w) => { const c = countWeekSessions(w); return c > 0 && (c < 4 || c > 7); });
-    if (invalid) { toast("Chaque semaine doit avoir 4–7 séances (ou rester vide)", "error"); return; }
+    // No minimum/maximum session requirement - weeks can have any number of sessions
     setSaving(true);
     try {
       await api.updateLevelTemplateWeeks(id, weeksToApiPayload(weeks));
@@ -152,8 +151,9 @@ export default function LevelTemplateEditorPage() {
     );
   };
 
-  const invalidWeeks = weeks.filter((w) => { const c = countWeekSessions(w); return c > 0 && (c < 4 || c > 7); });
-  const canSave = invalidWeeks.length === 0;
+  // No minimum/maximum session validation - weeks can have any number of sessions
+  const invalidWeeks: typeof weeks = [];
+  const canSave = true;
   const levelName = levelTemplate ? String(levelTemplate.name ?? "") : "";
   const gender = levelTemplate ? String(levelTemplate.gender ?? "M") : "M";
   const tierForUi = normalizeLevelName(levelName);
@@ -287,12 +287,6 @@ export default function LevelTemplateEditorPage() {
         {/* PLANNER TAB */}
         {tab === "planner" && (
           <div className="space-y-4">
-            {invalidWeeks.length > 0 && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                Semaine{invalidWeeks.length > 1 ? "s" : ""} {invalidWeeks.map(w => w.weekNumber).join(", ")} : 4–7 séances requises
-              </div>
-            )}
 
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
@@ -320,8 +314,6 @@ export default function LevelTemplateEditorPage() {
               onChange={setWeeks}
               sessionTemplateById={sessionTemplateById}
               librarySessions={sessionTemplates}
-              minSessionsPerWeek={4}
-              maxSessionsPerWeek={7}
             />
 
             <div className="flex justify-end pt-2">
