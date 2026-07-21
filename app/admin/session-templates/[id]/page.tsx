@@ -17,7 +17,7 @@ import { useToast } from "@/components/ui/toast"
 import { PageLoader } from "@/components/ui/loading"
 import {
   ArrowLeft, Save, Search, GripVertical, Video, Settings2, X, Plus,
-  Clock, Dumbbell, ChevronDown, AlertCircle, CheckCircle2, Layers,
+  Clock, Dumbbell, ChevronDown, AlertCircle, CheckCircle2, Layers, Loader2,
 } from "lucide-react"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
@@ -683,6 +683,9 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
   const [useRange, setUseRange] = useState(typeof config.targetReps === "object")
   const [recommendedWeight, setRecommendedWeight] = useState<number | "">(config.recommendedStartingWeightKg ?? "")
   const [alternatives, setAlternatives] = useState<string[]>(config.alternatives.slice(0, 3))
+  const [allExercisesForAlternatives, setAllExercisesForAlternatives] = useState<any[]>([])
+  const [altSearchQuery, setAltSearchQuery] = useState("")
+  const [loadingAltExercises, setLoadingAltExercises] = useState(false)
 
   useEffect(() => {
     setSets(config.sets)
@@ -691,6 +694,21 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
     setRecommendedWeight(config.recommendedStartingWeightKg ?? "")
     setAlternatives(config.alternatives.slice(0, 3))
   }, [config])
+
+  useEffect(() => {
+    const loadAllExercises = async () => {
+      setLoadingAltExercises(true)
+      try {
+        const data = await api.getExercises({ limit: 1000, search: altSearchQuery || undefined })
+        setAllExercisesForAlternatives(data.exercises || [])
+      } catch {
+        setAllExercisesForAlternatives([])
+      } finally {
+        setLoadingAltExercises(false)
+      }
+    }
+    loadAllExercises()
+  }, [altSearchQuery])
 
   const apply = () => {
     const reps = useRange
@@ -764,25 +782,71 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
           </div>
 
           {/* Alternatives */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exercices alternatifs (max 3)</Label>
-            <div className="space-y-1.5">
-              {[0, 1, 2].map(i => (
-                <select
-                  key={i}
-                  value={alternatives[i] ?? ""}
-                  onChange={e => {
-                    const next = [...alternatives]; next[i] = e.target.value; setAlternatives(next.slice(0, 3))
-                  }}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">— Aucun —</option>
-                  {allExercises.filter(e => e._id !== config.exerciseId).map(e => (
-                    <option key={e._id} value={e._id}>{e.name}</option>
-                  ))}
-                </select>
-              ))}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exercices alternatifs (max 3)</Label>
+              <span className="text-[10px] text-muted-foreground">{allExercisesForAlternatives.length} disponibles</span>
             </div>
+            {/* Search for alternatives */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher alternatives…"
+                value={altSearchQuery}
+                onChange={e => setAltSearchQuery(e.target.value)}
+                className="pl-7 h-8 text-sm"
+              />
+            </div>
+            {loadingAltExercises ? (
+              <div className="text-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {[0, 1, 2].map(i => (
+                  <select
+                    key={i}
+                    value={alternatives[i] ?? ""}
+                    onChange={e => {
+                      const next = [...alternatives]
+                      next[i] = e.target.value
+                      setAlternatives(next.slice(0, 3))
+                    }}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">— Aucun —</option>
+                    {allExercisesForAlternatives
+                      .filter(e => e._id !== config.exerciseId && !alternatives.includes(e._id))
+                      .map(e => (
+                        <option key={e._id} value={e._id}>{e.name}</option>
+                      ))}
+                  </select>
+                ))}
+                {alternatives.length > 0 && (
+                  <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium">Sélectionnées:</p>
+                    <div className="space-y-1">
+                      {alternatives.map((altId, i) => {
+                        const altEx = allExercisesForAlternatives.find(e => e._id === altId)
+                        return altEx ? (
+                          <div key={i} className="flex items-center justify-between bg-muted/30 px-2 py-1 rounded text-sm">
+                            <span>{altEx.name}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-4 w-4 -mr-1"
+                              onClick={() => setAlternatives(alternatives.filter((_, idx) => idx !== i))}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : null
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Progression rules */}
