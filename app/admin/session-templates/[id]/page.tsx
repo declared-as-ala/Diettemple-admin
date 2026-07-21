@@ -699,7 +699,7 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
     const loadAllExercises = async () => {
       setLoadingAltExercises(true)
       try {
-        const data = await api.getExercises({ limit: 1000, search: altSearchQuery || undefined })
+        const data = await api.getExercises({ limit: 100, search: altSearchQuery || undefined })
         setAllExercisesForAlternatives(data.exercises || [])
       } catch {
         setAllExercisesForAlternatives([])

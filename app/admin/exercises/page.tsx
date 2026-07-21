@@ -88,7 +88,7 @@ export default function ExercisesPage() {
     if (isSearchOrRefresh) setSearchLoading(true)
     else setLoading(true)
     try {
-      const params: { limit: number; search?: string; muscleGroup?: string; difficulty?: string; equipment?: string; hasVideo?: string } = { limit: 500 }
+      const params: { limit: number; search?: string; muscleGroup?: string; difficulty?: string; equipment?: string; hasVideo?: string } = { limit: 100 }
       if (effectiveQuery) params.search = effectiveQuery
       if (selectedMuscleGroup && selectedMuscleGroup !== "all") params.muscleGroup = selectedMuscleGroup
       if (selectedDifficulty && selectedDifficulty !== "all") params.difficulty = selectedDifficulty
