@@ -112,7 +112,7 @@ export default function SessionTemplateBuilderPage() {
         }))
       )
       const raw = t.items || []
-      setItems(raw.map((it: any, idx: number) => ({
+      const parsedItems = raw.map((it: any, idx: number) => ({
         _id: it._id,
         exerciseId: typeof it.exerciseId === "object" ? it.exerciseId?._id ?? it.exerciseId : it.exerciseId,
         alternatives: (it.alternatives || []).map((a: any) => (typeof a === "object" ? a._id : a)),
@@ -121,7 +121,36 @@ export default function SessionTemplateBuilderPage() {
         recommendedStartingWeightKg: it.recommendedStartingWeightKg,
         progressionRules: Array.isArray(it.progressionRules) ? it.progressionRules : [],
         order: it.order ?? idx,
-      })))
+      }))
+      setItems(parsedItems)
+
+      // Load all exercises referenced in the session to ensure exerciseById is complete
+      const exerciseIds = new Set<string>()
+      parsedItems.forEach((item: SessionItemConfig) => {
+        if (item.exerciseId) exerciseIds.add(item.exerciseId)
+        item.alternatives.forEach((altId: string) => {
+          if (altId) exerciseIds.add(altId)
+        })
+      })
+
+      if (exerciseIds.size > 0) {
+        try {
+          const exerciseData = await api.getExercises({ limit: 100 })
+          const neededExercises = exerciseData.exercises?.filter((e: any) => exerciseIds.has(e._id)) || []
+          // Merge with existing exercises to ensure all session exercises are available
+          setExercises(prev => {
+            const merged = [...prev]
+            neededExercises.forEach((e: any) => {
+              if (!merged.find(x => x._id === e._id)) {
+                merged.push(e)
+              }
+            })
+            return merged
+          })
+        } catch {
+          // If we can't load additional exercises, that's ok - we'll show "Inconnu" for missing ones
+        }
+      }
     } catch (err: any) {
       toast(err.response?.data?.message || err.message || "Erreur lors du chargement", "error")
     }
