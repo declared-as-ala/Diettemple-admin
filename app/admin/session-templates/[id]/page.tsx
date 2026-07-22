@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
@@ -11,17 +11,15 @@ import { arrayMove } from "@dnd-kit/sortable"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 import { PageLoader } from "@/components/ui/loading"
 import {
   ArrowLeft, Save, Search, GripVertical, Video, Settings2, X, Plus,
-  Clock, Dumbbell, ChevronDown, AlertCircle, CheckCircle2, Layers, Loader2,
+  Clock, Dumbbell, AlertCircle, CheckCircle2, Layers,
+  ListChecks, SlidersHorizontal, TrendingUp,
 } from "lucide-react"
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
-} from "@/components/ui/dialog"
+import { AdminDrawer, AdminFormSection, AdminModalFooter, AdminSearchableSelect } from "@/components/admin"
 import { cn } from "@/lib/utils"
 
 const DIFFICULTY_OPTIONS = [
@@ -712,8 +710,8 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
   const [useRange, setUseRange] = useState(typeof config.targetReps === "object")
   const [recommendedWeight, setRecommendedWeight] = useState<number | "">(config.recommendedStartingWeightKg ?? "")
   const [alternatives, setAlternatives] = useState<string[]>(config.alternatives.slice(0, 3))
-  const [allExercisesForAlternatives, setAllExercisesForAlternatives] = useState<any[]>([])
-  const [altSearchQuery, setAltSearchQuery] = useState("")
+  const [progressionRules, setProgressionRules] = useState(config.progressionRules)
+  const [allExercisesForAlternatives, setAllExercisesForAlternatives] = useState<any[]>(allExercises)
   const [loadingAltExercises, setLoadingAltExercises] = useState(false)
 
   useEffect(() => {
@@ -722,218 +720,177 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
     setUseRange(typeof config.targetReps === "object")
     setRecommendedWeight(config.recommendedStartingWeightKg ?? "")
     setAlternatives(config.alternatives.slice(0, 3))
+    setProgressionRules(config.progressionRules)
   }, [config])
 
   useEffect(() => {
     const loadAllExercises = async () => {
       setLoadingAltExercises(true)
       try {
-        const data = await api.getExercises({ limit: 100, search: altSearchQuery || undefined })
-        setAllExercisesForAlternatives(data.exercises || [])
+        const data = await api.getExercises({ limit: 100 })
+        const catalogue = data.exercises || []
+        setAllExercisesForAlternatives(catalogue)
       } catch {
-        setAllExercisesForAlternatives([])
+        setAllExercisesForAlternatives(allExercises)
       } finally {
         setLoadingAltExercises(false)
       }
     }
-    const debounceTimer = setTimeout(loadAllExercises, 300)
-    return () => clearTimeout(debounceTimer)
-  }, [altSearchQuery])
+    void loadAllExercises()
+  }, [allExercises])
+
+  const eligibleAlternatives = useMemo(
+    () => allExercisesForAlternatives.filter(item => item._id !== config.exerciseId),
+    [allExercisesForAlternatives, config.exerciseId]
+  )
+
+  const dirty = useMemo(() => JSON.stringify({
+    sets,
+    targetReps,
+    useRange,
+    recommendedWeight,
+    alternatives,
+    progressionRules,
+  }) !== JSON.stringify({
+    sets: config.sets,
+    targetReps: config.targetReps,
+    useRange: typeof config.targetReps === "object",
+    recommendedWeight: config.recommendedStartingWeightKg ?? "",
+    alternatives: config.alternatives.slice(0, 3),
+    progressionRules: config.progressionRules,
+  }), [alternatives, config, progressionRules, recommendedWeight, sets, targetReps, useRange])
 
   const apply = () => {
     const reps = useRange
       ? (typeof targetReps === "object" ? targetReps : { min: 10, max: 12 })
       : (typeof targetReps === "number" ? targetReps : 10)
-    onUpdate({ sets, targetReps: reps, recommendedStartingWeightKg: recommendedWeight === "" ? undefined : Number(recommendedWeight), alternatives: alternatives.filter(Boolean) })
+    onUpdate({
+      sets,
+      targetReps: reps,
+      recommendedStartingWeightKg: recommendedWeight === "" ? undefined : Number(recommendedWeight),
+      alternatives: alternatives.filter(Boolean),
+      progressionRules,
+    })
     onClose()
   }
 
   const addProgressionRule = () => {
-    onUpdate({ progressionRules: [...config.progressionRules, { condition: "reps_above", value: 12, action: "increase_weight", weightChange: 2.5, message: "" }] })
+    setProgressionRules(previous => [...previous, { condition: "reps_above", value: 12, action: "increase_weight", weightChange: 2.5, message: "" }])
   }
   const updateProgressionRule = (idx: number, patch: any) => {
-    const next = [...config.progressionRules]; next[idx] = { ...next[idx], ...patch }; onUpdate({ progressionRules: next })
+    setProgressionRules(previous => previous.map((rule, ruleIndex) => ruleIndex === idx ? { ...rule, ...patch } : rule))
   }
   const removeProgressionRule = (idx: number) => {
-    onUpdate({ progressionRules: config.progressionRules.filter((_, i) => i !== idx) })
+    setProgressionRules(previous => previous.filter((_, ruleIndex) => ruleIndex !== idx))
   }
 
   return (
-    <Dialog open onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-background to-muted/20">
-        <DialogHeader className="border-b border-border/50 pb-4">
-          <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground text-sm font-bold flex items-center justify-center shrink-0">
-              {index + 1}
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-xl font-bold text-foreground">{exercise?.name ?? "Exercice"}</DialogTitle>
-              {exercise?.muscleGroup && (
-                <p className="text-xs text-muted-foreground mt-1.5 font-medium">{exercise.muscleGroup.toUpperCase()}</p>
-              )}
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-6 py-4">
-
-          {/* Sets */}
+    <AdminDrawer
+      open
+      onOpenChange={open => { if (!open) onClose() }}
+      title={exercise?.name ?? "Configurer l’exercice"}
+      description="Ajustez les paramètres, les alternatives et les règles de progression."
+      eyebrow={exercise?.muscleGroup || `Exercice ${index + 1}`}
+      icon={<Dumbbell className="h-5 w-5" aria-hidden="true" />}
+      size="md"
+      dirty={dirty}
+      footer={requestClose => (
+        <AdminModalFooter
+          status={dirty ? "Modifications non enregistrées" : "Configuration à jour"}
+          statusTone={dirty ? "warning" : "valid"}
+          submitLabel="Appliquer les modifications"
+          onCancel={requestClose}
+          onSubmit={apply}
+          className="sm:items-end"
+        />
+      )}
+    >
+      <div className="space-y-5">
+        <AdminFormSection title="Paramètres" description="Définissez le volume et la cible de travail." icon={<SlidersHorizontal className="h-5 w-5" aria-hidden="true" />}>
           <div className="space-y-2">
-            <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Séries</Label>
-            <div className="flex items-center gap-3 bg-muted/40 p-3 rounded-lg border border-border/50">
-              <button onClick={() => setSets(s => Math.max(1, s - 1))} className="h-9 w-9 rounded-lg border border-border bg-background hover:bg-primary/10 hover:border-primary flex items-center justify-center font-bold text-lg transition-colors">−</button>
-              <Input type="number" min={1} value={sets} onChange={e => setSets(Number(e.target.value) || 1)} className="text-center font-bold text-lg h-9 bg-background border-border flex-1" />
-              <button onClick={() => setSets(s => s + 1)} className="h-9 w-9 rounded-lg border border-border bg-background hover:bg-primary/10 hover:border-primary flex items-center justify-center font-bold text-lg transition-colors">+</button>
+            <Label htmlFor="config-sets">Séries</Label>
+            <div className="flex items-center gap-3">
+              <button type="button" aria-label="Réduire le nombre de séries" onClick={() => setSets(value => Math.max(1, value - 1))} className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-lg font-semibold hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600">−</button>
+              <Input id="config-sets" type="number" min={1} value={sets} onChange={event => setSets(Number(event.target.value) || 1)} className="h-11 flex-1 bg-white text-center text-lg font-semibold" />
+              <button type="button" aria-label="Augmenter le nombre de séries" onClick={() => setSets(value => value + 1)} className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-lg font-semibold hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600">+</button>
             </div>
           </div>
 
-          {/* Target reps */}
-          <div className="space-y-3 bg-green-500/5 border border-green-500/20 rounded-xl p-4">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Répétitions cibles</Label>
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                <input type="checkbox" checked={useRange} onChange={e => setUseRange(e.target.checked)} className="rounded border-border h-4 w-4" />
-                <span className="font-medium">Plage (min–max)</span>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Label>Répétitions cibles</Label>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+                <input type="checkbox" checked={useRange} onChange={event => setUseRange(event.target.checked)} className="h-4 w-4" />
+                Fourchette min–max
               </label>
             </div>
             {useRange ? (
-              <div className="flex gap-3 items-center">
-                <Input type="number" placeholder="Min." value={typeof targetReps === "object" ? targetReps.min : ""} onChange={e => setTargetReps(prev => ({ min: Number(e.target.value) || 0, max: typeof prev === "object" ? prev.max : 12 }))} className="text-center font-semibold h-9 bg-background border-border/50" />
-                <span className="text-muted-foreground font-bold">à</span>
-                <Input type="number" placeholder="Max." value={typeof targetReps === "object" ? targetReps.max : ""} onChange={e => setTargetReps(prev => ({ min: typeof prev === "object" ? prev.min : 8, max: Number(e.target.value) || 12 }))} className="text-center font-semibold h-9 bg-background border-border/50" />
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <Input aria-label="Répétitions minimum" type="number" value={typeof targetReps === "object" ? targetReps.min : 10} onChange={event => setTargetReps(previous => ({ min: Number(event.target.value) || 0, max: typeof previous === "object" ? previous.max : 12 }))} className="h-11 bg-white text-center" />
+                <span className="text-sm text-slate-500">à</span>
+                <Input aria-label="Répétitions maximum" type="number" value={typeof targetReps === "object" ? targetReps.max : 12} onChange={event => setTargetReps(previous => ({ min: typeof previous === "object" ? previous.min : 10, max: Number(event.target.value) || 0 }))} className="h-11 bg-white text-center" />
               </div>
             ) : (
-              <Input type="number" value={typeof targetReps === "number" ? targetReps : ""} onChange={e => setTargetReps(Number(e.target.value) || 10)} className="text-center font-semibold text-lg h-9 bg-background border-border/50 w-24" />
+              <Input aria-label="Répétitions cibles" type="number" value={typeof targetReps === "number" ? targetReps : 10} onChange={event => setTargetReps(Number(event.target.value) || 10)} className="h-11 max-w-32 bg-white text-center text-lg font-semibold" />
             )}
           </div>
 
-          {/* Starting weight */}
-          <div className="space-y-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-            <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Poids de départ (kg)</Label>
-            <div className="flex gap-2 items-center">
-              <Input type="number" step={0.5} value={recommendedWeight} onChange={e => setRecommendedWeight(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Ex: 20 kg" className="h-9 bg-background border-border/50 font-semibold" />
-              <span className="text-sm text-muted-foreground font-medium">kg</span>
+          <div className="space-y-2">
+            <Label htmlFor="config-weight">Poids de départ conseillé</Label>
+            <div className="relative max-w-56">
+              <Input id="config-weight" type="number" min={0} step={0.5} value={recommendedWeight} onChange={event => setRecommendedWeight(event.target.value === "" ? "" : Number(event.target.value))} placeholder="Optionnel" className="h-11 bg-white pr-12" />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">kg</span>
             </div>
-            <p className="text-xs text-muted-foreground">Laissez vide si non applicable</p>
           </div>
+        </AdminFormSection>
 
-          {/* Alternatives */}
-          <div className="space-y-3 bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Exercices alternatifs</Label>
-              <span className="text-xs font-semibold bg-blue-500/10 text-blue-600 px-2.5 py-1 rounded-full">{allExercisesForAlternatives.length} dispo</span>
-            </div>
-            {/* Search for alternatives */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher alternatives…"
-                value={altSearchQuery}
-                onChange={e => setAltSearchQuery(e.target.value)}
-                className="pl-9 h-9 text-sm bg-background/80 border-border/50"
-              />
-            </div>
-            {loadingAltExercises ? (
-              <div className="text-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary" />
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {[0, 1, 2].map(i => (
-                  <select
-                    key={i}
-                    value={alternatives[i] ?? ""}
-                    onChange={e => {
-                      const next = [...alternatives]
-                      next[i] = e.target.value
-                      setAlternatives(next.slice(0, 3))
-                    }}
-                    className="w-full rounded-lg border border-border/60 bg-background px-3 py-2.5 text-sm font-medium hover:border-primary/40 focus:border-primary transition-colors"
-                  >
-                    <option value="">— Aucun —</option>
-                    {allExercisesForAlternatives
-                      .filter(e => e._id !== config.exerciseId && !alternatives.includes(e._id))
-                      .map(e => (
-                        <option key={e._id} value={e._id}>{e.name}</option>
-                      ))}
-                  </select>
-                ))}
-                {alternatives.filter(Boolean).length > 0 && (
-                  <div className="mt-3 pt-2.5 border-t border-blue-500/20 space-y-2">
-                    <p className="text-xs font-bold text-foreground">Sélectionnées ({alternatives.filter(Boolean).length}/3):</p>
-                    <div className="space-y-1.5">
-                      {alternatives.map((altId, i) => {
-                        const altEx = allExercisesForAlternatives.find(e => e._id === altId)
-                        return altEx ? (
-                          <div key={i} className="flex items-center justify-between bg-primary/10 px-3 py-2 rounded-lg border border-primary/20 text-sm font-medium text-foreground hover:bg-primary/15 transition-colors">
-                            <span>{altEx.name}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5 -mr-1 text-muted-foreground hover:text-destructive"
-                              onClick={() => setAlternatives(alternatives.filter((_, idx) => idx !== i))}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        ) : null
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+        <AdminFormSection title="Alternatives" description="Sélectionnez jusqu’à trois exercices éligibles." icon={<ListChecks className="h-5 w-5" aria-hidden="true" />}>
+          <AdminSearchableSelect
+            items={eligibleAlternatives}
+            selectedKeys={alternatives}
+            onSelectionChange={setAlternatives}
+            getKey={item => item._id}
+            getLabel={item => item.name}
+            getSearchText={item => `${item.name} ${item.muscleGroup || ""}`}
+            renderMeta={item => item.muscleGroup || "Groupe musculaire non renseigné"}
+            maxSelections={3}
+            placeholder="Rechercher un exercice alternatif…"
+            emptyText="Aucun exercice éligible ne correspond à la recherche."
+            loading={loadingAltExercises}
+            label="Exercices alternatifs"
+          />
+        </AdminFormSection>
+
+        <AdminFormSection title="Progression" description="Créez des règles lisibles qui seront évaluées après les performances de l’athlète." icon={<TrendingUp className="h-5 w-5" aria-hidden="true" />}>
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="lg" onClick={addProgressionRule}>
+              <Plus className="h-4 w-4" aria-hidden="true" /> Ajouter une règle
+            </Button>
           </div>
-
-          {/* Progression rules */}
-          <div className="space-y-3 bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Règles de progression</Label>
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-purple-500/30 hover:bg-purple-500/10" onClick={addProgressionRule}>
-                <Plus className="h-3.5 w-3.5" /> Ajouter règle
-              </Button>
-            </div>
-            {config.progressionRules.length === 0 && (
-              <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-purple-500/20 rounded-lg bg-background/50">
-                Aucune règle définie. Ajoutez des automatisations de progression.
-              </p>
-            )}
-            <div className="space-y-3">
-              {config.progressionRules.map((rule, idx) => (
-                <div key={idx} className="rounded-lg border border-purple-500/20 bg-background/50 p-3 space-y-2.5 hover:border-purple-500/40 transition-colors">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select value={rule.condition} onChange={e => updateProgressionRule(idx, { condition: e.target.value })} className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium">
-                      {CONDITION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                    <Input type="number" className="w-16 h-8 text-sm font-semibold" value={typeof rule.value === "number" ? rule.value : (rule.value as any)?.max} onChange={e => updateProgressionRule(idx, { value: Number(e.target.value) || 0 })} />
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0 hover:bg-destructive/10" onClick={() => removeProgressionRule(idx)}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select value={rule.action} onChange={e => updateProgressionRule(idx, { action: e.target.value })} className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium">
-                      {ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                    <Input type="number" step={0.5} className="w-20 h-8 text-sm font-semibold" placeholder="±kg" value={rule.weightChange ?? ""} onChange={e => updateProgressionRule(idx, { weightChange: e.target.value === "" ? undefined : Number(e.target.value) })} />
-                  </div>
-                  <Input className="h-8 text-sm bg-background border-border/50" placeholder="Message affiché à l'athlète" value={rule.message ?? ""} onChange={e => updateProgressionRule(idx, { message: e.target.value })} />
+          {progressionRules.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">Aucune règle de progression.</p>}
+          <div className="space-y-3">
+            {progressionRules.map((rule, ruleIndex) => (
+              <div key={ruleIndex} className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">Règle {ruleIndex + 1}</p>
+                  <Button type="button" variant="ghost" size="icon-lg" aria-label={`Supprimer la règle ${ruleIndex + 1}`} onClick={() => removeProgressionRule(ruleIndex)} className="text-red-700 hover:bg-red-50 hover:text-red-800"><X className="h-4 w-4" aria-hidden="true" /></Button>
                 </div>
-              ))}
-            </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2"><Label>Condition</Label><select value={rule.condition} onChange={event => updateProgressionRule(ruleIndex, { condition: event.target.value })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-600">{CONDITION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+                  <div className="space-y-2"><Label>Seuil</Label><Input type="number" className="h-11 bg-white" value={typeof rule.value === "number" ? rule.value : (rule.value as any)?.max} onChange={event => updateProgressionRule(ruleIndex, { value: Number(event.target.value) || 0 })} /></div>
+                  <div className="space-y-2"><Label>Action</Label><select value={rule.action} onChange={event => updateProgressionRule(ruleIndex, { action: event.target.value })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-600">{ACTION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+                  <div className="space-y-2"><Label>Valeur (kg)</Label><Input type="number" step={0.5} className="h-11 bg-white" value={rule.weightChange ?? ""} onChange={event => updateProgressionRule(ruleIndex, { weightChange: event.target.value === "" ? undefined : Number(event.target.value) })} /></div>
+                </div>
+                <div className="space-y-2"><Label>Message affiché à l’athlète</Label><Input className="h-11 bg-white" placeholder="Ex. Très bonne série, augmentez légèrement la charge." value={rule.message ?? ""} onChange={event => updateProgressionRule(ruleIndex, { message: event.target.value })} /></div>
+              </div>
+            ))}
           </div>
+        </AdminFormSection>
 
-        </div>
-
-        <DialogFooter className="gap-2 border-t border-border/50 pt-4 mt-2">
-          <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => { onRemove(); onClose() }}>
-            <X className="h-4 w-4 mr-1.5" /> Retirer
-          </Button>
-          <DialogClose asChild><Button variant="outline" size="sm" className="border-border/50">Annuler</Button></DialogClose>
-          <Button size="sm" className="bg-gradient-to-r from-primary to-primary/80 gap-1.5" onClick={apply}>
-            <CheckCircle2 className="h-4 w-4" /> Appliquer
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <Button type="button" variant="ghost" size="lg" className="w-full text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => { onRemove(); onClose() }}>
+          <X className="h-4 w-4" aria-hidden="true" /> Retirer l’exercice de la séance
+        </Button>
+      </div>
+    </AdminDrawer>
   )
 }

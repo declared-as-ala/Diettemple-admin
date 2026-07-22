@@ -4,10 +4,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Dialog, DialogBody, DialogContent, DialogDescription,
-  DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
+import { AdminModal, AdminModalFooter } from "@/components/admin"
 import { Loader2, User, Users } from "lucide-react"
 import type { LevelTemplate, SubscriptionData } from "./types"
 import { quickEndDate } from "./utils"
@@ -88,20 +85,8 @@ export default function SubscriptionModal({
   const activeScenario = SCENARIO_META[scenario]
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {sub ? "Gérer l'abonnement client" : "Configurer l'abonnement"}
-          </DialogTitle>
-          <DialogDescription>
-            {sub
-              ? "Choisis une action claire : prolonger, changer de plan, ou recréer une affectation."
-              : "Assigne un premier abonnement avec dates et plan."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <DialogBody className="space-y-4">
+    <AdminModal open={open} onOpenChange={onOpenChange} title={sub ? "Gérer l’abonnement client" : "Configurer l’abonnement"} description={sub ? "Choisissez une action : prolonger, changer de plan ou recréer une affectation." : "Assignez un premier abonnement avec dates et plan."} size="md" busy={saving} dirty={Boolean(selectedTemplate || note)} footer={(requestClose) => <AdminModalFooter status={selectedTemplate ? "Plan sélectionné" : scenario === "renew" ? "Le plan actuel sera conservé" : "Choisissez un plan"} statusTone={selectedTemplate || scenario === "renew" ? "valid" : "warning"} submitLabel={activeScenario.cta} loadingLabel="Enregistrement…" loading={saving} onCancel={requestClose} onSubmit={onSave} />}>
+        <div className="space-y-4">
           {/* Scenario tabs */}
           {sub && (
             <div className="grid grid-cols-1 gap-2 border-b border-border/60 pb-4 sm:grid-cols-3">
@@ -308,18 +293,7 @@ export default function SubscriptionModal({
             />
           </div>
         </div>
-        </DialogBody>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Annuler
-          </Button>
-          <Button onClick={onSave} disabled={saving} className="gap-2">
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {saving ? "Enregistrement…" : activeScenario.cta}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+    </AdminModal>
   )
 }

@@ -6,13 +6,13 @@ import { XIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-type DialogSize = "sm" | "md" | "lg" | "xl"
+export type DialogSize = "sm" | "md" | "lg" | "xl"
 
 const DIALOG_SIZES: Record<DialogSize, string> = {
-  sm: "sm:max-w-sm",
-  md: "sm:max-w-lg",
-  lg: "sm:max-w-2xl",
-  xl: "sm:max-w-4xl",
+  sm: "sm:max-w-[28rem]",
+  md: "sm:max-w-[44rem]",
+  lg: "sm:max-w-[56rem]",
+  xl: "sm:max-w-[64rem]",
 }
 
 function Dialog(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
@@ -62,11 +62,11 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed left-1/2 top-1/2 z-[101] -translate-x-1/2 -translate-y-1/2",
-          "w-[calc(100vw-2rem)]",
+          "fixed inset-0 z-[101] h-dvh w-screen",
+          "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:w-[calc(100vw-3rem)] sm:-translate-x-1/2 sm:-translate-y-1/2",
           DIALOG_SIZES[size],
-          "max-h-[90vh] flex flex-col",
-          "rounded-2xl border border-border/60 bg-card shadow-2xl shadow-black/30",
+          "max-h-dvh sm:max-h-[calc(100dvh-3rem)] flex flex-col",
+          "rounded-none border-0 bg-white shadow-2xl shadow-black/25 sm:rounded-2xl sm:border sm:border-slate-200",
           "overflow-hidden outline-none",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -78,17 +78,17 @@ function DialogContent({
         {...props}
       >
         {/* Flex-col layout: header stays fixed, body scrolls, footer stays fixed */}
-        <div className="flex min-h-0 flex-1 flex-col bg-card">
+        <div className="flex min-h-0 flex-1 flex-col bg-white text-slate-950">
           {children}
         </div>
 
         {showCloseButton && (
           <DialogPrimitive.Close
             className={cn(
-              "absolute right-4 top-4 z-10",
-              "flex h-7 w-7 items-center justify-center rounded-lg",
-              "text-muted-foreground hover:text-foreground hover:bg-muted",
-              "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "absolute right-3 top-3 z-10 sm:right-4 sm:top-4",
+              "flex h-10 w-10 items-center justify-center rounded-lg",
+              "text-slate-500 hover:bg-slate-100 hover:text-slate-950",
+              "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600 focus-visible:ring-offset-2",
               "[&_svg]:size-4"
             )}
           >
@@ -105,7 +105,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex shrink-0 flex-col gap-1 px-6 pt-5 pb-4 border-b border-border/60", className)}
+      className={cn("flex shrink-0 flex-col gap-1 border-b border-slate-200 bg-white px-5 pb-4 pt-5 pr-16 sm:px-6 sm:pr-16", className)}
       {...props}
     />
   )
@@ -115,7 +115,7 @@ function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-body"
-      className={cn("flex-1 min-h-0 overflow-y-auto px-6 py-5", className)}
+      className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6", className)}
       {...props}
     />
   )
@@ -150,7 +150,7 @@ function DialogFooter({
       data-slot="dialog-footer"
       className={cn(
         "flex shrink-0 items-center justify-end gap-2",
-        "border-t border-border/60 bg-muted/20 px-6 py-4",
+        "border-t border-slate-200 bg-slate-50/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-6",
         "flex-col-reverse sm:flex-row [&>button]:w-full sm:[&>button]:w-auto",
         className
       )}
@@ -170,7 +170,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-base font-semibold leading-none text-foreground", className)}
+      className={cn("text-lg font-semibold leading-tight tracking-tight text-slate-950", className)}
       {...props}
     />
   )
@@ -180,7 +180,7 @@ function DialogDescription({ className, ...props }: React.ComponentProps<typeof 
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-muted-foreground mt-0.5", className)}
+      className={cn("mt-1 text-sm leading-5 text-slate-600", className)}
       {...props}
     />
   )

@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fr } from "@/lib/i18n/fr";
+import { ConfirmModal } from "@/components/shared/ConfirmModal";
 
 interface RecipeForm {
   title: string;
@@ -63,6 +64,7 @@ export default function EditRecipePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const load = useCallback(() => {
     if (isNew) {
@@ -279,7 +281,6 @@ export default function EditRecipePage() {
 
   const remove = async () => {
     if (isNew) return;
-    if (!confirm("Supprimer cette recette ? Les favoris associés seront retirés.")) return;
     setDeleting(true);
     try {
       await api.deleteAdminRecipe(id);
@@ -304,7 +305,7 @@ export default function EditRecipePage() {
           <h1 className="text-2xl font-bold">{isNew ? "Nouvelle recette" : "Modifier la recette"}</h1>
         </div>
         {!isNew && (
-          <Button variant="destructive" onClick={remove} disabled={deleting}>
+          <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)} disabled={deleting}>
             <Trash2 className="h-4 w-4 mr-2" />
             {deleting ? "…" : "Supprimer"}
           </Button>
@@ -471,10 +472,10 @@ export default function EditRecipePage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {recipe.ingredients.map((ing, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2">
-              <Input className="col-span-6" value={ing.name} onChange={(e) => updateIngredient(i, "name", e.target.value)} placeholder="Nom (ex: poulet)" />
-              <Input className="col-span-3" value={ing.quantity} onChange={(e) => updateIngredient(i, "quantity", e.target.value)} placeholder="Qté" />
-              <Input className="col-span-2" value={ing.unit} onChange={(e) => updateIngredient(i, "unit", e.target.value)} placeholder="Unité" />
+            <div key={i} className="grid gap-2 sm:grid-cols-12">
+              <Input className="sm:col-span-6" value={ing.name} onChange={(e) => updateIngredient(i, "name", e.target.value)} placeholder="Nom (ex: poulet)" />
+              <Input className="sm:col-span-3" value={ing.quantity} onChange={(e) => updateIngredient(i, "quantity", e.target.value)} placeholder="Qté" />
+              <Input className="sm:col-span-2" value={ing.unit} onChange={(e) => updateIngredient(i, "unit", e.target.value)} placeholder="Unité" />
               <Button type="button" variant="outline" size="icon" onClick={() => removeIngredient(i)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -496,6 +497,7 @@ export default function EditRecipePage() {
           {fr.buttons.cancel}
         </Button>
       </div>
+      <ConfirmModal open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen} title="Supprimer la recette ?" description={`La recette « ${recipe.title || "Sans titre"} » sera supprimée et retirée des favoris associés.`} confirmLabel="Supprimer la recette" cancelLabel="Annuler" variant="destructive" loading={deleting} onConfirm={remove} />
     </div>
   );
 }

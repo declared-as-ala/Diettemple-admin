@@ -168,6 +168,8 @@ export interface LevelTemplate {
   name: string
   gender?: string
   isActive?: boolean
+  level?: string
+  weeks?: unknown[]
 }
 
 export interface NutritionPlan {

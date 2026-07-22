@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageLoader } from "@/components/ui/loading";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { ArrowLeft, Save, Tag, Plus, Trash2 } from "lucide-react";
+import { ProductLiveSummary } from "@/components/admin";
 
 const CATEGORIES = [
   "Protéines", "Créatine", "BCAA", "Pre-Workout", "Vitamines",
@@ -207,7 +208,7 @@ export default function EditProductPage() {
           <CardTitle className="text-base">Informations générales</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Nom *</Label>
               <Input
@@ -256,7 +257,7 @@ export default function EditProductPage() {
           <CardTitle className="text-base">Prix & stock</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label>Prix normal (DT) *</Label>
               <Input
@@ -301,7 +302,7 @@ export default function EditProductPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Prix UH (DT)</Label>
               <Input
@@ -354,6 +355,8 @@ export default function EditProductPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ProductLiveSummary price={form.price} uhPrice={form.uhPrice} discount={form.discount} stock={form.stock} featured={form.isFeatured} />
 
       {/* Images */}
       <Card>

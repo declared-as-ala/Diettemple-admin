@@ -22,12 +22,14 @@ import { User, Users } from "lucide-react";
 import { format, addDays } from "date-fns";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { ConfirmModal } from "@/components/shared/ConfirmModal";
 
 interface BoardUser {
   _id: string;
@@ -71,6 +73,8 @@ export default function AssignmentsBoardPage() {
   const [assignNote, setAssignNote] = useState("");
   const [assignAction, setAssignAction] = useState<"assign" | "change_level" | "cancel_and_assign">("assign");
   const [assignLoading, setAssignLoading] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<BoardUser | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   const loadBoard = useCallback(async () => {
     setLoading(true);
@@ -110,9 +114,7 @@ export default function AssignmentsBoardPage() {
 
     if (oid === "drop-unassigned") {
       if (user.subscription?.effectiveStatus === "ACTIVE") {
-        if (confirm(fr.pages.cancelSubscriptionConfirm.replace("{name}", user.name || user.email || ""))) {
-          api.cancelSubscription(user.subscription._id).then(() => loadBoard()).catch(console.error);
-        }
+        setCancelTarget(user);
       }
       return;
     }
@@ -135,6 +137,17 @@ export default function AssignmentsBoardPage() {
       setAssignEnd(format(addDays(new Date(), 30), "yyyy-MM-dd"));
       setAssignNote("");
       setAssignAction(hasActive && user.subscription?.levelTemplateId !== levelTemplateId ? "change_level" : "assign");
+    }
+  };
+
+  const cancelSubscription = async () => {
+    if (!cancelTarget?.subscription?._id) return;
+    setCancelLoading(true);
+    try {
+      await api.cancelSubscription(cancelTarget.subscription._id);
+      await loadBoard();
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -238,7 +251,7 @@ export default function AssignmentsBoardPage() {
               {assignModal?.userName} → {assignModal?.levelName}
             </p>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogBody className="grid gap-4">
             {assignModal?.hasActive && assignModal.currentLevelId !== assignModal.levelTemplateId && (
               <div className="grid gap-2">
                 <Label>Action</Label>
@@ -284,7 +297,7 @@ export default function AssignmentsBoardPage() {
                 </div>
               </>
             )}
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignModal(null)}>{fr.buttons.cancel}</Button>
             <Button onClick={submitAssign} disabled={assignLoading}>
@@ -293,6 +306,7 @@ export default function AssignmentsBoardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmModal open={!!cancelTarget} onOpenChange={(open) => { if (!open) setCancelTarget(null); }} title="Retirer le plan du client ?" description={cancelTarget ? fr.pages.cancelSubscriptionConfirm.replace("{name}", cancelTarget.name || cancelTarget.email || "ce client") : undefined} confirmLabel="Retirer le plan" cancelLabel="Annuler" variant="destructive" loading={cancelLoading} onConfirm={cancelSubscription} />
     </div>
   );
 }

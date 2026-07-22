@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -260,7 +261,7 @@ export default function LeadsPage() {
             <DialogTitle>{selected?.name}</DialogTitle>
           </DialogHeader>
           {selected && (
-            <div className="space-y-4">
+            <DialogBody className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" />{selected.phone}</div>
                 <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" />{selected.email}</div>
@@ -308,7 +309,7 @@ export default function LeadsPage() {
               <div className="text-xs text-muted-foreground">
                 Soumis le {format(new Date(selected.createdAt), "dd MMMM yyyy à HH:mm", { locale: dateFr })}
               </div>
-            </div>
+            </DialogBody>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailOpen(false)}>Fermer</Button>

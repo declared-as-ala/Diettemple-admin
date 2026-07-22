@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Check, AlertCircle, Activity, MessageSquare, CreditCard, Flame,
   RefreshCw, ShoppingBag, Loader2, User, Package, DollarSign, Clock,
-  ChevronRight, Phone, Mail, ExternalLink,
+  ChevronRight, ExternalLink,
 } from "lucide-react"
 import type { ProfileData, ClientOrder, Recommendation, OrderFilter } from "./types"
 import {
@@ -18,10 +18,7 @@ import {
 } from "./utils"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
-import {
-  Dialog, DialogBody, DialogContent, DialogDescription,
-  DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
+import { AdminFormSection, AdminModal, AdminModalFooter } from "@/components/admin"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -167,6 +164,14 @@ export default function OverviewTab({
   const [editObjectif, setEditObjectif] = useState(client.objectif || "")
   const [editFitnessLevel, setEditFitnessLevel] = useState<"A" | "B">((client.fitnessLevel as "A" | "B") || "A")
   const [editSaving, setEditSaving] = useState(false)
+  const editDirty =
+    editName !== (client.name || "") ||
+    editSexe !== ((client.sexe as "M" | "F") || "M") ||
+    String(editAge) !== String(client.age || "") ||
+    String(editTaille) !== String(client.taille || "") ||
+    String(editPoids) !== String(client.poids || "") ||
+    editObjectif !== (client.objectif || "") ||
+    editFitnessLevel !== ((client.fitnessLevel as "A" | "B") || "A")
 
   const handleEditProfile = () => {
     setEditName(client.name || "")
@@ -680,16 +685,34 @@ export default function OverviewTab({
         </CardContent>
       </Card>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifier le profil du client</DialogTitle>
-            <DialogDescription>
-              Mettez à jour les informations personnelles du client ci-dessous.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogBody className="space-y-4">
+      <AdminModal
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        title="Modifier le profil du client"
+        description="Mettez à jour les informations personnelles et les objectifs du client."
+        icon={<User className="h-5 w-5" />}
+        size="lg"
+        dirty={editDirty}
+        busy={editSaving}
+        footer={(requestClose) => (
+          <AdminModalFooter
+            status={editDirty ? "Modifications non enregistrées" : "Profil à jour"}
+            statusTone={editDirty ? "warning" : "valid"}
+            submitLabel="Enregistrer les modifications"
+            loadingLabel="Enregistrement…"
+            loading={editSaving}
+            submitDisabled={!editDirty || !editName.trim()}
+            onCancel={requestClose}
+            onSubmit={handleSaveProfile}
+          />
+        )}
+      >
+        <div className="space-y-4">
+          <AdminFormSection
+            title="Informations personnelles"
+            description="Identité et données essentielles du profil."
+            icon={<User className="h-4 w-4" />}
+          >
             <div className="space-y-1">
               <Label htmlFor="editName">Nom complet</Label>
               <Input
@@ -697,18 +720,18 @@ export default function OverviewTab({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder="Ex: Jean Dupont"
-                className="h-9"
+                className="h-11"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="editSexe">Sexe</Label>
                 <Select
                   value={editSexe}
                   onValueChange={(val: "M" | "F") => setEditSexe(val)}
                 >
-                  <SelectTrigger id="editSexe" className="h-9 w-full">
+                  <SelectTrigger id="editSexe" className="h-11 w-full">
                     <SelectValue placeholder="Choisir" />
                   </SelectTrigger>
                   <SelectContent>
@@ -726,12 +749,12 @@ export default function OverviewTab({
                   value={editAge}
                   onChange={(e) => setEditAge(e.target.value)}
                   placeholder="Ex: 30"
-                  className="h-9"
+                  className="h-11"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="editTaille">Taille (cm)</Label>
                 <Input
@@ -740,7 +763,7 @@ export default function OverviewTab({
                   value={editTaille}
                   onChange={(e) => setEditTaille(e.target.value)}
                   placeholder="Ex: 175"
-                  className="h-9"
+                  className="h-11"
                 />
               </div>
 
@@ -752,18 +775,25 @@ export default function OverviewTab({
                   value={editPoids}
                   onChange={(e) => setEditPoids(e.target.value)}
                   placeholder="Ex: 78"
-                  className="h-9"
+                  className="h-11"
                 />
               </div>
             </div>
 
+          </AdminFormSection>
+
+          <AdminFormSection
+            title="Objectifs et niveau"
+            description="Ces informations personnalisent le suivi sportif du client."
+            icon={<Activity className="h-4 w-4" />}
+          >
             <div className="space-y-1">
               <Label htmlFor="editFitnessLevel">Niveau Fitness</Label>
               <Select
                 value={editFitnessLevel}
                 onValueChange={(val: "A" | "B") => setEditFitnessLevel(val)}
               >
-                <SelectTrigger id="editFitnessLevel" className="h-9 w-full">
+                <SelectTrigger id="editFitnessLevel" className="h-11 w-full">
                   <SelectValue placeholder="Choisir" />
                 </SelectTrigger>
                 <SelectContent>
@@ -780,22 +810,12 @@ export default function OverviewTab({
                 value={editObjectif}
                 onChange={(e) => setEditObjectif(e.target.value)}
                 placeholder="Ex: Perte de poids, Prise de masse"
-                className="h-9"
+                className="h-11"
               />
             </div>
-          </DialogBody>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={editSaving}>
-              Annuler
-            </Button>
-            <Button onClick={handleSaveProfile} disabled={editSaving} className="gap-2">
-              {editSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {editSaving ? "Enregistrement…" : "Enregistrer les modifications"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </AdminFormSection>
+        </div>
+      </AdminModal>
     </div>
   )
 }

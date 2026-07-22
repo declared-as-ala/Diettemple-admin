@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save, Tag, Plus, Trash2 } from "lucide-react";
+import { ProductLiveSummary } from "@/components/admin";
 
 const CATEGORIES = [
   "Protéines", "Créatine", "BCAA", "Pre-Workout", "Vitamines",
@@ -142,7 +143,7 @@ export default function NewProductPage() {
           <CardTitle className="text-base">Informations générales</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Nom *</Label>
               <Input
@@ -191,7 +192,7 @@ export default function NewProductPage() {
           <CardTitle className="text-base">Prix & stock</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label>Prix normal (DT) *</Label>
               <Input
@@ -236,7 +237,7 @@ export default function NewProductPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Prix UH (DT)</Label>
               <Input
@@ -281,6 +282,8 @@ export default function NewProductPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ProductLiveSummary price={form.price} uhPrice={form.uhPrice} discount={form.discount} stock={form.stock} featured={form.isFeatured} />
 
       {/* Images */}
       <Card>

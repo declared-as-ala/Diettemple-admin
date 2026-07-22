@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
@@ -25,6 +23,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLevelImageUrl, normalizeLevelName } from "@/lib/levelAssets";
+import { ConfirmModal } from "@/components/shared/ConfirmModal";
+import { AdminFormErrorSummary, AdminFormSection, type AdminFormError } from "@/components/admin";
+import { Textarea } from "@/components/ui/textarea";
 
 const LEVEL_COLORS: Record<string, string> = {
   Intiate:  "from-slate-600 to-slate-800",
@@ -55,6 +56,10 @@ export default function LevelTemplateEditorPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
   const [sessionSearch, setSessionSearch] = useState("");
+  const [infoSaving, setInfoSaving] = useState(false);
+  const [infoErrors, setInfoErrors] = useState<AdminFormError[]>([]);
+  const [resetWeekIndex, setResetWeekIndex] = useState<number | null>(null);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
 
   const loadLevel = useCallback(async () => {
     if (!id) return;
@@ -97,17 +102,31 @@ export default function LevelTemplateEditorPage() {
     setDirty(JSON.stringify(weeksToApiPayload(weeks)) !== JSON.stringify(weeksToApiPayload(initialWeeks)));
   }, [weeks, initialWeeks]);
 
+  const infoDirty = Boolean(levelTemplate && (
+    editName !== String(levelTemplate.name ?? "") ||
+    editDescription !== String(levelTemplate.description ?? "") ||
+    editIsActive !== (levelTemplate.isActive !== false)
+  ));
+  const anyDirty = dirty || infoDirty;
+
   useEffect(() => {
-    if (!dirty) return;
+    if (!anyDirty) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [dirty]);
+  }, [anyDirty]);
 
   const sessionTemplateById: Record<string, { title?: string; durationMinutes?: number }> = {};
   sessionTemplates.forEach((s) => { sessionTemplateById[s._id] = { title: s.title, durationMinutes: s.durationMinutes }; });
 
   const handleSaveInfo = async () => {
+    if (!editName.trim()) {
+      setInfoErrors([{ field: "edit-plan-name", message: "Le nom du plan est obligatoire." }]);
+      requestAnimationFrame(() => document.getElementById("edit-plan-name")?.focus());
+      return;
+    }
+    setInfoSaving(true);
+    setInfoErrors([]);
     try {
       await api.updateLevelTemplate(id, {
         name: editName,
@@ -119,7 +138,11 @@ export default function LevelTemplateEditorPage() {
       toast("Informations sauvegardées", "success");
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast(e.response?.data?.message || e.message || "Erreur", "error");
+      const message = e.response?.data?.message || e.message || "Impossible d’enregistrer les informations.";
+      setInfoErrors([{ message }]);
+      toast(message, "error");
+    } finally {
+      setInfoSaving(false);
     }
   };
 
@@ -141,7 +164,6 @@ export default function LevelTemplateEditorPage() {
   };
 
   const handleResetWeek = (weekIndex: number) => {
-    if (!confirm("Réinitialiser toutes les séances de cette semaine ?")) return;
     setWeeks((prev) =>
       prev.map((w, wi) =>
         wi === weekIndex
@@ -149,10 +171,15 @@ export default function LevelTemplateEditorPage() {
           : w
       )
     );
+    setResetWeekIndex(null);
+  };
+
+  const requestLeave = () => {
+    if (anyDirty) setLeaveConfirmOpen(true);
+    else router.push("/admin/level-templates");
   };
 
   // No minimum/maximum session validation - weeks can have any number of sessions
-  const invalidWeeks: typeof weeks = [];
   const canSave = true;
   const levelName = levelTemplate ? String(levelTemplate.name ?? "") : "";
   const gender = levelTemplate ? String(levelTemplate.gender ?? "M") : "M";
@@ -174,7 +201,7 @@ export default function LevelTemplateEditorPage() {
         />
         <div className="relative z-10 flex items-center gap-4 px-6 py-4">
           <button
-            onClick={() => { if (dirty && !confirm("Modifications non sauvegardées. Quitter ?")) return; router.push("/admin/level-templates"); }}
+            onClick={requestLeave}
             className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -211,7 +238,7 @@ export default function LevelTemplateEditorPage() {
                 {lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
-            {dirty && (
+            {anyDirty && (
               <span className="flex items-center gap-1 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-full">
                 <AlertCircle className="h-3 w-3" />
                 Non sauvegardé
@@ -221,10 +248,10 @@ export default function LevelTemplateEditorPage() {
               size="sm"
               className="bg-white text-gray-900 hover:bg-white/90 font-semibold"
               onClick={tab === "info" ? handleSaveInfo : handleSaveWeeks}
-              disabled={tab === "planner" ? !canSave || saving : false}
+              disabled={tab === "planner" ? !canSave || saving : infoSaving || !infoDirty}
             >
               <Save className="h-4 w-4 mr-1.5" />
-              {saving ? "Sauvegarde…" : "Sauvegarder"}
+              {saving || infoSaving ? "Sauvegarde…" : "Sauvegarder"}
             </Button>
           </div>
         </div>
@@ -256,30 +283,17 @@ export default function LevelTemplateEditorPage() {
       <div className="flex-1 p-6">
         {/* INFO TAB */}
         {tab === "info" && (
-          <div className="max-w-lg mx-auto space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <Label className="text-sm font-medium">Nom du plan</Label>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="mt-1.5" />
-              </div>
-              <div className="col-span-2">
-                <Label className="text-sm font-medium">Description</Label>
-                <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description courte…" className="mt-1.5" />
-              </div>
-              <div className="col-span-2 flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={editIsActive}
-                  onChange={(e) => setEditIsActive(e.target.checked)}
-                  className="h-4 w-4 rounded"
-                />
-                <label htmlFor="isActive" className="text-sm font-medium cursor-pointer">Plan actif (visible dans l&apos;app)</label>
-              </div>
-            </div>
-            <Button onClick={handleSaveInfo} className="w-full">
+          <div className="mx-auto max-w-3xl space-y-5">
+            <AdminFormErrorSummary errors={infoErrors} />
+            <AdminFormSection title="Informations générales" description="Modifiez l’identité et la visibilité du plan. Le niveau et le sexe restent liés au plan existant." icon={<Info className="h-5 w-5" aria-hidden="true" />}>
+              <div className="space-y-2"><Label htmlFor="edit-plan-name">Nom du plan *</Label><Input id="edit-plan-name" value={editName} onChange={(event) => setEditName(event.target.value)} className="h-11 bg-white" aria-invalid={infoErrors.some((error) => error.field === "edit-plan-name")} /></div>
+              <div className="space-y-2"><Label htmlFor="edit-plan-description">Description</Label><Textarea id="edit-plan-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} placeholder="Décrivez l’objectif, le public cible et la structure du plan." className="min-h-28 bg-white" /></div>
+              <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900"><input type="checkbox" checked={editIsActive} onChange={(event) => setEditIsActive(event.target.checked)} className="h-4 w-4" /> Plan actif et disponible à l’affectation</label>
+              <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-medium text-slate-500">Sexe / dossier</p><p className="mt-1 text-sm font-semibold text-slate-900">{gender === "F" ? "Femme" : "Homme"}</p></div><div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-medium text-slate-500">Durée du planning</p><p className="mt-1 text-sm font-semibold text-slate-900">{weeks.length || 5} semaines</p></div></div>
+            </AdminFormSection>
+            <Button onClick={handleSaveInfo} className="h-11 w-full" disabled={infoSaving || !infoDirty}>
               <Save className="h-4 w-4 mr-2" />
-              Sauvegarder les informations
+              {infoSaving ? "Enregistrement…" : "Enregistrer les modifications"}
             </Button>
           </div>
         )}
@@ -302,7 +316,7 @@ export default function LevelTemplateEditorPage() {
               </div>
               <div className="flex gap-1.5 flex-wrap">
                 {weeks.map((w, wi) => (
-                  <Button key={w.weekNumber} variant="outline" size="sm" onClick={() => handleResetWeek(wi)} className="text-xs h-7 px-2 text-muted-foreground hover:text-destructive">
+                  <Button key={w.weekNumber} variant="outline" size="sm" onClick={() => setResetWeekIndex(wi)} className="text-xs h-9 px-2 text-muted-foreground hover:text-destructive">
                     <RotateCcw className="h-3 w-3 mr-1" />S{w.weekNumber}
                   </Button>
                 ))}
@@ -325,6 +339,9 @@ export default function LevelTemplateEditorPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal open={resetWeekIndex !== null} onOpenChange={(open) => { if (!open) setResetWeekIndex(null); }} title="Réinitialiser cette semaine ?" description={resetWeekIndex !== null ? `Toutes les séances de la semaine ${weeks[resetWeekIndex]?.weekNumber ?? resetWeekIndex + 1} seront retirées du planning. Les autres semaines resteront intactes.` : undefined} confirmLabel="Réinitialiser la semaine" cancelLabel="Continuer la modification" variant="destructive" onConfirm={() => { if (resetWeekIndex !== null) handleResetWeek(resetWeekIndex); }} />
+      <ConfirmModal open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen} title="Abandonner les modifications ?" description="Les informations et changements de planning non enregistrés seront perdus." confirmLabel="Abandonner" cancelLabel="Continuer la modification" variant="destructive" onConfirm={() => router.push("/admin/level-templates")} />
     </div>
   );
 }

@@ -26,6 +26,7 @@ import type {
   TabId, OrderFilter, SubScenario, Recommendation, NutritionPlan,
 } from "@/components/client-detail/types"
 import { quickEndDate } from "@/components/client-detail/utils"
+import { ConfirmModal } from "@/components/shared/ConfirmModal"
 
 export default function AdminClientProfilePage() {
   const params = useParams()
@@ -73,6 +74,7 @@ export default function AdminClientProfilePage() {
   const [subNote, setSubNote] = useState("")
   const [subSaving, setSubSaving] = useState(false)
   const [restartS1Saving, setRestartS1Saving] = useState(false)
+  const [restartConfirmOpen, setRestartConfirmOpen] = useState(false)
 
   // ─── Workout plan modal state ──────────────────────────────────────────
   const [planModal, setPlanModal] = useState(false)
@@ -261,13 +263,6 @@ export default function AdminClientProfilePage() {
 
   const handleRestartProgramWeek1 = useCallback(async () => {
     if (!planAssignment?.id) return
-    if (
-      !confirm(
-        "Redémarrer le programme en semaine 1 ? La date de début du programme sera fixée à aujourd'hui. L'abonnement n'est pas modifié."
-      )
-    ) {
-      return
-    }
     setRestartS1Saving(true)
     try {
       await api.restartWorkoutPlanWeek1(id)
@@ -523,7 +518,7 @@ export default function AdminClientProfilePage() {
             onOpenSubModal={handleOpenSubModal}
             onAssignWorkoutPlan={handleOpenAssignWorkoutPlan}
             onChangeWorkoutPlan={handleOpenChangeWorkoutPlan}
-            onRestartWeek1={handleRestartProgramWeek1}
+            onRestartWeek1={() => setRestartConfirmOpen(true)}
           />
         )}
 
@@ -631,6 +626,7 @@ export default function AdminClientProfilePage() {
         saving={planSaving}
         onSave={handleSaveWorkoutPlan}
       />
+      <ConfirmModal open={restartConfirmOpen} onOpenChange={setRestartConfirmOpen} title="Redémarrer le programme en semaine 1 ?" description="La date de début du programme sera fixée à aujourd’hui. L’abonnement et l’historique existants ne seront pas supprimés." confirmLabel="Redémarrer en semaine 1" cancelLabel="Annuler" variant="default" loading={restartS1Saving} onConfirm={handleRestartProgramWeek1} />
     </div>
   )
 }

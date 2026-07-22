@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { SkeletonTable } from "@/components/shared/SkeletonTable";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -588,7 +589,7 @@ export default function AdminDashboardPage() {
               {fr.dashboard.renewSubscriptionDesc.replace("{name}", renewModal?.userName ?? "")}
             </p>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="renew-end">{fr.dashboard.newEndDate}</Label>
               <input
@@ -599,7 +600,7 @@ export default function AdminDashboardPage() {
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               />
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenewModal(null)}>{fr.buttons.cancel}</Button>
             <Button onClick={handleRenew} disabled={renewLoading}>
@@ -618,7 +619,7 @@ export default function AdminDashboardPage() {
               {fr.dashboard.upgradeDowngradeDesc.replace("{name}", changeLevelModal?.userName ?? "").replace("{current}", changeLevelModal?.currentLevel ?? "")}
             </p>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="level-select">{fr.dashboard.selectLevel}</Label>
               <select
@@ -633,7 +634,7 @@ export default function AdminDashboardPage() {
                 ))}
               </select>
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChangeLevelModal(null)}>{fr.buttons.cancel}</Button>
             <Button onClick={handleChangeLevel} disabled={changeLevelLoading || !changeLevelId}>

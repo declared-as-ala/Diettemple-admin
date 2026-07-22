@@ -11,10 +11,8 @@ import { PageLoader } from "@/components/ui/loading"
 import {
   Plus, Search, Edit2, Trash2, Clock, Dumbbell, ChevronRight, LayoutGrid, Filter,
 } from "lucide-react"
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { ConfirmModal } from "@/components/shared/ConfirmModal"
 
 const PAGE_SIZE = 20
 
@@ -240,23 +238,7 @@ export default function SessionTemplatesPage() {
         </div>
       )}
 
-      {/* ── Delete confirmation ───────────────────────────────────────── */}
-      <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Supprimer la séance</DialogTitle>
-            <DialogDescription>
-              Supprimer <strong>«{deleteTarget?.title}»</strong> ? Cette action est irréversible.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteId(null)}>Annuler</Button>
-            <Button variant="destructive" disabled={deleting} onClick={() => deleteId && handleDelete(deleteId)}>
-              {deleting ? "Suppression…" : "Supprimer"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmModal open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null) }} title="Supprimer la séance ?" description={deleteTarget ? `La séance « ${deleteTarget.title} » sera définitivement supprimée et peut affecter les plans qui l’utilisent.` : undefined} confirmLabel="Supprimer la séance" cancelLabel="Annuler" variant="destructive" loading={deleting} onConfirm={() => deleteId ? handleDelete(deleteId) : Promise.resolve()} />
     </div>
   )
 }

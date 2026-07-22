@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { fr } from "@/lib/i18n/fr";
@@ -8,18 +8,11 @@ import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { AdminFormErrorSummary, AdminFormSection, AdminModal, AdminModalFooter, AdminSearchableSelect, type AdminFormError } from "@/components/admin";
 import { cn } from "@/lib/utils";
 import {
   UserPlus, Search, RefreshCw, Users, ChevronRight,
-  Activity, CalendarDays, Loader2, AlertCircle,
+  Activity, CalendarDays, Loader2, HeartPulse, Target, Dumbbell, LockKeyhole,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr as dateFnsFr } from "date-fns/locale";
@@ -219,11 +212,13 @@ export default function AdminClientsPage() {
   const [addBodyFat, setAddBodyFat] = useState("");
   const [addMuscleMass, setAddMuscleMass] = useState("");
   const [addSelectedPlanId, setAddSelectedPlanId] = useState("");
-  const [addPlanSearch, setAddPlanSearch] = useState("");
-  const [addPlans, setAddPlans] = useState<Array<{ _id: string; name: string; level?: string; description?: string; gender?: string }>>([]);
+  const [addPlanLevelFilter, setAddPlanLevelFilter] = useState("all");
+  const [addPlanGenderFilter, setAddPlanGenderFilter] = useState("all");
+  const [addPlans, setAddPlans] = useState<Array<{ _id: string; name: string; level?: string; description?: string; gender?: string; isActive?: boolean; weeks?: unknown[] }>>([]);
   const [addPlansLoading, setAddPlansLoading] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
-  const [addError, setAddError] = useState("");
+  const [addErrors, setAddErrors] = useState<AdminFormError[]>([]);
+  const addNameRef = useRef<HTMLInputElement>(null);
 
   const loadClients = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
@@ -257,7 +252,6 @@ export default function AdminClientsPage() {
       const data = await api.getLevelTemplates({
         page: 1,
         limit: 100,
-        search: addPlanSearch || undefined,
       });
       setAddPlans(data.levelTemplates || []);
     } catch (e) {
@@ -266,7 +260,7 @@ export default function AdminClientsPage() {
     } finally {
       setAddPlansLoading(false);
     }
-  }, [addPlanSearch]);
+  }, []);
 
   useEffect(() => {
     if (addOpen) {
@@ -275,10 +269,18 @@ export default function AdminClientsPage() {
   }, [addOpen, loadPlans]);
 
   const handleAddClient = async () => {
-    if (!addEmail && !addPhone) { setAddError("Email ou téléphone requis"); return; }
-    if (!addPassword || addPassword.length < 6) { setAddError(fr.clientsPage.passwordMinLength); return; }
+    const errors: AdminFormError[] = [];
+    if (!addEmail && !addPhone) errors.push({ field: "add-email", message: "Renseignez un email ou un numéro de téléphone." });
+    if (!addPassword || addPassword.length < 6) errors.push({ field: "add-password", message: fr.clientsPage.passwordMinLength });
+    if (addBodyFat && (Number(addBodyFat) < 0 || Number(addBodyFat) > 100)) errors.push({ field: "add-fat", message: "La masse grasse doit être comprise entre 0 et 100 %." });
+    if (addMuscleMass && (Number(addMuscleMass) < 0 || Number(addMuscleMass) > 100)) errors.push({ field: "add-muscle", message: "La masse musculaire doit être comprise entre 0 et 100 %." });
+    setAddErrors(errors);
+    if (errors.length > 0) {
+      requestAnimationFrame(() => document.getElementById(errors[0].field ?? "")?.focus());
+      return;
+    }
     setAddLoading(true);
-    setAddError("");
+    setAddErrors([]);
     try {
       await api.createClient({
         name: addName || undefined,
@@ -299,14 +301,29 @@ export default function AdminClientsPage() {
       });
       setAddOpen(false);
       setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword("");
-      setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass(""); setAddSelectedPlanId(""); setAddPlanSearch("");
+      setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass(""); setAddSelectedPlanId(""); setAddPlanLevelFilter("all"); setAddPlanGenderFilter("all");
       loadClients();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      setAddError(err.response?.data?.message || fr.clientsPage.failedToCreateClient);
+      setAddErrors([{ message: err.response?.data?.message || fr.clientsPage.failedToCreateClient }]);
     } finally {
       setAddLoading(false);
     }
+  };
+
+  const filteredAddPlans = useMemo(() => addPlans
+    .filter((plan) => plan.isActive !== false)
+    .filter((plan) => addPlanLevelFilter === "all" || plan.level === addPlanLevelFilter)
+    .filter((plan) => addPlanGenderFilter === "all" || plan.gender === addPlanGenderFilter)
+    .sort((a, b) => a.name.localeCompare(b.name, "fr")), [addPlanGenderFilter, addPlanLevelFilter, addPlans]);
+
+  const selectedAddPlan = addPlans.find((plan) => plan._id === addSelectedPlanId);
+  const addDirty = Boolean(addName || addEmail || addPhone || addPassword || addSexe || addAge || addTaille || addPoids || addObjectif || addFitnessLevel || addBodyFat || addMuscleMass || addSelectedPlanId);
+
+  const resetAddForm = () => {
+    setAddErrors([]); setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword("");
+    setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel("");
+    setAddBodyFat(""); setAddMuscleMass(""); setAddSelectedPlanId(""); setAddPlanLevelFilter("all"); setAddPlanGenderFilter("all");
   };
 
   const isSearching = isDebouncing || (!!effectiveQuery && loading);
@@ -429,231 +446,61 @@ export default function AdminClientsPage() {
         )}
       </div>
 
-      {/* ── ADD CLIENT MODAL ── */}
-      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) { setAddError(""); setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword(""); setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass(""); setAddSelectedPlanId(""); setAddPlanSearch(""); } }}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <UserPlus className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <DialogTitle>Nouveau client</DialogTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">Créez un compte client et configurez-le ensuite depuis sa fiche.</p>
-              </div>
+      <AdminModal
+        open={addOpen}
+        onOpenChange={(open) => { setAddOpen(open); if (!open) resetAddForm(); }}
+        title="Créer un client"
+        description="Renseignez son profil puis choisissez le plan qui déterminera automatiquement son niveau."
+        icon={<UserPlus className="h-5 w-5" aria-hidden="true" />}
+        size="xl"
+        busy={addLoading}
+        dirty={addDirty}
+        initialFocusRef={addNameRef}
+        footer={(requestClose) => (
+          <AdminModalFooter status={addDirty ? "Modifications non enregistrées" : "Renseignez les informations du client"} statusTone={addErrors.length > 0 ? "warning" : addDirty ? "neutral" : "valid"} submitLabel="Créer le client" loadingLabel="Création…" loading={addLoading} onCancel={requestClose} onSubmit={() => void handleAddClient()} />
+        )}
+      >
+        <div className="space-y-5">
+          <AdminFormErrorSummary errors={addErrors} />
+
+          <AdminFormSection title="Informations personnelles" description="Un email ou un téléphone est obligatoire." icon={<UserPlus className="h-5 w-5" aria-hidden="true" />}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2"><Label htmlFor="add-name">Nom complet <span className="font-normal text-slate-500">(optionnel)</span></Label><Input ref={addNameRef} id="add-name" value={addName} onChange={(event) => setAddName(event.target.value)} placeholder="Ex. Amine Ben Salah" className="h-11 bg-white" autoComplete="name" /></div>
+              <div className="space-y-2"><Label htmlFor="add-email">Email</Label><Input id="add-email" type="email" value={addEmail} onChange={(event) => setAddEmail(event.target.value)} placeholder="client@exemple.tn" className="h-11 bg-white" autoComplete="email" aria-invalid={addErrors.some((error) => error.field === "add-email")} /></div>
+              <div className="space-y-2"><Label htmlFor="add-phone">Téléphone</Label><Input id="add-phone" type="tel" value={addPhone} onChange={(event) => setAddPhone(event.target.value)} placeholder="+216 20 000 000" className="h-11 bg-white" autoComplete="tel" /></div>
+              <div className="space-y-2"><Label htmlFor="add-password">Mot de passe *</Label><Input id="add-password" type="password" value={addPassword} onChange={(event) => setAddPassword(event.target.value)} placeholder="6 caractères minimum" className="h-11 bg-white" autoComplete="new-password" aria-invalid={addErrors.some((error) => error.field === "add-password")} /></div>
+              <div className="space-y-2"><Label htmlFor="add-sexe">Sexe</Label><select id="add-sexe" value={addSexe} onChange={(event) => setAddSexe(event.target.value as "M" | "F" | "")} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-600"><option value="">Non renseigné</option><option value="M">Homme</option><option value="F">Femme</option></select></div>
+              <div className="space-y-2"><Label htmlFor="add-age">Âge</Label><Input id="add-age" type="number" min={1} value={addAge} onChange={(event) => setAddAge(event.target.value)} placeholder="Ex. 28" className="h-11 bg-white" /></div>
+              <div className="space-y-2"><Label htmlFor="add-taille">Taille</Label><div className="relative"><Input id="add-taille" type="number" min={1} value={addTaille} onChange={(event) => setAddTaille(event.target.value)} placeholder="175" className="h-11 bg-white pr-12" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">cm</span></div></div>
+              <div className="space-y-2"><Label htmlFor="add-poids">Poids</Label><div className="relative"><Input id="add-poids" type="number" min={1} value={addPoids} onChange={(event) => setAddPoids(event.target.value)} placeholder="78" className="h-11 bg-white pr-12" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">kg</span></div></div>
             </div>
-          </DialogHeader>
+          </AdminFormSection>
 
-          <DialogBody className="space-y-4">
-            {addError && (
-              <div className="flex items-start gap-2.5 rounded-xl bg-destructive/10 border border-destructive/20 px-3.5 py-3 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>{addError}</span>
-              </div>
-            )}
-
-            {/* Identité */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Identité</Label>
-              <Input
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
-                placeholder="Nom complet (optionnel)"
-              />
+          <AdminFormSection title="Composition corporelle" description="Valeurs facultatives comprises entre 0 et 100 %." icon={<HeartPulse className="h-5 w-5" aria-hidden="true" />}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2"><Label htmlFor="add-fat">Masse grasse</Label><div className="relative"><Input id="add-fat" type="number" min={0} max={100} step={0.1} value={addBodyFat} onChange={(event) => setAddBodyFat(event.target.value)} className="h-11 bg-white pr-10" aria-invalid={addErrors.some((error) => error.field === "add-fat")} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">%</span></div></div>
+              <div className="space-y-2"><Label htmlFor="add-muscle">Masse musculaire</Label><div className="relative"><Input id="add-muscle" type="number" min={0} max={100} step={0.1} value={addMuscleMass} onChange={(event) => setAddMuscleMass(event.target.value)} className="h-11 bg-white pr-10" aria-invalid={addErrors.some((error) => error.field === "add-muscle")} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">%</span></div></div>
             </div>
+          </AdminFormSection>
 
-            {/* Contact */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Contact <span className="text-primary font-medium normal-case tracking-normal">· au moins un</span>
-              </Label>
-              <div className="grid grid-cols-2 gap-2.5">
-                <Input
-                  type="email"
-                  value={addEmail}
-                  onChange={(e) => setAddEmail(e.target.value)}
-                  placeholder="Email"
-                />
-                <Input
-                  value={addPhone}
-                  onChange={(e) => setAddPhone(e.target.value)}
-                  placeholder="Téléphone"
-                />
-              </div>
+          <AdminFormSection title="Objectifs" description="Ces champs reprennent les informations actuellement acceptées par l’API client." icon={<Target className="h-5 w-5" aria-hidden="true" />}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2"><Label htmlFor="add-objectif">Objectif principal</Label><Input id="add-objectif" value={addObjectif} onChange={(event) => setAddObjectif(event.target.value)} placeholder="Ex. Perte de poids" className="h-11 bg-white" /></div>
+              <div className="space-y-2"><Label htmlFor="add-level">Niveau d’activité</Label><select id="add-level" value={addFitnessLevel} onChange={(event) => setAddFitnessLevel(event.target.value as "A" | "B" | "")} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-600"><option value="">Non renseigné</option><option value="A">Niveau A</option><option value="B">Niveau B</option></select></div>
             </div>
+            <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><p>Les calories et macronutriments seront configurés depuis la fiche nutrition après la création, conformément au flux API existant.</p></div>
+          </AdminFormSection>
 
-            {/* Mot de passe */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mot de passe</Label>
-              <Input
-                type="password"
-                value={addPassword}
-                onChange={(e) => setAddPassword(e.target.value)}
-                placeholder="Min. 6 caractères"
-              />
+          <AdminFormSection title="Plan affecté" description="Choisissez un plan actif. Le niveau client est lu uniquement depuis le plan sélectionné." icon={<Dumbbell className="h-5 w-5" aria-hidden="true" />}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2"><Label htmlFor="plan-level-filter">Filtrer par niveau</Label><select id="plan-level-filter" value={addPlanLevelFilter} onChange={(event) => setAddPlanLevelFilter(event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-600"><option value="all">Tous les niveaux</option>{["INITIATE", "FIGHTER", "WARRIOR", "CHAMPION", "ELITE"].map((level) => <option key={level} value={level}>{level.charAt(0) + level.slice(1).toLowerCase()}</option>)}</select></div>
+              <div className="space-y-2"><Label htmlFor="plan-gender-filter">Filtrer par sexe</Label><select id="plan-gender-filter" value={addPlanGenderFilter} onChange={(event) => setAddPlanGenderFilter(event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-600"><option value="all">Tous</option><option value="M">Homme</option><option value="F">Femme</option></select></div>
             </div>
-
-            {/* Profil Physique (Sexe, Âge, Taille, Poids) */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Profil Physique</Label>
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <Label htmlFor="add-sexe" className="text-xs text-muted-foreground mb-1 block">Sexe</Label>
-                  <select
-                    id="add-sexe"
-                    value={addSexe}
-                    onChange={(e) => setAddSexe(e.target.value as any)}
-                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring animate-none"
-                  >
-                    <option value="">Sélectionner...</option>
-                    <option value="M">Homme (M)</option>
-                    <option value="F">Femme (F)</option>
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="add-age" className="text-xs text-muted-foreground mb-1 block">Âge</Label>
-                  <Input
-                    id="add-age"
-                    type="number"
-                    value={addAge}
-                    onChange={(e) => setAddAge(e.target.value)}
-                    placeholder="Ex: 28"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="add-taille" className="text-xs text-muted-foreground mb-1 block">Taille (cm)</Label>
-                  <Input
-                    id="add-taille"
-                    type="number"
-                    value={addTaille}
-                    onChange={(e) => setAddTaille(e.target.value)}
-                    placeholder="Ex: 175"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="add-poids" className="text-xs text-muted-foreground mb-1 block">Poids (kg)</Label>
-                  <Input
-                    id="add-poids"
-                    type="number"
-                    value={addPoids}
-                    onChange={(e) => setAddPoids(e.target.value)}
-                    placeholder="Ex: 78"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Objectif & Niveau */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="space-y-1.5">
-                <Label htmlFor="add-objectif" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Objectif</Label>
-                <Input
-                  id="add-objectif"
-                  value={addObjectif}
-                  onChange={(e) => setAddObjectif(e.target.value)}
-                  placeholder="Ex: Perte de poids"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="add-level" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Niveau d'activité</Label>
-                <select
-                  id="add-level"
-                  value={addFitnessLevel}
-                  onChange={(e) => setAddFitnessLevel(e.target.value as any)}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring animate-none"
-                >
-                  <option value="">Sélectionner...</option>
-                  <option value="A">Niveau A</option>
-                  <option value="B">Niveau B</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Composition Corporelle */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Composition Corporelle (%)</Label>
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <Label htmlFor="add-fat" className="text-xs text-muted-foreground mb-1 block">Masse grasse (%)</Label>
-                  <Input
-                    id="add-fat"
-                    type="number"
-                    step="0.1"
-                    value={addBodyFat}
-                    onChange={(e) => setAddBodyFat(e.target.value)}
-                    placeholder="Ex: 18.5"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="add-muscle" className="text-xs text-muted-foreground mb-1 block">Masse musculaire (%)</Label>
-                  <Input
-                    id="add-muscle"
-                    type="number"
-                    step="0.1"
-                    value={addMuscleMass}
-                    onChange={(e) => setAddMuscleMass(e.target.value)}
-                    placeholder="Ex: 42.1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Plan Selection */}
-            <div className="space-y-1.5 border-t border-border pt-4">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Plan d'entraînement (Optionnel)</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  value={addPlanSearch}
-                  onChange={(e) => setAddPlanSearch(e.target.value)}
-                  placeholder="Rechercher un plan..."
-                  className="pl-9"
-                />
-              </div>
-              {addPlansLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                </div>
-              ) : addPlans.length > 0 ? (
-                <div className="space-y-1.5 max-h-48 overflow-y-auto border border-border rounded-lg p-2">
-                  {addPlans.map((plan) => (
-                    <button
-                      key={plan._id}
-                      onClick={() => setAddSelectedPlanId(plan._id)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-md transition-colors text-sm",
-                        addSelectedPlanId === plan._id
-                          ? "bg-primary text-primary-foreground font-medium"
-                          : "bg-muted hover:bg-muted/80 text-foreground"
-                      )}
-                    >
-                      <div className="font-medium">{plan.name}</div>
-                      <div className="text-xs opacity-70">{plan.description || (plan as any).gender || 'Plan'}</div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground py-2">Aucun plan disponible</p>
-              )}
-              {addSelectedPlanId && (
-                <div className="text-xs text-muted-foreground">
-                  Plan sélectionné: <span className="font-medium text-foreground">{addPlans.find(p => p._id === addSelectedPlanId)?.name}</span>
-                </div>
-              )}
-            </div>
-          </DialogBody>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Annuler</Button>
-            <Button onClick={handleAddClient} disabled={addLoading} className="gap-2">
-              {addLoading
-                ? <><Loader2 className="h-4 w-4 animate-spin" />Création…</>
-                : <><UserPlus className="h-4 w-4" />Créer le client</>
-              }
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <AdminSearchableSelect items={filteredAddPlans} selectedKeys={addSelectedPlanId ? [addSelectedPlanId] : []} onSelectionChange={(keys) => setAddSelectedPlanId(keys[0] || "")} getKey={(plan) => plan._id} getLabel={(plan) => plan.name} getSearchText={(plan) => `${plan.name} ${plan.level || ""} ${plan.gender || ""}`} renderMeta={(plan) => `${plan.level ? plan.level.charAt(0) + plan.level.slice(1).toLowerCase() : "Niveau non renseigné"} · ${plan.gender === "M" ? "Homme" : plan.gender === "F" ? "Femme" : "Tous"} · ${plan.weeks?.length ?? 5} semaines`} placeholder="Rechercher un plan par nom…" emptyText="Aucun plan actif ne correspond aux filtres." loading={addPlansLoading} label="Plans actifs disponibles" />
+            <div className="rounded-xl border border-lime-200 bg-lime-50 p-4 text-sm text-lime-950" aria-live="polite"><p className="font-semibold">Niveau automatique : {selectedAddPlan?.level ? selectedAddPlan.level.charAt(0) + selectedAddPlan.level.slice(1).toLowerCase() : "Aucun plan sélectionné"}</p><p className="mt-1 text-lime-900">Le niveau est déterminé par le plan sélectionné et n’est jamais envoyé comme propriété éditable du client.</p></div>
+          </AdminFormSection>
+        </div>
+      </AdminModal>
     </div>
   );
 }

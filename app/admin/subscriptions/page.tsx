@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -446,7 +447,7 @@ export default function AdminSubscriptionsPage() {
             <DialogTitle>Assign subscription</DialogTitle>
             <p className="text-sm text-muted-foreground">Assign a level template to a user with start and end dates.</p>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label>User</Label>
               <select
@@ -502,7 +503,7 @@ export default function AdminSubscriptionsPage() {
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               />
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignOpen(false)}>Cancel</Button>
             <Button onClick={submitAssign} disabled={assignLoading || !assignUserId || !assignLevelId}>
@@ -521,7 +522,7 @@ export default function AdminSubscriptionsPage() {
               New end date for {renewModal && typeof renewModal.sub.userId === "object" && renewModal.sub.userId?.name}
             </p>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label>New end date</Label>
               <input
@@ -531,7 +532,7 @@ export default function AdminSubscriptionsPage() {
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               />
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenewModal(null)}>Cancel</Button>
             <Button onClick={submitRenew} disabled={renewLoading}>{renewLoading ? "Saving..." : "Renew"}</Button>
@@ -546,7 +547,7 @@ export default function AdminSubscriptionsPage() {
             <DialogTitle>Upgrade / Downgrade</DialogTitle>
             <p className="text-sm text-muted-foreground">Select new level template.</p>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label>New level</Label>
               <select
@@ -560,7 +561,7 @@ export default function AdminSubscriptionsPage() {
                 ))}
               </select>
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChangeLevelModal(null)}>Cancel</Button>
             <Button onClick={submitChangeLevel} disabled={changeLevelLoading || !changeLevelId}>
@@ -595,7 +596,7 @@ export default function AdminSubscriptionsPage() {
             )}
           </DialogHeader>
           {detailSub && (
-            <div className="space-y-4 py-4">
+            <DialogBody className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 <Badge variant={STATUS_VARIANTS[detailSub.effectiveStatus || detailSub.status] || "outline"}>
                   {detailSub.effectiveStatus || detailSub.status}
@@ -626,7 +627,7 @@ export default function AdminSubscriptionsPage() {
                   <Button size="sm" variant="destructive" onClick={() => { openCancel(detailSub as unknown as SubRow); setDetailOpen(false); }}>Cancel</Button>
                 </div>
               )}
-            </div>
+            </DialogBody>
           )}
         </DialogContent>
       </Dialog>

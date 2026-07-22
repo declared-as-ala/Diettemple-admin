@@ -12,13 +12,15 @@ import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 import { PageLoader } from "@/components/ui/loading"
-import { Plus, Search, Video, Edit, Trash2, Dumbbell, Play, Upload, X, Loader2 } from "lucide-react"
-import { Dialog, DialogBody, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { Plus, Video, Edit, Trash2, Dumbbell, Play, Upload, X, Loader2, Info, SlidersHorizontal, ImageIcon } from "lucide-react"
+import { Dialog, DialogBody, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { AdminFormErrorSummary, AdminFormSection, AdminModal, AdminModalFooter, type AdminFormError } from "@/components/admin"
+import { Textarea } from "@/components/ui/textarea"
 import { Field, FieldGroup } from "@/components/ui/field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Separator } from "@/components/ui/separator"
-import { getApiBaseUrl, getMediaBaseUrl } from "@/lib/apiBaseUrl"
+import { getMediaBaseUrl } from "@/lib/apiBaseUrl"
+import { ConfirmModal } from "@/components/shared/ConfirmModal"
 
 // Default muscle groups available even when backend has none
 const DEFAULT_MUSCLE_GROUPS: string[] = [
@@ -35,8 +37,77 @@ const DEFAULT_MUSCLE_GROUPS: string[] = [
   "calves",
 ]
 
+type ExerciseDraft = {
+  name: string
+  muscleGroup: string
+  description: string
+  sets: string
+  reps: string
+  restTime: string
+  defaultWeight: string
+  videoUrl: string
+}
+
+function ExerciseFormSections({
+  draft,
+  onChange,
+  muscleGroups,
+  errors,
+  disabled,
+  videoInputRef,
+  selectedVideoFile,
+  onVideoSelect,
+  onRemoveVideo,
+  uploadProgress,
+}: {
+  draft: ExerciseDraft
+  onChange: (patch: Partial<ExerciseDraft>) => void
+  muscleGroups: string[]
+  errors: AdminFormError[]
+  disabled?: boolean
+  videoInputRef?: React.RefObject<HTMLInputElement | null>
+  selectedVideoFile?: File | null
+  onVideoSelect?: (event: React.ChangeEvent<HTMLInputElement>) => void
+  onRemoveVideo?: () => void
+  uploadProgress?: number
+}) {
+  return (
+    <div className="space-y-5">
+      <AdminFormErrorSummary errors={errors} />
+      <AdminFormSection title="Informations générales" description="Donnez un nom clair et une description utile aux coachs." icon={<Info className="h-5 w-5" aria-hidden="true" />}>
+        <div className="space-y-2"><Label htmlFor="exercise-name">Nom de l’exercice *</Label><Input id="exercise-name" value={draft.name} onChange={(event) => onChange({ name: event.target.value })} placeholder="Ex. Développé couché" className="h-11 bg-white" aria-invalid={errors.some((error) => error.field === "exercise-name")} disabled={disabled} /></div>
+        <div className="space-y-2"><Label htmlFor="exercise-description">Description <span className="font-normal text-slate-500">(optionnel)</span></Label><Textarea id="exercise-description" value={draft.description} onChange={(event) => onChange({ description: event.target.value })} placeholder="Décrivez l’exécution, le placement et les points de vigilance." className="min-h-24 resize-y bg-white" disabled={disabled} /></div>
+      </AdminFormSection>
+
+      <AdminFormSection title="Classification" description="Le groupe musculaire est requis par le catalogue actuel." icon={<Dumbbell className="h-5 w-5" aria-hidden="true" />}>
+        <div className="space-y-2"><Label>Groupe musculaire *</Label><Select value={draft.muscleGroup || undefined} onValueChange={(value) => onChange({ muscleGroup: value })} disabled={disabled}><SelectTrigger className="h-11 w-full bg-white" aria-invalid={errors.some((error) => error.field === "exercise-muscle-group")}><SelectValue placeholder="Sélectionner le groupe musculaire" /></SelectTrigger><SelectContent>{muscleGroups.map((group) => <SelectItem key={group} value={group}>{group}</SelectItem>)}</SelectContent></Select></div>
+        <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Équipement, difficulté, type et sexe ne sont pas ajoutés ici car le contrat API actuel ne les expose pas dans ce workflow.</p>
+      </AdminFormSection>
+
+      <AdminFormSection title="Paramètres par défaut" description="Ces valeurs restent facultatives et pourront être ajustées dans chaque séance." icon={<SlidersHorizontal className="h-5 w-5" aria-hidden="true" />}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2"><Label htmlFor="exercise-sets">Séries</Label><Input id="exercise-sets" type="number" min={1} value={draft.sets} onChange={(event) => onChange({ sets: event.target.value })} placeholder="Optionnel" className="h-11 bg-white" disabled={disabled} /></div>
+          <div className="space-y-2"><Label htmlFor="exercise-reps">Répétitions</Label><Input id="exercise-reps" type="number" min={1} value={draft.reps} onChange={(event) => onChange({ reps: event.target.value })} placeholder="Optionnel" className="h-11 bg-white" disabled={disabled} /></div>
+          <div className="space-y-2"><Label htmlFor="exercise-rest">Repos</Label><div className="relative"><Input id="exercise-rest" type="number" min={0} value={draft.restTime} onChange={(event) => onChange({ restTime: event.target.value })} placeholder="Optionnel" className="h-11 bg-white pr-12" disabled={disabled} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">sec</span></div></div>
+          <div className="space-y-2"><Label htmlFor="exercise-weight">Poids conseillé</Label><div className="relative"><Input id="exercise-weight" type="number" min={0} step={0.5} value={draft.defaultWeight} onChange={(event) => onChange({ defaultWeight: event.target.value })} placeholder="Optionnel" className="h-11 bg-white pr-12" disabled={disabled} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">kg</span></div></div>
+        </div>
+      </AdminFormSection>
+
+      {onVideoSelect && (
+        <AdminFormSection title="Média" description="Ajoutez une vidéo de démonstration sans lecture automatique." icon={<ImageIcon className="h-5 w-5" aria-hidden="true" />}>
+          <input ref={videoInputRef} type="file" accept="video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm" onChange={onVideoSelect} className="sr-only" id="exercise-video-upload" disabled={disabled} />
+          <label htmlFor="exercise-video-upload" className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 text-center transition-colors hover:border-lime-500 hover:bg-lime-50 focus-within:ring-2 focus-within:ring-lime-600">
+            <Upload className="h-6 w-6 text-slate-500" aria-hidden="true" /><span className="text-sm font-medium text-slate-900">{selectedVideoFile?.name ?? "Choisir une vidéo"}</span><span className="text-xs text-slate-500">MP4, MOV, AVI ou WEBM · 100 Mo maximum</span>
+          </label>
+          {selectedVideoFile && <Button type="button" variant="outline" size="lg" onClick={onRemoveVideo} disabled={disabled}><X className="h-4 w-4" aria-hidden="true" /> Retirer la vidéo</Button>}
+          {disabled && selectedVideoFile && <div className="space-y-2" aria-live="polite"><div className="flex justify-between text-sm text-slate-600"><span>Création et envoi…</span><span>{uploadProgress ?? 0}%</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-lime-600 transition-[width]" style={{ width: `${uploadProgress ?? 0}%` }} /></div></div>}
+        </AdminFormSection>
+      )}
+    </div>
+  )
+}
+
 export default function ExercisesPage() {
-  const API_BASE_URL = getApiBaseUrl()
   const MEDIA_BASE_URL = getMediaBaseUrl()
   const { toast } = useToast()
   const [exercises, setExercises] = useState<any[]>([])
@@ -66,9 +137,13 @@ export default function ExercisesPage() {
   const selectAllRef = useRef<HTMLInputElement>(null)
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null)
   const [creatingExercise, setCreatingExercise] = useState(false)
+  const [updatingExercise, setUpdatingExercise] = useState(false)
+  const [exerciseErrors, setExerciseErrors] = useState<AdminFormError[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingBulk, setDeletingBulk] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<any>(null)
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false)
   const [newExercise, setNewExercise] = useState({
     name: "",
     muscleGroup: "",
@@ -154,12 +229,17 @@ export default function ExercisesPage() {
     })
     setSelectedVideoFile(null)
     setSelectedExercise(null)
+    setExerciseErrors([])
     if (createVideoInputRef.current) createVideoInputRef.current.value = ""
   }
 
   const handleCreateExercise = async () => {
-    if (!newExercise.name || !newExercise.muscleGroup) {
-      toast("Veuillez remplir les champs obligatoires", "error")
+    const errors: AdminFormError[] = []
+    if (!newExercise.name.trim()) errors.push({ field: "exercise-name", message: "Le nom de l’exercice est obligatoire." })
+    if (!newExercise.muscleGroup) errors.push({ field: "exercise-muscle-group", message: "Veuillez sélectionner un groupe musculaire." })
+    setExerciseErrors(errors)
+    if (errors.length > 0) {
+      requestAnimationFrame(() => document.getElementById(errors[0].field ?? "")?.focus())
       return
     }
     if (creatingExercise) return
@@ -189,7 +269,9 @@ export default function ExercisesPage() {
       resetForm()
       await loadData()
     } catch (error: any) {
-      toast(error.message || "Erreur lors de la création", "error")
+      const message = error.message || "Erreur lors de la création"
+      setExerciseErrors([{ message }])
+      toast(message, "error")
     } finally {
       setCreatingExercise(false)
       setUploadProgress(0)
@@ -212,11 +294,16 @@ export default function ExercisesPage() {
   }
 
   const handleUpdateExercise = async () => {
-    if (!selectedExercise || !newExercise.name || !newExercise.muscleGroup) {
-      toast("Veuillez remplir les champs obligatoires", "error")
+    const errors: AdminFormError[] = []
+    if (!newExercise.name.trim()) errors.push({ field: "exercise-name", message: "Le nom de l’exercice est obligatoire." })
+    if (!newExercise.muscleGroup) errors.push({ field: "exercise-muscle-group", message: "Veuillez sélectionner un groupe musculaire." })
+    setExerciseErrors(errors)
+    if (!selectedExercise || errors.length > 0) {
+      if (errors.length > 0) requestAnimationFrame(() => document.getElementById(errors[0].field ?? "")?.focus())
       return
     }
 
+    setUpdatingExercise(true)
     try {
       await api.updateExercise(selectedExercise._id, {
         name: newExercise.name,
@@ -233,7 +320,11 @@ export default function ExercisesPage() {
       resetForm()
       await loadData()
     } catch (error: any) {
-      toast(error.message || "Erreur lors de la mise à jour", "error")
+      const message = error.message || "Erreur lors de la mise à jour"
+      setExerciseErrors([{ message }])
+      toast(message, "error")
+    } finally {
+      setUpdatingExercise(false)
     }
   }
 
@@ -385,6 +476,17 @@ export default function ExercisesPage() {
   }
 
   const filteredExercises = exercises
+  const createExerciseDirty = Boolean(Object.values(newExercise).some(Boolean) || selectedVideoFile)
+  const editExerciseDirty = Boolean(selectedExercise && JSON.stringify(newExercise) !== JSON.stringify({
+    name: selectedExercise.name || "",
+    muscleGroup: selectedExercise.muscleGroup || "",
+    description: selectedExercise.description || "",
+    sets: selectedExercise.sets?.toString() || "",
+    reps: selectedExercise.reps?.toString() || "",
+    restTime: selectedExercise.restTime?.toString() || "",
+    defaultWeight: selectedExercise.defaultWeight?.toString() || "",
+    videoUrl: selectedExercise.videoUrl || "",
+  }))
 
   if (loading && exercises.length === 0 && !searchLoading) {
     return <PageLoader />
@@ -400,201 +502,20 @@ export default function ExercisesPage() {
           </h1>
           <p className="text-muted-foreground mt-2">Gérez les exercices et envoyez des vidéos</p>
         </div>
-        <Dialog open={showCreateDialog} onOpenChange={(open) => {
-          setShowCreateDialog(open)
-          if (!open) resetForm()
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvel exercice
-            </Button>
-          </DialogTrigger>
-          <DialogContent size="lg">
-            <DialogHeader>
-              <DialogTitle>Créer un exercice</DialogTitle>
-              <DialogDescription>
-                Ajoutez un exercice à la bibliothèque. Remplissez les champs requis puis cliquez sur créer.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogBody>
-              <FieldGroup>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-3">Informations de base</h3>
-                    <div className="space-y-4">
-                      <Field>
-                        <Label htmlFor="exercise-name">Nom de l'exercice *</Label>
-                        <Input
-                          id="exercise-name"
-                          value={newExercise.name}
-                          onChange={(e) => setNewExercise({ ...newExercise, name: e.target.value })}
-                          placeholder="Ex: Développé couché"
-                        />
-                      </Field>
-                      <Field>
-                        <Label>Groupe musculaire *</Label>
-                        <Select
-                          value={newExercise.muscleGroup || undefined}
-                          onValueChange={(value) => setNewExercise({ ...newExercise, muscleGroup: value })}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Sélectionner le groupe musculaire" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {muscleGroups.map((group) => (
-                              <SelectItem key={group} value={group}>
-                                {group}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      <Field>
-                        <Label htmlFor="description">Description</Label>
-                        <Input
-                          id="description"
-                          value={newExercise.description}
-                          onChange={(e) => setNewExercise({ ...newExercise, description: e.target.value })}
-                          placeholder="Description optionnelle"
-                        />
-                      </Field>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-3">Paramètres</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Field>
-                        <Label htmlFor="sets">Séries par défaut</Label>
-                        <Input
-                          id="sets"
-                          type="number"
-                          value={newExercise.sets}
-                          onChange={(e) => setNewExercise({ ...newExercise, sets: e.target.value })}
-                          placeholder="Optionnel"
-                        />
-                      </Field>
-                      <Field>
-                        <Label htmlFor="reps">Répétitions par défaut</Label>
-                        <Input
-                          id="reps"
-                          type="number"
-                          value={newExercise.reps}
-                          onChange={(e) => setNewExercise({ ...newExercise, reps: e.target.value })}
-                          placeholder="Optionnel"
-                        />
-                      </Field>
-                      <Field>
-                        <Label htmlFor="rest-time">Temps de repos (secondes)</Label>
-                        <Input
-                          id="rest-time"
-                          type="number"
-                          value={newExercise.restTime}
-                          onChange={(e) => setNewExercise({ ...newExercise, restTime: e.target.value })}
-                          placeholder="Optionnel"
-                        />
-                      </Field>
-                      <Field>
-                        <Label htmlFor="weight">Poids par défaut (kg)</Label>
-                        <Input
-                          id="weight"
-                          type="number"
-                          step="0.5"
-                          value={newExercise.defaultWeight}
-                          onChange={(e) => setNewExercise({ ...newExercise, defaultWeight: e.target.value })}
-                          placeholder="Optionnel"
-                        />
-                      </Field>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-3">Vidéo (optionnel)</h3>
-                    <Field>
-                      <input
-                        ref={createVideoInputRef}
-                        type="file"
-                        accept="video/*"
-                        onChange={handleVideoFileSelect}
-                        className="hidden"
-                        id="create-video-upload"
-                      />
-                      <Card className="border-2 border-dashed hover:border-primary transition-colors bg-muted/30">
-                        <CardContent className="p-4">
-                          <label
-                            htmlFor="create-video-upload"
-                            className="cursor-pointer flex flex-col items-center gap-2"
-                          >
-                            <Upload className="h-5 w-5 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">
-                              {selectedVideoFile ? selectedVideoFile.name : "Cliquez pour ajouter une vidéo (MP4, MOV, WEBM, max 100 Mo)"}
-                            </span>
-                          </label>
-                          {selectedVideoFile && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="mt-2 w-full"
-                              onClick={() => {
-                                setSelectedVideoFile(null)
-                                if (createVideoInputRef.current) createVideoInputRef.current.value = ""
-                              }}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Retirer la vidéo
-                            </Button>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </Field>
-                  </div>
-
-                  {creatingExercise && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>{selectedVideoFile ? "Création et envoi de la vidéo…" : "Création…"}</span>
-                        {selectedVideoFile && uploadProgress > 0 && <span>{uploadProgress}%</span>}
-                      </div>
-                      {(selectedVideoFile && uploadProgress > 0) && (
-                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full bg-primary transition-[width] duration-200 ease-out"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </FieldGroup>
-            </DialogBody>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={creatingExercise}>{fr.buttons.cancel}</Button>
-              </DialogClose>
-              <Button
-                onClick={handleCreateExercise}
-                type="button"
-                disabled={creatingExercise}
-                className="gap-2"
-              >
-                {creatingExercise ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Création…
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" />
-                    {fr.buttons.createExercise}
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setShowCreateDialog(true)}><Plus className="h-4 w-4" aria-hidden="true" /> Nouvel exercice</Button>
+        <AdminModal
+          open={showCreateDialog}
+          onOpenChange={(open) => { setShowCreateDialog(open); if (!open) resetForm() }}
+          title="Créer un exercice"
+          description="Ajoutez un exercice structuré à la bibliothèque de l’équipe."
+          icon={<Dumbbell className="h-5 w-5" aria-hidden="true" />}
+          size="lg"
+          busy={creatingExercise}
+          dirty={createExerciseDirty}
+          footer={(requestClose) => <AdminModalFooter status={createExerciseDirty ? "Modifications non enregistrées" : "Renseignez les informations de l’exercice"} statusTone={exerciseErrors.length > 0 ? "warning" : createExerciseDirty ? "neutral" : "valid"} submitLabel="Créer l’exercice" loadingLabel="Création…" loading={creatingExercise} onCancel={requestClose} onSubmit={() => void handleCreateExercise()} />}
+        >
+          <ExerciseFormSections draft={newExercise} onChange={(patch) => setNewExercise((previous) => ({ ...previous, ...patch }))} muscleGroups={muscleGroups} errors={exerciseErrors} disabled={creatingExercise} videoInputRef={createVideoInputRef} selectedVideoFile={selectedVideoFile} onVideoSelect={handleVideoFileSelect} onRemoveVideo={() => { setSelectedVideoFile(null); if (createVideoInputRef.current) createVideoInputRef.current.value = "" }} uploadProgress={uploadProgress} />
+        </AdminModal>
       </div>
 
       {/* Filters */}
@@ -669,7 +590,7 @@ export default function ExercisesPage() {
                 variant="destructive"
                 size="sm"
                 disabled={deletingBulk}
-                onClick={handleDeleteSelected}
+                onClick={() => setBulkDeleteConfirmOpen(true)}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 {deletingBulk ? "Suppression…" : "Tout supprimer"}
@@ -777,7 +698,7 @@ export default function ExercisesPage() {
                         size="icon"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                         disabled={deletingId !== null || deletingBulk}
-                        onClick={() => handleDeleteOne(exercise._id)}
+                        onClick={() => setDeleteTarget(exercise)}
                         title="Supprimer cet exercice"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -791,123 +712,22 @@ export default function ExercisesPage() {
         </CardContent>
       </Card>
 
-      {/* Edit Exercise Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={(open) => {
-        setShowEditDialog(open)
-        if (!open) resetForm()
-      }}>
-        <DialogContent size="lg">
-          <DialogHeader>
-            <DialogTitle>{fr.buttons.editExercise}</DialogTitle>
-            <DialogDescription>
-              Modifiez l&apos;exercice ci-dessous. Cliquez sur Enregistrer quand vous avez terminé.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogBody>
-            <FieldGroup>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Informations de base</h3>
-                  <div className="space-y-4">
-                    <Field>
-                      <Label htmlFor="edit-exercise-name">Nom de l'exercice *</Label>
-                      <Input
-                        id="edit-exercise-name"
-                        value={newExercise.name}
-                        onChange={(e) => setNewExercise({ ...newExercise, name: e.target.value })}
-                        placeholder="Ex: Développé couché"
-                      />
-                    </Field>
-                    <Field>
-                      <Label>Groupe musculaire *</Label>
-                      <Select
-                        value={newExercise.muscleGroup || undefined}
-                        onValueChange={(value) => setNewExercise({ ...newExercise, muscleGroup: value })}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Sélectionner le groupe musculaire" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {muscleGroups.map((group) => (
-                            <SelectItem key={group} value={group}>
-                              {group}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field>
-                      <Label htmlFor="edit-description">Description</Label>
-                      <Input
-                        id="edit-description"
-                        value={newExercise.description}
-                        onChange={(e) => setNewExercise({ ...newExercise, description: e.target.value })}
-                        placeholder="Description optionnelle"
-                      />
-                    </Field>
-                  </div>
-                </div>
+      <AdminModal
+        open={showEditDialog}
+        onOpenChange={(open) => { setShowEditDialog(open); if (!open) resetForm() }}
+        title="Modifier l’exercice"
+        description="Mettez à jour les informations sans modifier le contrat d’API existant."
+        icon={<Edit className="h-5 w-5" aria-hidden="true" />}
+        size="lg"
+        busy={updatingExercise}
+        dirty={editExerciseDirty}
+        footer={(requestClose) => <AdminModalFooter status={editExerciseDirty ? "Modifications non enregistrées" : "Aucune modification"} statusTone={exerciseErrors.length > 0 ? "warning" : editExerciseDirty ? "neutral" : "valid"} submitLabel="Enregistrer les modifications" loadingLabel="Enregistrement…" loading={updatingExercise} submitDisabled={!editExerciseDirty} onCancel={requestClose} onSubmit={() => void handleUpdateExercise()} />}
+      >
+        <ExerciseFormSections draft={newExercise} onChange={(patch) => setNewExercise((previous) => ({ ...previous, ...patch }))} muscleGroups={muscleGroups} errors={exerciseErrors} disabled={updatingExercise} />
+      </AdminModal>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Paramètres</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field>
-                      <Label htmlFor="edit-sets">Séries par défaut</Label>
-                      <Input
-                        id="edit-sets"
-                        type="number"
-                        value={newExercise.sets}
-                        onChange={(e) => setNewExercise({ ...newExercise, sets: e.target.value })}
-                        placeholder="Optionnel"
-                      />
-                    </Field>
-                    <Field>
-                      <Label htmlFor="edit-reps">Répétitions par défaut</Label>
-                      <Input
-                        id="edit-reps"
-                        type="number"
-                        value={newExercise.reps}
-                        onChange={(e) => setNewExercise({ ...newExercise, reps: e.target.value })}
-                        placeholder="Optionnel"
-                      />
-                    </Field>
-                    <Field>
-                      <Label htmlFor="edit-rest-time">Temps de repos (secondes)</Label>
-                      <Input
-                        id="edit-rest-time"
-                        type="number"
-                        value={newExercise.restTime}
-                        onChange={(e) => setNewExercise({ ...newExercise, restTime: e.target.value })}
-                        placeholder="Optionnel"
-                      />
-                    </Field>
-                    <Field>
-                      <Label htmlFor="edit-weight">Poids par défaut (kg)</Label>
-                      <Input
-                        id="edit-weight"
-                        type="number"
-                        step="0.5"
-                        value={newExercise.defaultWeight}
-                        onChange={(e) => setNewExercise({ ...newExercise, defaultWeight: e.target.value })}
-                        placeholder="Optionnel"
-                      />
-                    </Field>
-                  </div>
-                </div>
-              </div>
-            </FieldGroup>
-          </DialogBody>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">{fr.buttons.cancel}</Button>
-            </DialogClose>
-            <Button onClick={handleUpdateExercise} type="button" className="gap-2">
-              <Edit className="h-4 w-4" />
-              {fr.buttons.save}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmModal open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }} title="Supprimer l’exercice ?" description={deleteTarget ? `L’exercice « ${deleteTarget.name} » sera supprimé de la bibliothèque. Cette action peut affecter les séances qui l’utilisent.` : undefined} confirmLabel="Supprimer l’exercice" cancelLabel="Annuler" variant="destructive" loading={deletingId !== null} onConfirm={() => handleDeleteOne(deleteTarget._id)} />
+      <ConfirmModal open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen} title="Supprimer les exercices sélectionnés ?" description={`${selectedIds.size} exercice${selectedIds.size !== 1 ? "s" : ""} seront supprimés de la bibliothèque. Les séances associées peuvent être affectées.`} confirmLabel="Tout supprimer" cancelLabel="Annuler" variant="destructive" loading={deletingBulk} onConfirm={handleDeleteSelected} />
 
       {/* Video Upload Dialog - Redesigned */}
       <Dialog open={showVideoDialog} onOpenChange={(open) => {
@@ -922,7 +742,7 @@ export default function ExercisesPage() {
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Vidéo de l'exercice</DialogTitle>
+            <DialogTitle>Vidéo de l&apos;exercice</DialogTitle>
             <DialogDescription>
               Envoyez un fichier vidéo ou collez une URL pour {selectedExercise?.name || "cet exercice"}.
             </DialogDescription>
@@ -1058,7 +878,6 @@ export default function ExercisesPage() {
                 <video
                   src={selectedVideoUrl}
                   controls
-                  autoPlay
                   className="w-full h-full object-contain"
                 />
               </div>

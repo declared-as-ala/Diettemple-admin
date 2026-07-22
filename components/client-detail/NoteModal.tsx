@@ -1,14 +1,10 @@
 "use client"
 
-import {
-  Dialog, DialogBody, DialogContent, DialogDescription,
-  DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import { AdminFormSection, AdminModal, AdminModalFooter } from "@/components/admin"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, StickyNote } from "lucide-react"
+import { StickyNote } from "lucide-react"
 
 interface NoteModalProps {
   open: boolean
@@ -35,62 +31,11 @@ export default function NoteModal({
   saving,
   onSave,
 }: NoteModalProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <div className="flex items-start gap-4">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <StickyNote className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <DialogTitle>Ajouter une note coach</DialogTitle>
-              <DialogDescription className="mt-1">
-                Ajoutez une note ou observation pour ce client.
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-        <DialogBody className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium">Date</Label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => onDateChange(e.target.value)}
-              className="mt-1.5"
-            />
-          </div>
-          <div>
-            <Label className="text-sm font-medium">Titre <span className="text-muted-foreground font-normal">(optionnel)</span></Label>
-            <Input
-              value={title}
-              onChange={(e) => onTitleChange(e.target.value)}
-              placeholder="Ex: Check-in hebdomadaire"
-              className="mt-1.5"
-            />
-          </div>
-          <div>
-            <Label className="text-sm font-medium">Message <span className="text-destructive">*</span></Label>
-            <Textarea
-              value={message}
-              onChange={(e) => onMessageChange(e.target.value)}
-              placeholder="Votre note pour ce client…"
-              rows={4}
-              className="mt-1.5 resize-none"
-            />
-          </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Annuler
-          </Button>
-          <Button onClick={onSave} disabled={!message.trim() || saving} className="gap-2">
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {saving ? "Enregistrement…" : "Enregistrer la note"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+  return <AdminModal open={open} onOpenChange={onOpenChange} title="Ajouter une note coach" description="Ajoutez une observation datée au dossier du client." icon={<StickyNote className="h-5 w-5" aria-hidden="true" />} size="sm" busy={saving} dirty={Boolean(title || message)} footer={(requestClose) => <AdminModalFooter status={message.trim() ? "La note est prête à être enregistrée" : "Le message est obligatoire"} statusTone={message.trim() ? "valid" : "warning"} submitLabel="Enregistrer la note" loadingLabel="Enregistrement…" loading={saving} submitDisabled={!message.trim()} onCancel={requestClose} onSubmit={onSave} />}>
+    <AdminFormSection title="Contenu de la note">
+      <div className="space-y-2"><Label htmlFor="note-date">Date</Label><Input id="note-date" type="date" value={date} onChange={(event) => onDateChange(event.target.value)} className="h-11 bg-white" /></div>
+      <div className="space-y-2"><Label htmlFor="note-title">Titre <span className="font-normal text-slate-500">(optionnel)</span></Label><Input id="note-title" value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="Ex. Check-in hebdomadaire" className="h-11 bg-white" /></div>
+      <div className="space-y-2"><Label htmlFor="note-message">Message *</Label><Textarea id="note-message" value={message} onChange={(event) => onMessageChange(event.target.value)} placeholder="Votre note pour ce client…" rows={5} className="resize-y bg-white" /></div>
+    </AdminFormSection>
+  </AdminModal>
 }

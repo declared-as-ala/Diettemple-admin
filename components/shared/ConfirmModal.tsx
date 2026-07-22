@@ -43,8 +43,13 @@ export function ConfirmModal({
     onOpenChange(false);
   };
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (loading && !nextOpen) return;
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent size="sm" showCloseButton={!loading}>
         <DialogHeader>
           <div className="flex items-start gap-4">

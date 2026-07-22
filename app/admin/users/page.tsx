@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { fr } from "@/lib/i18n/fr"
+import { ConfirmModal } from "@/components/shared/ConfirmModal"
 import { useDebouncedSearch } from "@/hooks/useDebouncedSearch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -316,22 +317,7 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
-      <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <DialogContent size="sm" showCloseButton={!deleting}>
-          <DialogHeader>
-            <DialogTitle>{fr.pages.deleteUser}</DialogTitle>
-            <DialogDescription>{fr.deleteDialog.description}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>{fr.buttons.cancel}</Button>
-            <Button variant="destructive" disabled={deleting} onClick={() => deleteId && handleDelete(deleteId)} className="gap-2">
-              {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {deleting ? fr.status.deleting : fr.deleteDialog.confirm}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmModal open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null) }} title={fr.pages.deleteUser} description={fr.deleteDialog.description} confirmLabel={fr.deleteDialog.confirm} cancelLabel={fr.buttons.cancel} variant="destructive" loading={deleting} onConfirm={() => deleteId ? handleDelete(deleteId) : Promise.resolve()} />
     </div>
   )
 }

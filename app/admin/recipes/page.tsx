@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { ChefHat, Edit, Video, Utensils, Search, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { fr } from "@/lib/i18n/fr";
+import { ConfirmModal } from "@/components/shared/ConfirmModal";
 
 interface Recipe {
   _id: string;
@@ -39,6 +40,8 @@ export default function AdminRecipesPage() {
   const [prepFilter, setPrepFilter] = useState<"all" | "quick" | "medium" | "long" | "very_long">("all");
   const [batchFilter, setBatchFilter] = useState<"all" | "yes" | "no">("all");
   const [mealPrepDaysFilter, setMealPrepDaysFilter] = useState<"all" | "2" | "3" | "4">("all");
+  const [deleteTarget, setDeleteTarget] = useState<Recipe | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -53,14 +56,18 @@ export default function AdminRecipesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount load only
   }, []);
 
-  const removeRecipe = async (rid: string, title: string) => {
-    if (!confirm(`Supprimer « ${title} » ? Les favoris utilisateurs seront retirés.`)) return;
+  const removeRecipe = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
     try {
-      await api.deleteAdminRecipe(rid);
-      setRecipes((prev) => prev.filter((r) => r._id !== rid));
+      await api.deleteAdminRecipe(deleteTarget._id);
+      setRecipes((prev) => prev.filter((r) => r._id !== deleteTarget._id));
       toast("Recette supprimée", "success");
     } catch {
       toast("Suppression impossible", "error");
+      throw new Error("Suppression impossible");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -279,7 +286,7 @@ export default function AdminRecipesPage() {
                             variant="outline"
                             size="sm"
                             className="text-destructive hover:bg-destructive/10"
-                            onClick={() => removeRecipe(r._id, r.title)}
+                            onClick={() => setDeleteTarget(r)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -293,6 +300,7 @@ export default function AdminRecipesPage() {
           </CardContent>
         </Card>
       )}
+      <ConfirmModal open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }} title="Supprimer la recette ?" description={deleteTarget ? `La recette « ${deleteTarget.title} » sera supprimée et retirée des favoris utilisateurs.` : undefined} confirmLabel="Supprimer la recette" cancelLabel="Annuler" variant="destructive" loading={deleteLoading} onConfirm={removeRecipe} />
     </div>
   );
 }

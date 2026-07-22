@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api"
@@ -10,22 +10,22 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  AdminFormErrorSummary,
+  AdminFormSection,
+  AdminModal,
+  AdminModalFooter,
+  type AdminFormError,
+} from "@/components/admin"
 import {
   ArrowLeft,
+  BadgeCheck,
   CalendarDays,
   ChevronRight,
+  CircleCheck,
   Folder,
-  FolderOpen,
   LayoutGrid,
   Loader2,
   Plus,
@@ -38,6 +38,14 @@ import {
 } from "lucide-react"
 
 type FolderType = "male" | "female" | "unclassified" | null
+
+const PLAN_LEVELS = [
+  { value: "INITIATE", label: "Initiate", description: "Découverte et bases" },
+  { value: "FIGHTER", label: "Fighter", description: "Rythme régulier" },
+  { value: "WARRIOR", label: "Warrior", description: "Progression soutenue" },
+  { value: "CHAMPION", label: "Champion", description: "Performance avancée" },
+  { value: "ELITE", label: "Elite", description: "Exigence maximale" },
+] as const
 
 type LevelTemplateRow = {
   _id: string
@@ -79,8 +87,11 @@ export default function LevelTemplatesPage() {
   const [newGender, setNewGender] = useState<"M" | "F">("M")
   const [newDescription, setNewDescription] = useState("")
   const [newLevel, setNewLevel] = useState<'INITIATE' | 'FIGHTER' | 'WARRIOR' | 'CHAMPION' | 'ELITE'>('INITIATE')
+  const [newIsActive, setNewIsActive] = useState(true)
   const [newMinSessions, setNewMinSessions] = useState(3)
   const [newMaxSessions, setNewMaxSessions] = useState(5)
+  const [createErrors, setCreateErrors] = useState<AdminFormError[]>([])
+  const planNameRef = useRef<HTMLInputElement>(null)
   const [deleteTarget, setDeleteTarget] = useState<LevelTemplateRow | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -138,16 +149,20 @@ export default function LevelTemplatesPage() {
 
   const handleCreate = async () => {
     const name = newName.trim()
-    if (!name) {
-      toast("Indiquez un nom de plan", "error")
-      return
+    const errors: AdminFormError[] = []
+    if (!name) errors.push({ field: "plan-name", message: "Le nom du plan est obligatoire." })
+    if (!newLevel) errors.push({ field: "plan-level", message: "Veuillez sélectionner un niveau." })
+    if (newMinSessions < 1 || newMinSessions > 7) {
+      errors.push({ field: "minSessions", message: "Le minimum doit être compris entre 1 et 7." })
     }
-    if (!newLevel) {
-      toast("Sélectionnez un niveau", "error")
-      return
+    if (newMaxSessions < 1 || newMaxSessions > 7) {
+      errors.push({ field: "maxSessions", message: "Le maximum doit être compris entre 1 et 7." })
+    } else if (newMaxSessions < newMinSessions) {
+      errors.push({ field: "maxSessions", message: "Le maximum doit être supérieur ou égal au minimum." })
     }
-    if (newMaxSessions < newMinSessions) {
-      toast("Le maximum doit être ≥ au minimum", "error")
+    setCreateErrors(errors)
+    if (errors.length > 0) {
+      requestAnimationFrame(() => document.getElementById(errors[0].field ?? "")?.focus())
       return
     }
     setCreating(true)
@@ -156,6 +171,7 @@ export default function LevelTemplatesPage() {
         name,
         level: newLevel,
         gender: newGender,
+        isActive: newIsActive,
         description: newDescription.trim() || undefined,
         minimumSessionsPerWeek: newMinSessions,
         maximumSessionsPerWeek: newMaxSessions,
@@ -166,8 +182,10 @@ export default function LevelTemplatesPage() {
       setNewName("")
       setNewDescription("")
       setNewLevel('INITIATE')
+      setNewIsActive(true)
       setNewMinSessions(3)
       setNewMaxSessions(5)
+      setCreateErrors([])
       if (selectedFolder === "male") setNewGender("M")
       else if (selectedFolder === "female") setNewGender("F")
       else setNewGender("M")
@@ -178,7 +196,9 @@ export default function LevelTemplatesPage() {
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string }
-      toast(e.response?.data?.message || e.message || "Erreur lors de la création", "error")
+      const message = e.response?.data?.message || e.message || "Impossible de créer le plan. Vérifiez les informations puis réessayez."
+      setCreateErrors([{ message }])
+      toast(message, "error")
     } finally {
       setCreating(false)
     }
@@ -202,6 +222,12 @@ export default function LevelTemplatesPage() {
 
   const stats = folderStats()
   const currentList = filteredList()
+  const defaultGender = selectedFolder === "female" ? "F" : "M"
+  const createDirty = Boolean(
+    newName || newDescription || newLevel !== "INITIATE" || newGender !== defaultGender ||
+    !newIsActive || newMinSessions !== 3 || newMaxSessions !== 5
+  )
+  const hasCreateValidationError = createErrors.length > 0 || newMaxSessions < newMinSessions
 
   const folderSearchPlaceholder = !selectedFolder
     ? "Rechercher un dossier…"
@@ -269,7 +295,7 @@ export default function LevelTemplatesPage() {
             <p className="text-sm font-medium text-foreground">Aucun dossier</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
               Créez un plan puis ajoutez les séances sur les 5 semaines. Depuis la fiche client, vous pourrez affecter ce plan
-              à l'abonnement.
+              à l&apos;abonnement.
             </p>
             <Button className="mt-4" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -294,7 +320,7 @@ export default function LevelTemplatesPage() {
                 <h3 className="text-lg font-bold text-foreground mb-1">Dossier Hommes</h3>
                 <p className="text-sm text-muted-foreground mb-3">{stats.male.sessions} séance{stats.male.sessions !== 1 ? "s" : ""}</p>
                 <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
-                  Plans d'entraînement masculins
+                  Plans d&apos;entraînement masculins
                 </p>
                 <span className="inline-flex items-center gap-1 text-sm font-medium text-yellow-600 dark:text-yellow-400 group-hover:underline">
                   Ouvrir le dossier
@@ -318,7 +344,7 @@ export default function LevelTemplatesPage() {
                 <h3 className="text-lg font-bold text-foreground mb-1">Dossier Femmes</h3>
                 <p className="text-sm text-muted-foreground mb-3">{stats.female.sessions} séance{stats.female.sessions !== 1 ? "s" : ""}</p>
                 <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
-                  Plans d'entraînement féminins
+                  Plans d&apos;entraînement féminins
                 </p>
                 <span className="inline-flex items-center gap-1 text-sm font-medium text-pink-600 dark:text-pink-400 group-hover:underline">
                   Ouvrir le dossier
@@ -450,167 +476,160 @@ export default function LevelTemplatesPage() {
         </div>
       )}
 
-<Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nouveau plan</DialogTitle>
-            <DialogDescription>
-              {selectedFolder
-                ? `Nouveau plan pour ${selectedFolder === "male" ? "hommes" : selectedFolder === "female" ? "femmes" : "genre non classé"}. Ajoutez les séances sur les 5 semaines.`
-                : "Nom et genre (homme / femme) identifient le plan côté serveur. Vous pourrez ensuite remplir les 5 semaines."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogBody className="space-y-4 pt-0">
-            <div className="space-y-2">
-              <Label htmlFor="plan-name">Nom du plan</Label>
-              <Input
-                id="plan-name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Ex. Fighter printemps"
-                autoFocus
-              />
-            </div>
-            {selectedFolder === "unclassified" ? (
-              <div className="space-y-2">
-                <Label>Genre</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={newGender === "M" ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setNewGender("M")}
-                    disabled={creating}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Homme
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={newGender === "F" ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setNewGender("F")}
-                    disabled={creating}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Femme
-                  </Button>
-                </div>
-              </div>
-            ) : selectedFolder ? (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
-                {selectedFolder === "male" ? (
-                  <>
-                    <User className="h-4 w-4 text-yellow-600" />
-                    <span className="text-sm font-medium">Plan masculin</span>
-                  </>
-                ) : (
-                  <>
-                    <Users className="h-4 w-4 text-pink-600" />
-                    <span className="text-sm font-medium">Plan féminin</span>
-                  </>
+      <AdminModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        title="Créer un plan"
+        description="Configurez les informations générales, le niveau et le rythme du programme."
+        icon={<LayoutGrid className="h-5 w-5" aria-hidden="true" />}
+        size="lg"
+        busy={creating}
+        dirty={createDirty}
+        initialFocusRef={planNameRef}
+        footer={(requestClose) => (
+          <AdminModalFooter
+            status={createDirty ? "Modifications non enregistrées" : "Renseignez les informations du plan"}
+            statusTone={hasCreateValidationError ? "warning" : createDirty ? "neutral" : "valid"}
+            submitLabel="Créer le plan"
+            loadingLabel="Création…"
+            loading={creating}
+            onCancel={requestClose}
+            onSubmit={() => void handleCreate()}
+          />
+        )}
+      >
+        <div className="space-y-5">
+          <AdminFormErrorSummary errors={createErrors} />
+
+          <AdminFormSection
+            title="Informations générales"
+            description="Identifiez le programme et définissez sa visibilité."
+            icon={<BadgeCheck className="h-5 w-5" aria-hidden="true" />}
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="plan-name">Nom du plan *</Label>
+                <Input
+                  ref={planNameRef}
+                  id="plan-name"
+                  value={newName}
+                  onChange={(event) => setNewName(event.target.value)}
+                  placeholder="Ex. Plan Fitness Beginner"
+                  aria-invalid={createErrors.some((error) => error.field === "plan-name")}
+                  disabled={creating}
+                />
+                {createErrors.some((error) => error.field === "plan-name") && (
+                  <p className="text-sm text-red-700">Le nom du plan est obligatoire.</p>
                 )}
               </div>
-            ) : (
               <div className="space-y-2">
-                <Label>Genre</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={newGender === "M" ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setNewGender("M")}
-                    disabled={creating}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Homme
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={newGender === "F" ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setNewGender("F")}
-                    disabled={creating}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Femme
-                  </Button>
+                <Label>Statut</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="button" variant={newIsActive ? "default" : "outline"} onClick={() => setNewIsActive(true)} aria-pressed={newIsActive} disabled={creating}>Actif</Button>
+                  <Button type="button" variant={!newIsActive ? "default" : "outline"} onClick={() => setNewIsActive(false)} aria-pressed={!newIsActive} disabled={creating}>Inactif</Button>
                 </div>
               </div>
-            )}
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="plan-desc">Description (optionnel)</Label>
-              <Input
+              <Label>Sexe / dossier</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button type="button" variant={newGender === "M" ? "default" : "outline"} size="lg" className="justify-start" onClick={() => setNewGender("M")} aria-pressed={newGender === "M"} disabled={creating || selectedFolder === "female"}>
+                  <User className="h-4 w-4" aria-hidden="true" /> Homme
+                </Button>
+                <Button type="button" variant={newGender === "F" ? "default" : "outline"} size="lg" className="justify-start" onClick={() => setNewGender("F")} aria-pressed={newGender === "F"} disabled={creating || selectedFolder === "male"}>
+                  <Users className="h-4 w-4" aria-hidden="true" /> Femme
+                </Button>
+              </div>
+              {selectedFolder && selectedFolder !== "unclassified" && (
+                <p className="text-sm text-slate-600">Le dossier courant détermine le sexe de ce plan.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="plan-desc">Description <span className="font-normal text-slate-500">(optionnel)</span></Label>
+              <Textarea
                 id="plan-desc"
                 value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Courte note pour l'équipe"
+                onChange={(event) => setNewDescription(event.target.value)}
+                placeholder="Décrivez l’objectif, le public cible et la structure du plan."
+                className="min-h-24 resize-y"
+                disabled={creating}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="level">Niveau du plan *</Label>
-              <select
-                id="level"
-                value={newLevel}
-                onChange={(e) => setNewLevel(e.target.value as 'INITIATE' | 'FIGHTER' | 'WARRIOR' | 'CHAMPION' | 'ELITE')}
-                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-              >
-                <option value="INITIATE">Initiate</option>
-                <option value="FIGHTER">Fighter</option>
-                <option value="WARRIOR">Warrior</option>
-                <option value="CHAMPION">Champion</option>
-                <option value="ELITE">Elite</option>
-              </select>
+          </AdminFormSection>
+
+          <AdminFormSection
+            id="plan-level"
+            title="Classification"
+            description="Le niveau reste distinct du nom et déterminera le niveau des clients affectés."
+            icon={<CircleCheck className="h-5 w-5" aria-hidden="true" />}
+          >
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5" role="radiogroup" aria-label="Niveau du plan">
+              {PLAN_LEVELS.map((level) => {
+                const selected = newLevel === level.value
+                return (
+                  <button
+                    key={level.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setNewLevel(level.value)}
+                    disabled={creating}
+                    className={cn(
+                      "relative min-h-24 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600 focus-visible:ring-offset-2 disabled:opacity-50",
+                      selected ? "border-lime-500 bg-lime-50 text-slate-950" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    )}
+                  >
+                    {selected && <CircleCheck className="absolute right-2 top-2 h-4 w-4 text-lime-700" aria-hidden="true" />}
+                    <span className="block pr-5 text-sm font-semibold">{level.label}</span>
+                    <span className="mt-1 block text-xs leading-4 text-slate-500">{level.description}</span>
+                  </button>
+                )
+              })}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="minSessions">Minimum jours/semaine</Label>
-              <input
-                id="minSessions"
-                type="number"
-                min="1"
-                max="7"
-                value={newMinSessions}
-                onChange={(e) => setNewMinSessions(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-              />
+          </AdminFormSection>
+
+          <AdminFormSection
+            title="Durée et fréquence"
+            description="Le planning est créé sur cinq semaines avec une fréquence cible modifiable."
+            icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />}
+          >
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="plan-weeks">Nombre de semaines</Label>
+                <Input id="plan-weeks" value="5" readOnly aria-readonly="true" className="bg-slate-100 text-slate-700" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="minSessions">Séances minimum / semaine</Label>
+                <Input id="minSessions" type="number" min={1} max={7} value={newMinSessions} onChange={(event) => setNewMinSessions(Number(event.target.value) || 1)} aria-invalid={createErrors.some((error) => error.field === "minSessions")} disabled={creating} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxSessions">Séances maximum / semaine</Label>
+                <Input id="maxSessions" type="number" min={1} max={7} value={newMaxSessions} onChange={(event) => setNewMaxSessions(Number(event.target.value) || 1)} aria-invalid={newMaxSessions < newMinSessions || createErrors.some((error) => error.field === "maxSessions")} disabled={creating} />
+                {newMaxSessions < newMinSessions && <p className="text-sm text-red-700">Le maximum doit être supérieur ou égal au minimum.</p>}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="maxSessions">Maximum jours/semaine</Label>
-              <input
-                id="maxSessions"
-                type="number"
-                min="1"
-                max="7"
-                value={newMaxSessions}
-                onChange={(e) => setNewMaxSessions(parseInt(e.target.value) || 7)}
-                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-              />
-              {newMaxSessions < newMinSessions && (
-                <p className="text-sm text-red-500">Le maximum doit être ≥ au minimum</p>
-              )}
+            <div className="rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-950" aria-live="polite">
+              Ce plan dure 5 semaines avec {newMinSessions} à {newMaxSessions} séances par semaine.
             </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>
-              Annuler
-            </Button>
-            <Button type="button" onClick={() => void handleCreate()} disabled={creating}>
-              {creating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Création…
-                </>
-              ) : (
-                "Créer et ouvrir le planning"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </AdminFormSection>
+
+          <AdminFormSection
+            title="Image et présentation"
+            description="L’illustration de niveau existante sera utilisée automatiquement. Aucun envoi d’image supplémentaire n’est requis."
+            icon={<LayoutGrid className="h-5 w-5" aria-hidden="true" />}
+          >
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-slate-900">Présentation automatique</p>
+                <p className="mt-1 text-sm text-slate-600">Niveau sélectionné : {PLAN_LEVELS.find((level) => level.value === newLevel)?.label}</p>
+              </div>
+              <Badge variant="outline">5 semaines</Badge>
+            </div>
+          </AdminFormSection>
+        </div>
+      </AdminModal>
 
       <ConfirmModal
         open={!!deleteTarget}
