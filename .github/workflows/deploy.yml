@@ -86,8 +86,10 @@ jobs:
             docker compose pull admin
             docker compose up -d admin
             
-            # Start other services if not running
-            docker compose up -d mongodb caddy
+            # Keep shared infrastructure running. Caddy does not automatically
+            # reload a changed bind-mounted Caddyfile, so restart it explicitly.
+            docker compose up -d mongodb minio caddy
+            docker compose restart caddy
             
             # Cleanup old Docker images
             docker image prune -f
