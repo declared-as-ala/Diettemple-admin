@@ -736,7 +736,8 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
         setLoadingAltExercises(false)
       }
     }
-    loadAllExercises()
+    const debounceTimer = setTimeout(loadAllExercises, 300)
+    return () => clearTimeout(debounceTimer)
   }, [altSearchQuery])
 
   const apply = () => {
@@ -759,79 +760,85 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
 
   return (
     <Dialog open onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span className="h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-background to-muted/20">
+        <DialogHeader className="border-b border-border/50 pb-4">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground text-sm font-bold flex items-center justify-center shrink-0">
               {index + 1}
-            </span>
-            {exercise?.name ?? "Exercice"}
-          </DialogTitle>
-          {exercise?.muscleGroup && (
-            <p className="text-xs text-muted-foreground mt-0.5">{exercise.muscleGroup}</p>
-          )}
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-bold text-foreground">{exercise?.name ?? "Exercice"}</DialogTitle>
+              {exercise?.muscleGroup && (
+                <p className="text-xs text-muted-foreground mt-1.5 font-medium">{exercise.muscleGroup.toUpperCase()}</p>
+              )}
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
+        <div className="space-y-6 py-4">
 
           {/* Sets */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Séries</Label>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setSets(s => Math.max(1, s - 1))} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center font-bold text-lg">−</button>
-              <Input type="number" min={1} value={sets} onChange={e => setSets(Number(e.target.value) || 1)} className="text-center font-bold h-8" />
-              <button onClick={() => setSets(s => s + 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center font-bold text-lg">+</button>
+          <div className="space-y-2">
+            <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Séries</Label>
+            <div className="flex items-center gap-3 bg-muted/40 p-3 rounded-lg border border-border/50">
+              <button onClick={() => setSets(s => Math.max(1, s - 1))} className="h-9 w-9 rounded-lg border border-border bg-background hover:bg-primary/10 hover:border-primary flex items-center justify-center font-bold text-lg transition-colors">−</button>
+              <Input type="number" min={1} value={sets} onChange={e => setSets(Number(e.target.value) || 1)} className="text-center font-bold text-lg h-9 bg-background border-border flex-1" />
+              <button onClick={() => setSets(s => s + 1)} className="h-9 w-9 rounded-lg border border-border bg-background hover:bg-primary/10 hover:border-primary flex items-center justify-center font-bold text-lg transition-colors">+</button>
             </div>
           </div>
 
           {/* Target reps */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Répétitions cibles</Label>
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                <input type="checkbox" checked={useRange} onChange={e => setUseRange(e.target.checked)} className="rounded border-border h-3 w-3" />
-                Fourchette (min–max)
+          <div className="space-y-3 bg-green-500/5 border border-green-500/20 rounded-xl p-4">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Répétitions cibles</Label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <input type="checkbox" checked={useRange} onChange={e => setUseRange(e.target.checked)} className="rounded border-border h-4 w-4" />
+                <span className="font-medium">Plage (min–max)</span>
               </label>
             </div>
             {useRange ? (
-              <div className="flex gap-2 items-center">
-                <Input type="number" placeholder="Min." value={typeof targetReps === "object" ? targetReps.min : ""} onChange={e => setTargetReps(prev => ({ min: Number(e.target.value) || 0, max: typeof prev === "object" ? prev.max : 12 }))} className="text-center" />
-                <span className="text-muted-foreground">–</span>
-                <Input type="number" placeholder="Max." value={typeof targetReps === "object" ? targetReps.max : ""} onChange={e => setTargetReps(prev => ({ min: typeof prev === "object" ? prev.min : 8, max: Number(e.target.value) || 12 }))} className="text-center" />
+              <div className="flex gap-3 items-center">
+                <Input type="number" placeholder="Min." value={typeof targetReps === "object" ? targetReps.min : ""} onChange={e => setTargetReps(prev => ({ min: Number(e.target.value) || 0, max: typeof prev === "object" ? prev.max : 12 }))} className="text-center font-semibold h-9 bg-background border-border/50" />
+                <span className="text-muted-foreground font-bold">à</span>
+                <Input type="number" placeholder="Max." value={typeof targetReps === "object" ? targetReps.max : ""} onChange={e => setTargetReps(prev => ({ min: typeof prev === "object" ? prev.min : 8, max: Number(e.target.value) || 12 }))} className="text-center font-semibold h-9 bg-background border-border/50" />
               </div>
             ) : (
-              <Input type="number" value={typeof targetReps === "number" ? targetReps : ""} onChange={e => setTargetReps(Number(e.target.value) || 10)} className="text-center w-32" />
+              <Input type="number" value={typeof targetReps === "number" ? targetReps : ""} onChange={e => setTargetReps(Number(e.target.value) || 10)} className="text-center font-semibold text-lg h-9 bg-background border-border/50 w-24" />
             )}
           </div>
 
           {/* Starting weight */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Poids de départ conseillé (kg)</Label>
-            <Input type="number" step={0.5} value={recommendedWeight} onChange={e => setRecommendedWeight(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Optionnel" className="w-32" />
+          <div className="space-y-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+            <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Poids de départ (kg)</Label>
+            <div className="flex gap-2 items-center">
+              <Input type="number" step={0.5} value={recommendedWeight} onChange={e => setRecommendedWeight(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Ex: 20 kg" className="h-9 bg-background border-border/50 font-semibold" />
+              <span className="text-sm text-muted-foreground font-medium">kg</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Laissez vide si non applicable</p>
           </div>
 
           {/* Alternatives */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exercices alternatifs (max 3)</Label>
-              <span className="text-[10px] text-muted-foreground">{allExercisesForAlternatives.length} disponibles</span>
+          <div className="space-y-3 bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Exercices alternatifs</Label>
+              <span className="text-xs font-semibold bg-blue-500/10 text-blue-600 px-2.5 py-1 rounded-full">{allExercisesForAlternatives.length} dispo</span>
             </div>
             {/* Search for alternatives */}
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Rechercher alternatives…"
                 value={altSearchQuery}
                 onChange={e => setAltSearchQuery(e.target.value)}
-                className="pl-7 h-8 text-sm"
+                className="pl-9 h-9 text-sm bg-background/80 border-border/50"
               />
             </div>
             {loadingAltExercises ? (
-              <div className="text-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+              <div className="text-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary" />
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 {[0, 1, 2].map(i => (
                   <select
                     key={i}
@@ -841,7 +848,7 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
                       next[i] = e.target.value
                       setAlternatives(next.slice(0, 3))
                     }}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-border/60 bg-background px-3 py-2.5 text-sm font-medium hover:border-primary/40 focus:border-primary transition-colors"
                   >
                     <option value="">— Aucun —</option>
                     {allExercisesForAlternatives
@@ -851,22 +858,22 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
                       ))}
                   </select>
                 ))}
-                {alternatives.length > 0 && (
-                  <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                    <p className="font-medium">Sélectionnées:</p>
-                    <div className="space-y-1">
+                {alternatives.filter(Boolean).length > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-blue-500/20 space-y-2">
+                    <p className="text-xs font-bold text-foreground">Sélectionnées ({alternatives.filter(Boolean).length}/3):</p>
+                    <div className="space-y-1.5">
                       {alternatives.map((altId, i) => {
                         const altEx = allExercisesForAlternatives.find(e => e._id === altId)
                         return altEx ? (
-                          <div key={i} className="flex items-center justify-between bg-muted/30 px-2 py-1 rounded text-sm">
+                          <div key={i} className="flex items-center justify-between bg-primary/10 px-3 py-2 rounded-lg border border-primary/20 text-sm font-medium text-foreground hover:bg-primary/15 transition-colors">
                             <span>{altEx.name}</span>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-4 w-4 -mr-1"
+                              className="h-5 w-5 -mr-1 text-muted-foreground hover:text-destructive"
                               onClick={() => setAlternatives(alternatives.filter((_, idx) => idx !== i))}
                             >
-                              <X className="h-3 w-3" />
+                              <X className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         ) : null
@@ -879,37 +886,37 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
           </div>
 
           {/* Progression rules */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Règles de progression</Label>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={addProgressionRule}>
-                <Plus className="h-3 w-3" /> Ajouter
+          <div className="space-y-3 bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm font-bold text-foreground uppercase tracking-wider">Règles de progression</Label>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-purple-500/30 hover:bg-purple-500/10" onClick={addProgressionRule}>
+                <Plus className="h-3.5 w-3.5" /> Ajouter règle
               </Button>
             </div>
             {config.progressionRules.length === 0 && (
-              <p className="text-xs text-muted-foreground py-2 text-center border border-dashed border-border rounded-lg">
-                Aucune règle de progression
+              <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-purple-500/20 rounded-lg bg-background/50">
+                Aucune règle définie. Ajoutez des automatisations de progression.
               </p>
             )}
-            <div className="space-y-2">
+            <div className="space-y-3">
               {config.progressionRules.map((rule, idx) => (
-                <div key={idx} className="rounded-lg border border-border bg-card/50 p-3 space-y-2">
+                <div key={idx} className="rounded-lg border border-purple-500/20 bg-background/50 p-3 space-y-2.5 hover:border-purple-500/40 transition-colors">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <select value={rule.condition} onChange={e => updateProgressionRule(idx, { condition: e.target.value })} className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+                    <select value={rule.condition} onChange={e => updateProgressionRule(idx, { condition: e.target.value })} className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium">
                       {CONDITION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    <Input type="number" className="w-16 h-8 text-sm" value={typeof rule.value === "number" ? rule.value : (rule.value as any)?.max} onChange={e => updateProgressionRule(idx, { value: Number(e.target.value) || 0 })} />
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeProgressionRule(idx)}>
+                    <Input type="number" className="w-16 h-8 text-sm font-semibold" value={typeof rule.value === "number" ? rule.value : (rule.value as any)?.max} onChange={e => updateProgressionRule(idx, { value: Number(e.target.value) || 0 })} />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0 hover:bg-destructive/10" onClick={() => removeProgressionRule(idx)}>
                       <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <select value={rule.action} onChange={e => updateProgressionRule(idx, { action: e.target.value })} className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+                    <select value={rule.action} onChange={e => updateProgressionRule(idx, { action: e.target.value })} className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium">
                       {ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    <Input type="number" step={0.5} className="w-20 h-8 text-sm" placeholder="±kg" value={rule.weightChange ?? ""} onChange={e => updateProgressionRule(idx, { weightChange: e.target.value === "" ? undefined : Number(e.target.value) })} />
+                    <Input type="number" step={0.5} className="w-20 h-8 text-sm font-semibold" placeholder="±kg" value={rule.weightChange ?? ""} onChange={e => updateProgressionRule(idx, { weightChange: e.target.value === "" ? undefined : Number(e.target.value) })} />
                   </div>
-                  <Input className="h-8 text-sm" placeholder="Message affiché à l'athlète" value={rule.message ?? ""} onChange={e => updateProgressionRule(idx, { message: e.target.value })} />
+                  <Input className="h-8 text-sm bg-background border-border/50" placeholder="Message affiché à l'athlète" value={rule.message ?? ""} onChange={e => updateProgressionRule(idx, { message: e.target.value })} />
                 </div>
               ))}
             </div>
@@ -917,13 +924,13 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
 
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="destructive" size="sm" onClick={() => { onRemove(); onClose() }}>
-            <X className="h-3.5 w-3.5 mr-1" /> Retirer
+        <DialogFooter className="gap-2 border-t border-border/50 pt-4 mt-2">
+          <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => { onRemove(); onClose() }}>
+            <X className="h-4 w-4 mr-1.5" /> Retirer
           </Button>
-          <DialogClose asChild><Button variant="outline" size="sm">Annuler</Button></DialogClose>
-          <Button size="sm" onClick={apply}>
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Appliquer
+          <DialogClose asChild><Button variant="outline" size="sm" className="border-border/50">Annuler</Button></DialogClose>
+          <Button size="sm" className="bg-gradient-to-r from-primary to-primary/80 gap-1.5" onClick={apply}>
+            <CheckCircle2 className="h-4 w-4" /> Appliquer
           </Button>
         </DialogFooter>
       </DialogContent>
