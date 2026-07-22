@@ -157,7 +157,7 @@ export default function AdminSubscriptionsPage() {
     setAssignStart(format(new Date(), "yyyy-MM-dd"));
     setAssignEnd(format(addDays(new Date(), 30), "yyyy-MM-dd"));
     setAssignNote("");
-    api.getUsers({ limit: 200 }).then((data: { users?: { _id: string; name?: string; email?: string }[] }) => {
+    api.getUsers({ limit: 100 }).then((data: { users?: { _id: string; name?: string; email?: string }[] }) => {
       setUsersForAssign(data.users || []);
     });
   };
