@@ -10,6 +10,28 @@ services:
     networks:
       - diettemple_net
 
+  minio:
+    image: minio/minio:latest
+    container_name: diettemple_minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-diettemple}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-change-this-secret}
+    volumes:
+      - minio_data:/data
+    expose:
+      - "9000"
+      - "9001"
+    networks:
+      - diettemple_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
   backend:
     image: ghcr.io/declared-as-ala/diettemple-backend:latest
     container_name: diettemple_backend
@@ -59,11 +81,13 @@ services:
       - backend
       - website
       - admin
+      - minio
     networks:
       - diettemple_net
 
 volumes:
   mongo_data:
+  minio_data:
   caddy_data:
   caddy_config:
 

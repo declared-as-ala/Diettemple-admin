@@ -1,16 +1,48 @@
-# ==============================================================================
-# DietTemple Caddy Routing Configuration (Admin Sync)
-# ==============================================================================
-
-# --- OPTION A: Domain Names (Production with Automatic HTTPS) ---
-diettemple.tn, www.diettemple.tn {
-    reverse_proxy website:3000
-}
-
-admin.diettemple.tn {
-    reverse_proxy admin:3000
+# DietTemple production routing. Media paths must reach MinIO directly so
+# browsers receive the real MIME type, content length, and byte-range support.
+{
+	email admin@diettemple.tn
 }
 
 api.diettemple.tn {
-    reverse_proxy backend:5000
+	handle /media/* {
+		reverse_proxy minio:9000 {
+			header_up Host minio:9000
+		}
+		header {
+			Access-Control-Allow-Origin "*"
+			Cache-Control "public, max-age=31536000, immutable"
+			X-Content-Type-Options "nosniff"
+		}
+	}
+
+	handle /videos/* {
+		reverse_proxy minio:9000 {
+			header_up Host minio:9000
+		}
+		header {
+			Access-Control-Allow-Origin "*"
+			Accept-Ranges "bytes"
+			Cache-Control "public, max-age=2592000"
+			X-Content-Type-Options "nosniff"
+		}
+	}
+
+	handle {
+		reverse_proxy backend:5000
+	}
+}
+
+admin.diettemple.tn {
+	reverse_proxy admin:3000
+}
+
+minio.diettemple.tn {
+	reverse_proxy minio:9001 {
+		header_up Host minio:9001
+	}
+}
+
+diettemple.tn, www.diettemple.tn {
+	reverse_proxy website:3000
 }
