@@ -158,7 +158,7 @@ export default function SessionTemplateBuilderPage() {
 
   const loadExercises = useCallback(async () => {
     try {
-      const data = await api.getExercises({ limit: 200, search: search || undefined, muscleGroup: muscleGroup || undefined })
+      const data = await api.getExercises({ limit: 100, search: search || undefined, muscleGroup: muscleGroup || undefined })
       setExercises(data.exercises || [])
     } catch { setExercises([]) }
   }, [search, muscleGroup])
