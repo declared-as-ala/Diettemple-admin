@@ -81,7 +81,15 @@ class ApiClient {
     return response.data;
   }
 
-  async updateLevelTemplateWeeks(id: string, weeks: unknown[]) {
+  async updateLevelTemplateWeeks(
+    id: string,
+    weeks: Array<{
+      weekNumber: number;
+      isRestWeek: boolean;
+      minimumCompletedSessions: number;
+      sessions: Array<{ sessionTemplateId: string; sessionOrder: number; recommendedDayOffset: number; restDaysAfterPrevious?: number }>;
+    }>
+  ) {
     const response = await this.client.put(`/admin/level-templates/${id}/weeks`, { weeks });
     return response.data;
   }

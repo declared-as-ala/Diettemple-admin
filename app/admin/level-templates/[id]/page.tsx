@@ -176,7 +176,13 @@ export default function LevelTemplateEditorPage() {
     setWeeks((prev) =>
       prev.map((w, wi) =>
         wi === weekIndex
-          ? { ...w, days: DAY_KEYS.reduce((acc, d) => { acc[d] = []; return acc; }, {} as Record<DayKey, WeekState["days"]["mon"]>) }
+          ? {
+              ...w,
+              sessions: [],
+              minimumCompletedSessions: 0,
+              isRestWeek: false,
+              days: DAY_KEYS.reduce((acc, d) => { acc[d] = []; return acc; }, {} as Record<DayKey, WeekState["days"]["mon"]>),
+            }
           : w
       )
     );
