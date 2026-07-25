@@ -42,6 +42,32 @@ export function ThemeProvider({
     return defaultTheme
   })
 
+  const applyTheme = React.useCallback((targetTheme: Theme) => {
+    if (typeof window === "undefined") return
+
+    const root = window.document.documentElement
+    const body = window.document.body
+
+    let themeToApply: "dark" | "light" = "dark"
+    if (targetTheme === "system") {
+      themeToApply = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+    } else {
+      themeToApply = targetTheme as "dark" | "light"
+    }
+
+    root.classList.remove("light", "dark")
+    body.classList.remove("light", "dark")
+    root.classList.add(themeToApply)
+    body.classList.add(themeToApply)
+    root.style.colorScheme = themeToApply
+
+    try {
+      localStorage.setItem(storageKey, targetTheme)
+    } catch (e) {
+      console.error("Error saving theme to localStorage:", e)
+    }
+  }, [storageKey])
+
   const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
@@ -49,44 +75,14 @@ export function ThemeProvider({
   }, [])
 
   React.useEffect(() => {
-    if (!mounted || typeof window === "undefined") return
-    
-    const root = window.document.documentElement
-    const body = window.document.body
-    
-    // Remove existing theme classes
-    root.classList.remove("light", "dark")
-    body.classList.remove("light", "dark")
-    
-    // Determine the actual theme to apply
-    let themeToApply: "dark" | "light" = "dark"
-    
-    if (theme === "system") {
-      themeToApply = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-    } else {
-      themeToApply = theme as "dark" | "light"
-    }
-    
-    // Apply the theme class to both html and body
-    root.classList.add(themeToApply)
-    body.classList.add(themeToApply)
-    
-    // Force a repaint
-    root.style.colorScheme = themeToApply
-    
-    // Save to localStorage
-    try {
-      localStorage.setItem(storageKey, theme)
-    } catch (e) {
-      console.error("Error saving theme to localStorage:", e)
-    }
-  }, [theme, storageKey, mounted])
+    if (!mounted) return
+    applyTheme(theme)
+  }, [theme, mounted, applyTheme])
 
   const setTheme = React.useCallback((newTheme: Theme) => {
+    applyTheme(newTheme)
     setThemeState(newTheme)
-  }, [])
+  }, [applyTheme])
 
   const value = React.useMemo(
     () => ({

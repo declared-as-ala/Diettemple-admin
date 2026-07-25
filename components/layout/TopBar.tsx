@@ -23,33 +23,11 @@ export function TopBar() {
 
   const handleThemeToggle = () => {
     if (!mounted) return
-    
-    const currentTheme = theme === "system" 
+    const currentTheme = theme === "system"
       ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : theme
     const newTheme = currentTheme === "dark" ? "light" : "dark"
-    
-    // Update state
     setTheme(newTheme)
-    
-    // Force immediate DOM update
-    if (typeof window !== "undefined") {
-      const root = document.documentElement
-      root.classList.remove("light", "dark")
-      root.classList.add(newTheme)
-      
-      // Also update body if needed
-      const body = document.body
-      body.classList.remove("light", "dark")
-      body.classList.add(newTheme)
-      
-      // Save to localStorage immediately
-      try {
-        localStorage.setItem("diettemple-theme", newTheme)
-      } catch (e) {
-        console.error("Error saving theme:", e)
-      }
-    }
   }
 
   const displayTheme = mounted 
@@ -57,6 +35,8 @@ export function TopBar() {
         ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
         : theme)
     : "dark"
+
+  const toggleTooltip = displayTheme === "dark" ? "Activer le mode clair" : "Activer le mode sombre"
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -75,7 +55,7 @@ export function TopBar() {
 
         <div className="flex items-center gap-2">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="h-9 w-9 relative">
+          <Button variant="ghost" size="icon" className="h-9 w-9 relative" title="Notifications">
             <Bell className="h-5 w-5" />
             <span className="absolute top-1 right-1 h-2 w-2 bg-primary rounded-full" />
             <span className="sr-only">{fr.topBar.notifications}</span>
@@ -86,14 +66,16 @@ export function TopBar() {
             variant="ghost"
             size="icon"
             onClick={handleThemeToggle}
-            className="h-9 w-9"
+            className="h-9 w-9 text-foreground hover:bg-muted"
+            title={toggleTooltip}
+            aria-label={toggleTooltip}
           >
             {displayTheme === "dark" ? (
-              <Sun className="h-5 w-5" />
+              <Sun className="h-5 w-5 text-amber-400" />
             ) : (
-              <Moon className="h-5 w-5" />
+              <Moon className="h-5 w-5 text-slate-700" />
             )}
-            <span className="sr-only">{fr.topBar.toggleTheme}</span>
+            <span className="sr-only">{toggleTooltip}</span>
           </Button>
 
         </div>

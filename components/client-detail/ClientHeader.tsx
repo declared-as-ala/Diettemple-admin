@@ -50,9 +50,10 @@ export default function ClientHeader({
   const client = profile.client
   const meta = profile.profileMeta
   const levelName = sub?.levelTemplateId?.name ?? ""
+  const clientDisplayName = sub?.levelTemplateId?.clientDisplayName || levelName
   const levelGender = sub?.levelTemplateId?.gender ?? ""
-  const tierForUi = normalizeLevelName(clientLevel || levelName)
-  const heroLevel = tierForUi || levelName || "Intiate"
+  const tierForUi = normalizeLevelName(clientLevel || clientDisplayName || levelName)
+  const heroLevel = tierForUi || clientDisplayName || levelName || "Intiate"
   const gradientClass =
     LEVEL_COLORS[tierForUi] ?? LEVEL_COLORS[clientLevel] ?? LEVEL_COLORS[levelName] ?? "from-slate-800 via-slate-900 to-black"
   const isActive = sub?.effectiveStatus === "ACTIVE"
@@ -219,13 +220,13 @@ export default function ClientHeader({
                   </span>
                 )}
                 {levelName && (
-                  <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 text-white/80 font-medium">
                     {levelGender === "F" ? (
-                      <Users className="h-3 w-3" />
+                      <Users className="h-3.5 w-3.5" />
                     ) : (
-                      <User className="h-3 w-3" />
+                      <User className="h-3.5 w-3.5" />
                     )}
-                    Programme {levelName}
+                    Plan client : {clientDisplayName} (Réf : {levelName})
                   </span>
                 )}
               </div>

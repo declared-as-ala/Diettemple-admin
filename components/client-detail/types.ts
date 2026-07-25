@@ -49,10 +49,10 @@ export interface ClientData {
   }
   nutritionGoal?: {
     calorieMode?: 'SURPLUS' | 'DEFICIT'
-    calorieAdjustment?: number;
-    proteinGrams?: number;
-    carbohydrateGrams?: number;
-    fatGrams?: number;
+    calorieAdjustment?: number
+    proteinGrams?: number
+    carbohydrateGrams?: number
+    fatGrams?: number
   }
   nutritionTarget?: {
     dailyCalories?: number
@@ -64,7 +64,7 @@ export interface ClientData {
 
 export interface SubscriptionData {
   _id: string
-  levelTemplateId?: { _id?: string; name?: string; gender?: string }
+  levelTemplateId?: { _id?: string; name?: string; clientDisplayName?: string; gender?: string }
   effectiveStatus: string
   startAt: string
   endAt: string
@@ -166,6 +166,7 @@ export interface TimelineEvent {
 export interface LevelTemplate {
   _id: string
   name: string
+  clientDisplayName?: string
   gender?: string
   isActive?: boolean
   level?: string

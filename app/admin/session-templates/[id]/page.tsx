@@ -810,36 +810,36 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
           <div className="space-y-2">
             <Label htmlFor="config-sets">Séries</Label>
             <div className="flex items-center gap-3">
-              <button type="button" aria-label="Réduire le nombre de séries" onClick={() => setSets(value => Math.max(1, value - 1))} className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-lg font-semibold hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600">−</button>
-              <Input id="config-sets" type="number" min={1} value={sets} onChange={event => setSets(Number(event.target.value) || 1)} className="h-11 flex-1 bg-white text-center text-lg font-semibold" />
-              <button type="button" aria-label="Augmenter le nombre de séries" onClick={() => setSets(value => value + 1)} className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-lg font-semibold hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600">+</button>
+              <button type="button" aria-label="Réduire le nombre de séries" onClick={() => setSets(value => Math.max(1, value - 1))} className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/40 text-lg font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">−</button>
+              <Input id="config-sets" type="number" min={1} value={sets} onChange={event => setSets(Number(event.target.value) || 1)} className="h-11 flex-1 bg-muted/30 text-center text-lg font-semibold" />
+              <button type="button" aria-label="Augmenter le nombre de séries" onClick={() => setSets(value => value + 1)} className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/40 text-lg font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">+</button>
             </div>
           </div>
 
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Label>Répétitions cibles</Label>
-              <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                <input type="checkbox" checked={useRange} onChange={event => setUseRange(event.target.checked)} className="h-4 w-4" />
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 text-sm text-foreground hover:bg-muted/50 transition-colors">
+                <input type="checkbox" checked={useRange} onChange={event => setUseRange(event.target.checked)} className="h-4 w-4 accent-primary" />
                 Fourchette min–max
               </label>
             </div>
             {useRange ? (
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <Input aria-label="Répétitions minimum" type="number" value={typeof targetReps === "object" ? targetReps.min : 10} onChange={event => setTargetReps(previous => ({ min: Number(event.target.value) || 0, max: typeof previous === "object" ? previous.max : 12 }))} className="h-11 bg-white text-center" />
-                <span className="text-sm text-slate-500">à</span>
-                <Input aria-label="Répétitions maximum" type="number" value={typeof targetReps === "object" ? targetReps.max : 12} onChange={event => setTargetReps(previous => ({ min: typeof previous === "object" ? previous.min : 10, max: Number(event.target.value) || 0 }))} className="h-11 bg-white text-center" />
+                <Input aria-label="Répétitions minimum" type="number" value={typeof targetReps === "object" ? targetReps.min : 10} onChange={event => setTargetReps(previous => ({ min: Number(event.target.value) || 0, max: typeof previous === "object" ? previous.max : 12 }))} className="h-11 bg-muted/30 text-center text-foreground" />
+                <span className="text-sm text-muted-foreground">à</span>
+                <Input aria-label="Répétitions maximum" type="number" value={typeof targetReps === "object" ? targetReps.max : 12} onChange={event => setTargetReps(previous => ({ min: typeof previous === "object" ? previous.min : 10, max: Number(event.target.value) || 0 }))} className="h-11 bg-muted/30 text-center text-foreground" />
               </div>
             ) : (
-              <Input aria-label="Répétitions cibles" type="number" value={typeof targetReps === "number" ? targetReps : 10} onChange={event => setTargetReps(Number(event.target.value) || 10)} className="h-11 max-w-32 bg-white text-center text-lg font-semibold" />
+              <Input aria-label="Répétitions cibles" type="number" value={typeof targetReps === "number" ? targetReps : 10} onChange={event => setTargetReps(Number(event.target.value) || 10)} className="h-11 max-w-32 bg-muted/30 text-center text-lg font-semibold text-foreground" />
             )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="config-weight">Poids de départ conseillé</Label>
             <div className="relative max-w-56">
-              <Input id="config-weight" type="number" min={0} step={0.5} value={recommendedWeight} onChange={event => setRecommendedWeight(event.target.value === "" ? "" : Number(event.target.value))} placeholder="Optionnel" className="h-11 bg-white pr-12" />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">kg</span>
+              <Input id="config-weight" type="number" min={0} step={0.5} value={recommendedWeight} onChange={event => setRecommendedWeight(event.target.value === "" ? "" : Number(event.target.value))} placeholder="Optionnel" className="h-11 bg-muted/30 pr-12" />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">kg</span>
             </div>
           </div>
         </AdminFormSection>
@@ -867,27 +867,27 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
               <Plus className="h-4 w-4" aria-hidden="true" /> Ajouter une règle
             </Button>
           </div>
-          {progressionRules.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">Aucune règle de progression.</p>}
+          {progressionRules.length === 0 && <p className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">Aucune règle de progression.</p>}
           <div className="space-y-3">
             {progressionRules.map((rule, ruleIndex) => (
-              <div key={ruleIndex} className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div key={ruleIndex} className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-900">Règle {ruleIndex + 1}</p>
-                  <Button type="button" variant="ghost" size="icon-lg" aria-label={`Supprimer la règle ${ruleIndex + 1}`} onClick={() => removeProgressionRule(ruleIndex)} className="text-red-700 hover:bg-red-50 hover:text-red-800"><X className="h-4 w-4" aria-hidden="true" /></Button>
+                  <p className="text-sm font-semibold text-foreground">Règle {ruleIndex + 1}</p>
+                  <Button type="button" variant="ghost" size="icon-lg" aria-label={`Supprimer la règle ${ruleIndex + 1}`} onClick={() => removeProgressionRule(ruleIndex)} className="text-destructive hover:bg-destructive/10 hover:text-destructive"><X className="h-4 w-4" aria-hidden="true" /></Button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2"><Label>Condition</Label><select value={rule.condition} onChange={event => updateProgressionRule(ruleIndex, { condition: event.target.value })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-600">{CONDITION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
-                  <div className="space-y-2"><Label>Seuil</Label><Input type="number" className="h-11 bg-white" value={typeof rule.value === "number" ? rule.value : (rule.value as any)?.max} onChange={event => updateProgressionRule(ruleIndex, { value: Number(event.target.value) || 0 })} /></div>
-                  <div className="space-y-2"><Label>Action</Label><select value={rule.action} onChange={event => updateProgressionRule(ruleIndex, { action: event.target.value })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-600">{ACTION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
-                  <div className="space-y-2"><Label>Valeur (kg)</Label><Input type="number" step={0.5} className="h-11 bg-white" value={rule.weightChange ?? ""} onChange={event => updateProgressionRule(ruleIndex, { weightChange: event.target.value === "" ? undefined : Number(event.target.value) })} /></div>
+                  <div className="space-y-2"><Label>Condition</Label><select value={rule.condition} onChange={event => updateProgressionRule(ruleIndex, { condition: event.target.value })} className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">{CONDITION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+                  <div className="space-y-2"><Label>Seuil</Label><Input type="number" className="h-11 bg-muted/30 text-foreground" value={typeof rule.value === "number" ? rule.value : (rule.value as any)?.max} onChange={event => updateProgressionRule(ruleIndex, { value: Number(event.target.value) || 0 })} /></div>
+                  <div className="space-y-2"><Label>Action</Label><select value={rule.action} onChange={event => updateProgressionRule(ruleIndex, { action: event.target.value })} className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">{ACTION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+                  <div className="space-y-2"><Label>Valeur (kg)</Label><Input type="number" step={0.5} className="h-11 bg-muted/30 text-foreground" value={rule.weightChange ?? ""} onChange={event => updateProgressionRule(ruleIndex, { weightChange: event.target.value === "" ? undefined : Number(event.target.value) })} /></div>
                 </div>
-                <div className="space-y-2"><Label>Message affiché à l’athlète</Label><Input className="h-11 bg-white" placeholder="Ex. Très bonne série, augmentez légèrement la charge." value={rule.message ?? ""} onChange={event => updateProgressionRule(ruleIndex, { message: event.target.value })} /></div>
+                <div className="space-y-2"><Label>Message affiché à l’athlète</Label><Input className="h-11 bg-muted/30 text-foreground" placeholder="Ex. Très bonne série, augmentez légèrement la charge." value={rule.message ?? ""} onChange={event => updateProgressionRule(ruleIndex, { message: event.target.value })} /></div>
               </div>
             ))}
           </div>
         </AdminFormSection>
 
-        <Button type="button" variant="ghost" size="lg" className="w-full text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => { onRemove(); onClose() }}>
+        <Button type="button" variant="ghost" size="lg" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => { onRemove(); onClose() }}>
           <X className="h-4 w-4" aria-hidden="true" /> Retirer l’exercice de la séance
         </Button>
       </div>

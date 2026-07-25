@@ -69,7 +69,7 @@ export function AdminModal({
           <DialogHeader>
             <div className="flex items-start gap-3">
               {icon && (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lime-50 text-lime-700">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   {icon}
                 </div>
               )}
@@ -79,7 +79,7 @@ export function AdminModal({
               </div>
             </div>
           </DialogHeader>
-          <DialogBody className={cn("bg-slate-50/60", bodyClassName)}>{children}</DialogBody>
+          <DialogBody className={cn("bg-muted/20", bodyClassName)}>{children}</DialogBody>
           {typeof footer === "function" ? footer(() => guard.requestOpenChange(false)) : footer}
         </DialogContent>
       </Dialog>

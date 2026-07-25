@@ -4,7 +4,6 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 
 export type DialogSize = "sm" | "md" | "lg" | "xl"
 
@@ -66,7 +65,7 @@ function DialogContent({
           "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:w-[calc(100vw-3rem)] sm:-translate-x-1/2 sm:-translate-y-1/2",
           DIALOG_SIZES[size],
           "max-h-dvh sm:max-h-[calc(100dvh-3rem)] flex flex-col",
-          "rounded-none border-0 bg-white shadow-2xl shadow-black/25 sm:rounded-2xl sm:border sm:border-slate-200",
+          "rounded-none border-0 bg-card text-card-foreground shadow-2xl shadow-black/25 sm:rounded-2xl sm:border sm:border-border",
           "overflow-hidden outline-none",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -77,8 +76,7 @@ function DialogContent({
         )}
         {...props}
       >
-        {/* Flex-col layout: header stays fixed, body scrolls, footer stays fixed */}
-        <div className="flex min-h-0 flex-1 flex-col bg-white text-slate-950">
+        <div className="flex min-h-0 flex-1 flex-col bg-card text-card-foreground">
           {children}
         </div>
 
@@ -87,8 +85,8 @@ function DialogContent({
             className={cn(
               "absolute right-3 top-3 z-10 sm:right-4 sm:top-4",
               "flex h-10 w-10 items-center justify-center rounded-lg",
-              "text-slate-500 hover:bg-slate-100 hover:text-slate-950",
-              "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600 focus-visible:ring-offset-2",
+              "text-muted-foreground hover:bg-muted hover:text-foreground",
+              "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               "[&_svg]:size-4"
             )}
           >
@@ -105,7 +103,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex shrink-0 flex-col gap-1 border-b border-slate-200 bg-white px-5 pb-4 pt-5 pr-16 sm:px-6 sm:pr-16", className)}
+      className={cn("flex shrink-0 flex-col gap-1 border-b border-border bg-card px-5 pb-4 pt-5 pr-16 sm:px-6 sm:pr-16", className)}
       {...props}
     />
   )
@@ -121,48 +119,23 @@ function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function DialogSection({
-  title,
-  className,
-  children,
-  ...props
-}: React.ComponentProps<"div"> & { title?: string }) {
+function DialogSection({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div data-slot="dialog-section" className={cn("space-y-3", className)} {...props}>
-      {title && (
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </p>
-      )}
-      {children}
-    </div>
+    <div
+      data-slot="dialog-section"
+      className={cn("space-y-4 rounded-xl border border-border bg-muted/20 p-4", className)}
+      {...props}
+    />
   )
 }
 
-function DialogFooter({
-  className,
-  showCloseButton = false,
-  children,
-  ...props
-}: React.ComponentProps<"div"> & { showCloseButton?: boolean }) {
+function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn(
-        "flex shrink-0 items-center justify-end gap-2",
-        "border-t border-slate-200 bg-slate-50/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-6",
-        "flex-col-reverse sm:flex-row [&>button]:w-full sm:[&>button]:w-auto",
-        className
-      )}
+      className={cn("flex shrink-0 flex-col-reverse justify-end gap-2 border-t border-border bg-card/95 px-5 py-4 sm:flex-row sm:px-6", className)}
       {...props}
-    >
-      {children}
-      {showCloseButton && (
-        <DialogPrimitive.Close asChild>
-          <Button variant="outline">Fermer</Button>
-        </DialogPrimitive.Close>
-      )}
-    </div>
+    />
   )
 }
 
@@ -170,7 +143,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg font-semibold leading-tight tracking-tight text-slate-950", className)}
+      className={cn("text-lg font-semibold leading-none tracking-tight text-foreground", className)}
       {...props}
     />
   )
@@ -180,14 +153,23 @@ function DialogDescription({ className, ...props }: React.ComponentProps<typeof 
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("mt-1 text-sm leading-5 text-slate-600", className)}
+      className={cn("text-sm text-muted-foreground", className)}
       {...props}
     />
   )
 }
 
 export {
-  Dialog, DialogBody, DialogClose, DialogContent, DialogDescription,
-  DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogSection,
-  DialogTitle, DialogTrigger,
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogBody,
+  DialogSection,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
 }

@@ -35,7 +35,7 @@ export function AdminModalFooter({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col gap-3 border-t border-slate-200 bg-slate-50/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6",
+        "flex shrink-0 flex-col gap-3 border-t border-border bg-card/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6",
         className
       )}
       {...props}
@@ -44,9 +44,9 @@ export function AdminModalFooter({
         {status && (
           <span className={cn(
             "inline-flex items-center gap-2",
-            statusTone === "valid" && "text-emerald-700",
-            statusTone === "warning" && "text-amber-700",
-            statusTone === "neutral" && "text-slate-600"
+            statusTone === "valid" && "text-emerald-500 dark:text-emerald-400",
+            statusTone === "warning" && "text-amber-500 dark:text-amber-400",
+            statusTone === "neutral" && "text-muted-foreground"
           )}>
             {statusTone === "valid" && <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
             {statusTone === "warning" && <CircleAlert className="h-4 w-4" aria-hidden="true" />}

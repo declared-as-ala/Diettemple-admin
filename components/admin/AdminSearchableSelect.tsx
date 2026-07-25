@@ -75,12 +75,12 @@ export function AdminSearchableSelect<T>({
           {selectedItems.map((item) => {
             const key = getKey(item)
             return (
-              <span key={key} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-lime-200 bg-lime-50 px-3 py-1.5 text-sm font-medium text-lime-950">
+              <span key={key} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-foreground">
                 {getLabel(item)}
                 <button
                   type="button"
                   onClick={() => toggle(item)}
-                  className="-mr-1 flex h-7 w-7 items-center justify-center rounded-md text-lime-800 hover:bg-lime-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600"
+                  className="-mr-1 flex h-7 w-7 items-center justify-center rounded-md text-primary hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={`Retirer ${getLabel(item)}`}
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
@@ -92,17 +92,17 @@ export function AdminSearchableSelect<T>({
       )}
 
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} className="bg-white pl-9" aria-label={placeholder} />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholder} className="bg-muted/30 pl-9" aria-label={placeholder} />
       </div>
 
-      <div className="flex items-center justify-between text-xs text-slate-500" aria-live="polite">
+      <div className="flex items-center justify-between text-xs text-muted-foreground" aria-live="polite">
         <span>{loading ? "Chargement…" : `${filteredItems.length} disponible${filteredItems.length !== 1 ? "s" : ""}`}</span>
         {maxSelections > 1 && <span>{selectedKeys.length}/{maxSelections} sélectionné{selectedKeys.length !== 1 ? "s" : ""}</span>}
       </div>
 
-      <div role="listbox" aria-label={label} aria-multiselectable={maxSelections > 1 || undefined} className="max-h-72 space-y-1 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-2">
-        {!loading && filteredItems.length === 0 && <p className="px-3 py-8 text-center text-sm text-slate-500">{emptyText}</p>}
+      <div role="listbox" aria-label={label} aria-multiselectable={maxSelections > 1 || undefined} className="max-h-72 space-y-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-2">
+        {!loading && filteredItems.length === 0 && <p className="px-3 py-8 text-center text-sm text-muted-foreground">{emptyText}</p>}
         {filteredItems.map((item) => {
           const key = getKey(item)
           const isSelected = selected.has(key)
@@ -116,16 +116,16 @@ export function AdminSearchableSelect<T>({
               disabled={isDisabled}
               onClick={() => toggle(item)}
               className={cn(
-                "flex min-h-12 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
-                isSelected ? "border-lime-300 bg-lime-50" : "border-transparent hover:bg-slate-50"
+                "flex min-h-12 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
+                isSelected ? "border-primary/40 bg-primary/10 text-foreground font-medium" : "border-transparent text-foreground hover:bg-muted/50"
               )}
             >
-              <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", isSelected ? "border-lime-600 bg-lime-600 text-white" : "border-slate-300") }>
+              <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border") }>
                 {isSelected && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-slate-900">{getLabel(item)}</span>
-                {renderMeta && <span className="mt-0.5 block text-xs text-slate-500">{renderMeta(item)}</span>}
+                <span className="block text-sm font-medium text-foreground">{getLabel(item)}</span>
+                {renderMeta && <span className="mt-0.5 block text-xs text-muted-foreground">{renderMeta(item)}</span>}
               </span>
             </button>
           )

@@ -55,8 +55,8 @@ export function AdminDrawer({
           <DialogOverlay />
           <DialogPrimitive.Content
             className={cn(
-              "fixed inset-0 z-[101] flex h-dvh w-screen flex-col bg-white text-slate-950 shadow-2xl outline-none",
-              "sm:inset-y-0 sm:left-auto sm:right-0 sm:max-w-[36rem] sm:border-l sm:border-slate-200",
+              "fixed inset-0 z-[101] flex h-dvh w-screen flex-col bg-card text-card-foreground shadow-2xl outline-none",
+              "sm:inset-y-0 sm:left-auto sm:right-0 sm:max-w-[36rem] sm:border-l sm:border-border",
               sizes[size],
               "data-[state=open]:animate-in data-[state=closed]:animate-out",
               "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right duration-200"
@@ -73,26 +73,26 @@ export function AdminDrawer({
               if (busy || dirty) event.preventDefault()
             }}
           >
-            <header className="flex shrink-0 items-start gap-3 border-b border-slate-200 bg-white px-5 pb-4 pt-5 pr-16 sm:px-6 sm:pr-16">
+            <header className="flex shrink-0 items-start gap-3 border-b border-border bg-card px-5 pb-4 pt-5 pr-16 sm:px-6 sm:pr-16">
               {icon && (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lime-50 text-lime-700">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   {icon}
                 </div>
               )}
               <div className="min-w-0">
-                {eyebrow && <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-lime-700">{eyebrow}</p>}
-                <DialogPrimitive.Title className="text-lg font-semibold leading-tight tracking-tight text-slate-950">
+                {eyebrow && <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">{eyebrow}</p>}
+                <DialogPrimitive.Title className="text-lg font-semibold leading-tight tracking-tight text-foreground">
                   {title}
                 </DialogPrimitive.Title>
                 {description && (
-                  <DialogPrimitive.Description className="mt-1 text-sm leading-5 text-slate-600">
+                  <DialogPrimitive.Description className="mt-1 text-sm leading-5 text-muted-foreground">
                     {description}
                   </DialogPrimitive.Description>
                 )}
               </div>
             </header>
 
-            <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/60 px-5 py-5 sm:px-6", bodyClassName)}>
+            <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/20 px-5 py-5 sm:px-6", bodyClassName)}>
               {children}
             </div>
             {typeof footer === "function" ? footer(() => guard.requestOpenChange(false)) : footer}
@@ -100,7 +100,7 @@ export function AdminDrawer({
             {!busy && (
               <DialogPrimitive.Close
                 aria-label="Fermer"
-                className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-600 focus-visible:ring-offset-2 sm:right-4 sm:top-4"
+                className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:right-4 sm:top-4"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </DialogPrimitive.Close>

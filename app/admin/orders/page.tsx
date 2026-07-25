@@ -287,54 +287,54 @@ export default function AdminOrdersPage() {
       >
         {selectedOrder && (
           <div className="space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Référence</p>
-                <p className="mt-1 font-mono text-base font-semibold text-slate-950">{selectedOrder.reference}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Référence</p>
+                <p className="mt-1 font-mono text-base font-semibold text-foreground">{selectedOrder.reference}</p>
               </div>
               <Badge variant={STATUS_VARIANTS[selectedOrder.status]}>{STATUS_LABELS[selectedOrder.status]}</Badge>
             </div>
 
             <AdminFormSection title="Client et contact" icon={<User className="h-5 w-5" aria-hidden="true" />}>
               <dl className="grid gap-4 sm:grid-cols-2">
-                <div><dt className="text-xs font-medium text-slate-500">Nom</dt><dd className="mt-1 text-sm font-medium text-slate-900">{selectedOrder.deliveryAddress?.fullName ?? "—"}</dd></div>
-                <div><dt className="text-xs font-medium text-slate-500">Téléphone</dt><dd className="mt-1 text-sm text-slate-900">{selectedOrder.deliveryAddress?.phone ?? "—"}</dd></div>
-                <div className="sm:col-span-2"><dt className="text-xs font-medium text-slate-500">Email</dt><dd className="mt-1 break-all text-sm text-slate-900">{selectedOrder.deliveryAddress?.email ?? "—"}</dd></div>
+                <div><dt className="text-xs font-medium text-muted-foreground">Nom</dt><dd className="mt-1 text-sm font-medium text-foreground">{selectedOrder.deliveryAddress?.fullName ?? "—"}</dd></div>
+                <div><dt className="text-xs font-medium text-muted-foreground">Téléphone</dt><dd className="mt-1 text-sm text-foreground">{selectedOrder.deliveryAddress?.phone ?? "—"}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-xs font-medium text-muted-foreground">Email</dt><dd className="mt-1 break-all text-sm text-foreground">{selectedOrder.deliveryAddress?.email ?? "—"}</dd></div>
               </dl>
             </AdminFormSection>
 
             <AdminFormSection title="Livraison" icon={<MapPin className="h-5 w-5" aria-hidden="true" />}>
-              <p className="text-sm leading-6 text-slate-700">{selectedOrder.deliveryAddress ? `${selectedOrder.deliveryAddress.street}, ${selectedOrder.deliveryAddress.delegation}, ${selectedOrder.deliveryAddress.city}` : "Aucune adresse renseignée."}</p>
+              <p className="text-sm leading-6 text-foreground">{selectedOrder.deliveryAddress ? `${selectedOrder.deliveryAddress.street}, ${selectedOrder.deliveryAddress.delegation}, ${selectedOrder.deliveryAddress.city}` : "Aucune adresse renseignée."}</p>
             </AdminFormSection>
 
             <AdminFormSection title="Articles" description={`${selectedOrder.items.length} ligne${selectedOrder.items.length !== 1 ? "s" : ""} dans cette commande.`} icon={<Package className="h-5 w-5" aria-hidden="true" />}>
               <ul className="space-y-3">
                 {selectedOrder.items.map((item, index) => (
-                  <li key={`${item.productId}-${index}`} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    {item.image ? <div role="img" aria-label={`Image de ${item.name}`} className="h-12 w-12 shrink-0 rounded-lg bg-slate-200 bg-cover bg-center" style={{ backgroundImage: `url(${item.image})` }} /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-200 text-slate-500"><Package className="h-5 w-5" aria-hidden="true" /></div>}
-                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-slate-900">{item.name}</p><p className="mt-1 text-xs text-slate-500">{item.quantity} × {item.price.toFixed(2)} TND</p></div>
-                    <p className="shrink-0 text-sm font-semibold tabular-nums text-slate-950">{(item.price * item.quantity).toFixed(2)} TND</p>
+                  <li key={`${item.productId}-${index}`} className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 p-3">
+                    {item.image ? <div role="img" aria-label={`Image de ${item.name}`} className="h-12 w-12 shrink-0 rounded-lg bg-muted bg-cover bg-center" style={{ backgroundImage: `url(${item.image})` }} /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Package className="h-5 w-5" aria-hidden="true" /></div>}
+                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground">{item.name}</p><p className="mt-1 text-xs text-muted-foreground">{item.quantity} × {item.price.toFixed(2)} TND</p></div>
+                    <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{(item.price * item.quantity).toFixed(2)} TND</p>
                   </li>
                 ))}
               </ul>
-              <div className="sticky bottom-0 mt-4 space-y-2 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
-                <div className="flex justify-between text-slate-600"><span>Sous-total</span><span className="tabular-nums">{selectedOrder.subtotal.toFixed(2)} TND</span></div>
-                {selectedOrder.discount > 0 && <div className="flex justify-between text-emerald-700"><span>Remise</span><span className="tabular-nums">−{selectedOrder.discount.toFixed(2)} TND</span></div>}
-                <div className="flex justify-between text-slate-600"><span>Livraison</span><span className="tabular-nums">{selectedOrder.deliveryFee.toFixed(2)} TND</span></div>
-                <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-semibold text-slate-950"><span>Total</span><span className="tabular-nums">{selectedOrder.totalPrice.toFixed(2)} TND</span></div>
+              <div className="sticky bottom-0 mt-4 space-y-2 rounded-xl border border-border bg-card p-4 text-sm shadow-sm">
+                <div className="flex justify-between text-muted-foreground"><span>Sous-total</span><span className="tabular-nums">{selectedOrder.subtotal.toFixed(2)} TND</span></div>
+                {selectedOrder.discount > 0 && <div className="flex justify-between text-emerald-500 dark:text-emerald-400"><span>Remise</span><span className="tabular-nums">−{selectedOrder.discount.toFixed(2)} TND</span></div>}
+                <div className="flex justify-between text-muted-foreground"><span>Livraison</span><span className="tabular-nums">{selectedOrder.deliveryFee.toFixed(2)} TND</span></div>
+                <div className="flex justify-between border-t border-border pt-3 text-base font-semibold text-foreground"><span>Total</span><span className="tabular-nums">{selectedOrder.totalPrice.toFixed(2)} TND</span></div>
               </div>
             </AdminFormSection>
 
             <AdminFormSection title="Paiement" icon={<CreditCard className="h-5 w-5" aria-hidden="true" />}>
-              <dl className="grid gap-4 sm:grid-cols-2"><div><dt className="text-xs font-medium text-slate-500">Méthode</dt><dd className="mt-1 text-sm font-medium text-slate-900">{selectedOrder.paymentMethod === "CASH_ON_DELIVERY" ? "Paiement à la livraison" : selectedOrder.paymentMethod === "CLICKTOPAY" ? "ClickToPay" : "—"}</dd></div><div><dt className="text-xs font-medium text-slate-500">Statut</dt><dd className="mt-1 text-sm font-medium text-slate-900">{selectedOrder.paymentStatus}</dd></div></dl>
+              <dl className="grid gap-4 sm:grid-cols-2"><div><dt className="text-xs font-medium text-muted-foreground">Méthode</dt><dd className="mt-1 text-sm font-medium text-foreground">{selectedOrder.paymentMethod === "CASH_ON_DELIVERY" ? "Paiement à la livraison" : selectedOrder.paymentMethod === "CLICKTOPAY" ? "ClickToPay" : "—"}</dd></div><div><dt className="text-xs font-medium text-muted-foreground">Statut</dt><dd className="mt-1 text-sm font-medium text-foreground">{selectedOrder.paymentStatus}</dd></div></dl>
             </AdminFormSection>
 
             <AdminFormSection title="Statut de la commande" description="Chaque changement demande une confirmation et utilise l’action existante de l’API." icon={<Truck className="h-5 w-5" aria-hidden="true" />}>
               <Select value={newStatus} onValueChange={(value) => setNewStatus(value as OrderStatus)}>
-                <SelectTrigger className="h-11 bg-white"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 bg-muted/30"><SelectValue /></SelectTrigger>
                 <SelectContent>{ALL_STATUSES.map((status) => <SelectItem key={status} value={status}>{STATUS_LABELS[status]}</SelectItem>)}</SelectContent>
               </Select>
-              <p className="flex items-center gap-2 text-xs text-slate-500"><CalendarDays className="h-4 w-4" aria-hidden="true" /> La date et l’historique existants restent inchangés.</p>
+              <p className="flex items-center gap-2 text-xs text-muted-foreground"><CalendarDays className="h-4 w-4" aria-hidden="true" /> La date et l’historique existants restent inchangés.</p>
             </AdminFormSection>
           </div>
         )}

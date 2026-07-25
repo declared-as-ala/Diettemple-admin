@@ -53,6 +53,7 @@ export default function LevelTemplateEditorPage() {
     searchParams?.get("tab") === "info" ? "info" : "planner"
   );
   const [editName, setEditName] = useState("");
+  const [editClientDisplayName, setEditClientDisplayName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
   const [sessionSearch, setSessionSearch] = useState("");
@@ -69,6 +70,7 @@ export default function LevelTemplateEditorPage() {
       if (!plan) return;
       setLevelTemplate(plan);
       setEditName(String(plan.name ?? ""));
+      setEditClientDisplayName(String(plan.clientDisplayName || plan.name || ""));
       setEditDescription(String(plan.description ?? ""));
       setEditIsActive(plan.isActive !== false);
       const rawWeeks = plan.weeks && Array.isArray(plan.weeks) ? plan.weeks : [];
@@ -104,6 +106,7 @@ export default function LevelTemplateEditorPage() {
 
   const infoDirty = Boolean(levelTemplate && (
     editName !== String(levelTemplate.name ?? "") ||
+    editClientDisplayName !== String(levelTemplate.clientDisplayName ?? levelTemplate.name ?? "") ||
     editDescription !== String(levelTemplate.description ?? "") ||
     editIsActive !== (levelTemplate.isActive !== false)
   ));
@@ -120,20 +123,27 @@ export default function LevelTemplateEditorPage() {
   sessionTemplates.forEach((s) => { sessionTemplateById[s._id] = { title: s.title, durationMinutes: s.durationMinutes }; });
 
   const handleSaveInfo = async () => {
+    const errors: AdminFormError[] = [];
     if (!editName.trim()) {
-      setInfoErrors([{ field: "edit-plan-name", message: "Le nom du plan est obligatoire." }]);
-      requestAnimationFrame(() => document.getElementById("edit-plan-name")?.focus());
+      errors.push({ field: "edit-plan-name", message: "Le nom interne du plan est obligatoire." });
+    }
+    if (!editClientDisplayName.trim()) {
+      errors.push({ field: "edit-plan-client-name", message: "Veuillez saisir le nom affiché au client." });
+    }
+    setInfoErrors(errors);
+    if (errors.length > 0) {
+      requestAnimationFrame(() => document.getElementById(errors[0].field ?? "")?.focus());
       return;
     }
     setInfoSaving(true);
-    setInfoErrors([]);
     try {
       await api.updateLevelTemplate(id, {
-        name: editName,
-        description: editDescription,
+        name: editName.trim(),
+        clientDisplayName: editClientDisplayName.trim(),
+        description: editDescription.trim(),
         isActive: editIsActive,
       });
-      setLevelTemplate((p) => (p ? { ...p, name: editName, description: editDescription, isActive: editIsActive } : p));
+      setLevelTemplate((p) => (p ? { ...p, name: editName.trim(), clientDisplayName: editClientDisplayName.trim(), description: editDescription.trim(), isActive: editIsActive } : p));
       setLastSaved(new Date());
       toast("Informations sauvegardées", "success");
     } catch (err: unknown) {
@@ -147,7 +157,6 @@ export default function LevelTemplateEditorPage() {
   };
 
   const handleSaveWeeks = async () => {
-    // No minimum/maximum session requirement - weeks can have any number of sessions
     setSaving(true);
     try {
       await api.updateLevelTemplateWeeks(id, weeksToApiPayload(weeks));
@@ -179,9 +188,9 @@ export default function LevelTemplateEditorPage() {
     else router.push("/admin/level-templates");
   };
 
-  // No minimum/maximum session validation - weeks can have any number of sessions
   const canSave = true;
   const levelName = levelTemplate ? String(levelTemplate.name ?? "") : "";
+  const clientDisplayName = levelTemplate ? String(levelTemplate.clientDisplayName || levelTemplate.name || "") : "";
   const gender = levelTemplate ? String(levelTemplate.gender ?? "M") : "M";
   const tierForUi = normalizeLevelName(levelName);
   const gradientClass = LEVEL_COLORS[tierForUi] ?? "from-gray-600 to-gray-900";
@@ -228,7 +237,12 @@ export default function LevelTemplateEditorPage() {
                 {levelTemplate.isActive !== false ? "Actif" : "Inactif"}
               </span>
             </div>
-            <p className="text-white/50 text-xs mt-0.5">{String(levelTemplate.description ?? "")}</p>
+            <p className="text-white/80 text-xs font-medium mt-0.5">
+              Nom client : {clientDisplayName}
+            </p>
+            {levelTemplate.description ? (
+              <p className="text-white/50 text-xs mt-0.5">{String(levelTemplate.description)}</p>
+            ) : null}
           </div>
 
           <div className="ml-auto flex items-center gap-3">
@@ -286,10 +300,59 @@ export default function LevelTemplateEditorPage() {
           <div className="mx-auto max-w-3xl space-y-5">
             <AdminFormErrorSummary errors={infoErrors} />
             <AdminFormSection title="Informations générales" description="Modifiez l’identité et la visibilité du plan. Le niveau et le sexe restent liés au plan existant." icon={<Info className="h-5 w-5" aria-hidden="true" />}>
-              <div className="space-y-2"><Label htmlFor="edit-plan-name">Nom du plan *</Label><Input id="edit-plan-name" value={editName} onChange={(event) => setEditName(event.target.value)} className="h-11 bg-white" aria-invalid={infoErrors.some((error) => error.field === "edit-plan-name")} /></div>
-              <div className="space-y-2"><Label htmlFor="edit-plan-description">Description</Label><Textarea id="edit-plan-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} placeholder="Décrivez l’objectif, le public cible et la structure du plan." className="min-h-28 bg-white" /></div>
-              <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900"><input type="checkbox" checked={editIsActive} onChange={(event) => setEditIsActive(event.target.checked)} className="h-4 w-4" /> Plan actif et disponible à l’affectation</label>
-              <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-medium text-slate-500">Sexe / dossier</p><p className="mt-1 text-sm font-semibold text-slate-900">{gender === "F" ? "Femme" : "Homme"}</p></div><div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-medium text-slate-500">Durée du planning</p><p className="mt-1 text-sm font-semibold text-slate-900">{weeks.length || 5} semaines</p></div></div>
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-plan-name" className="font-semibold">Nom interne du plan *</Label>
+                    <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">Visible uniquement par l'équipe</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Visible uniquement par les coachs et les administrateurs.</p>
+                  <Input id="edit-plan-name" value={editName} onChange={(event) => setEditName(event.target.value)} className="h-11 bg-card" aria-invalid={infoErrors.some((error) => error.field === "edit-plan-name")} />
+                  {infoErrors.some((error) => error.field === "edit-plan-name") && (
+                    <p className="text-sm text-destructive font-medium">Le nom interne du plan est obligatoire.</p>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-plan-client-name" className="font-semibold">Nom affiché au client *</Label>
+                    <span className="text-[11px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md">Visible application & espaces clients</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Nom propre et compréhensible affiché dans l’application mobile et les espaces clients.</p>
+                  <Input id="edit-plan-client-name" value={editClientDisplayName} onChange={(event) => setEditClientDisplayName(event.target.value)} className="h-11 bg-card" aria-invalid={infoErrors.some((error) => error.field === "edit-plan-client-name")} />
+                  {infoErrors.some((error) => error.field === "edit-plan-client-name") && (
+                    <p className="text-sm text-destructive font-medium">Veuillez saisir le nom affiché au client.</p>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 space-y-1" aria-live="polite">
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wider">Aperçu dans l’application</p>
+                  <p className="text-base font-bold text-foreground">
+                    {editClientDisplayName.trim() || editName.trim() || "Programme Initiate — Fondations"}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-plan-description">Description</Label>
+                  <Textarea id="edit-plan-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} placeholder="Décrivez l’objectif, le public cible et la structure du plan." className="min-h-28 bg-card" />
+                </div>
+
+                <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+                  <input type="checkbox" checked={editIsActive} onChange={(event) => setEditIsActive(event.target.checked)} className="h-4 w-4 accent-primary" />
+                  Plan actif et disponible à l’affectation
+                </label>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border bg-muted/30 p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Sexe / dossier</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{gender === "F" ? "Femme" : "Homme"}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-muted/30 p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Durée du planning</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{weeks.length || 5} semaines</p>
+                  </div>
+                </div>
+              </div>
             </AdminFormSection>
             <Button onClick={handleSaveInfo} className="h-11 w-full" disabled={infoSaving || !infoDirty}>
               <Save className="h-4 w-4 mr-2" />
@@ -301,7 +364,6 @@ export default function LevelTemplateEditorPage() {
         {/* PLANNER TAB */}
         {tab === "planner" && (
           <div className="space-y-4">
-
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <Input
