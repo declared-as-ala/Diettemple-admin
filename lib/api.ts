@@ -260,7 +260,7 @@ class ApiClient {
 
   // Users
   async getUsers(
-    params?: { page?: number; limit?: number; search?: string },
+    params?: { page?: number; limit?: number; search?: string; role?: string; level?: string; status?: string },
     options?: { signal?: AbortSignal }
   ) {
     const response = await this.client.get('/admin/users', { params, signal: options?.signal });
@@ -274,6 +274,11 @@ class ApiClient {
 
   async disableUser(id: string) {
     const response = await this.client.put(`/admin/users/${id}/disable`);
+    return response.data;
+  }
+
+  async updateUserStatus(id: string, isActive: boolean) {
+    const response = await this.client.put(`/admin/users/${id}/status`, { isActive });
     return response.data;
   }
 
@@ -758,7 +763,7 @@ class ApiClient {
     return response.data;
   }
 
-  async updateUserRole(userId: string, role: 'user' | 'admin' | 'coach' | 'nutritionist') {
+  async updateUserRole(userId: string, role: 'user' | 'admin' | 'employee' | 'coach' | 'nutritionist') {
     const response = await this.client.put(`/admin/users/${userId}/role`, { role });
     return response.data;
   }

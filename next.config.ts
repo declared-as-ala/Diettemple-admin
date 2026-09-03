@@ -2,7 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  /* config options here */
+  // The parent user directory also contains a lockfile. Pinning the root keeps
+  // Turbopack from scanning outside this application during builds.
+  turbopack: {
+    root: __dirname,
+  },
 };
 
 export default nextConfig;
