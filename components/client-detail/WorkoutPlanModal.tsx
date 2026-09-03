@@ -52,10 +52,11 @@ export default function WorkoutPlanModal({
   const [activeOnly, setActiveOnly] = useState(true)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const filteredTemplates = useMemo(() => templates
+    .filter((template) => !isChange || template._id !== currentAssignment?.planTemplateId)
     .filter((template) => (template.gender || "M") === selectedGender)
     .filter((template) => !activeOnly || template.isActive !== false)
     .filter((template) => levelFilter === "all" || template.level === levelFilter)
-    .sort((a, b) => a.name.localeCompare(b.name, "fr")), [activeOnly, levelFilter, selectedGender, templates])
+    .sort((a, b) => a.name.localeCompare(b.name, "fr")), [activeOnly, currentAssignment?.planTemplateId, isChange, levelFilter, selectedGender, templates])
   const selectedPlan = templates.find((template) => template._id === selectedTemplate)
   const durationWeeks = selectedPlan?.weeks?.length || 0
 
@@ -91,14 +92,14 @@ export default function WorkoutPlanModal({
 
           <AdminFormSection title="Rechercher et filtrer" description="La recherche est effectuée dans les plans déjà chargés." icon={<Dumbbell className="h-5 w-5" aria-hidden="true" />}>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-2"><Label>Sexe</Label><div className="grid grid-cols-2 gap-2">{(["M", "F"] as const).map((gender) => <Button key={gender} type="button" variant={selectedGender === gender ? "default" : "outline"} size="lg" onClick={() => onGenderChange(gender)}><span className="sr-only">Filtrer par </span>{gender === "M" ? <User className="h-4 w-4" aria-hidden="true" /> : <Users className="h-4 w-4" aria-hidden="true" />}{gender === "M" ? "Homme" : "Femme"}</Button>)}</div></div>
+              <div className="space-y-2"><Label>Sexe</Label><div className="grid grid-cols-2 gap-2">{(["M", "F"] as const).map((gender) => <Button key={gender} type="button" variant={selectedGender === gender ? "default" : "outline"} size="lg" onClick={() => { onGenderChange(gender); if (gender !== selectedGender) onSelectTemplate("", "", gender) }}><span className="sr-only">Filtrer par </span>{gender === "M" ? <User className="h-4 w-4" aria-hidden="true" /> : <Users className="h-4 w-4" aria-hidden="true" />}{gender === "M" ? "Homme" : "Femme"}</Button>)}</div></div>
               <div className="space-y-2"><Label htmlFor="workout-level-filter">Niveau</Label><select id="workout-level-filter" value={levelFilter} onChange={(event) => setLevelFilter(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"><option value="all">Tous les niveaux</option>{["INITIATE", "FIGHTER", "WARRIOR", "CHAMPION", "ELITE"].map((level) => <option key={level} value={level}>{level.charAt(0) + level.slice(1).toLowerCase()}</option>)}</select></div>
               <div className="space-y-2"><Label>Disponibilité</Label><label className="flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm text-foreground"><input type="checkbox" checked={activeOnly} onChange={(event) => setActiveOnly(event.target.checked)} className="h-4 w-4 accent-primary" /> Plans actifs uniquement</label></div>
             </div>
           </AdminFormSection>
 
-          <AdminFormSection title="Plans disponibles" description="Le plan actuel est indiqué et ne peut pas être sélectionné à nouveau.">
-            <AdminSearchableSelect items={filteredTemplates} selectedKeys={selectedTemplate ? [selectedTemplate] : []} onSelectionChange={(keys) => { const plan = templates.find((template) => template._id === keys[0]); if (plan) onSelectTemplate(plan._id, plan.name, (plan.gender || "M") as "M" | "F") }} getKey={(template) => template._id} getLabel={(template) => template.clientDisplayName || template.name} getSearchText={(template) => `${template.name} ${template.clientDisplayName || ""} ${template.level || ""} ${template.gender || ""}`} renderMeta={(template) => `Nom interne : ${template.name} · ${template.level ? template.level.charAt(0) + template.level.slice(1).toLowerCase() : "Niveau non renseigné"} · ${template.gender === "F" ? "Femme" : "Homme"}${currentAssignment?.planTemplateId === template._id ? " · Plan actuel" : ""}`} maxSelections={1} disabledKeys={currentAssignment?.planTemplateId ? [currentAssignment.planTemplateId] : []} placeholder="Rechercher par nom interne ou nom client…" emptyText="Aucun plan ne correspond aux filtres." loading={templatesLoading} label="Plans disponibles" />
+          <AdminFormSection title="Plans disponibles" description={isChange ? "Choisissez un autre plan. Le plan actuel reste affiché ci-dessus." : "Choisissez le plan à affecter au client."}>
+            <AdminSearchableSelect items={filteredTemplates} selectedKeys={selectedTemplate ? [selectedTemplate] : []} onSelectionChange={(keys) => { const nextKey = keys[0]; if (!nextKey) { onSelectTemplate("", "", selectedGender); return } const plan = templates.find((template) => template._id === nextKey); if (plan) onSelectTemplate(plan._id, plan.name, (plan.gender || "M") as "M" | "F") }} getKey={(template) => template._id} getLabel={(template) => template.clientDisplayName || template.name} getSearchText={(template) => `${template.name} ${template.clientDisplayName || ""} ${template.level || ""} ${template.gender || ""}`} renderMeta={(template) => `Nom interne : ${template.name} · ${template.level ? template.level.charAt(0) + template.level.slice(1).toLowerCase() : "Niveau non renseigné"} · ${template.gender === "F" ? "Femme" : "Homme"}`} maxSelections={1} placeholder="Rechercher par nom interne ou nom client…" emptyText="Aucun autre plan ne correspond aux filtres." loading={templatesLoading} label="Plans disponibles" />
           </AdminFormSection>
 
           <AdminFormSection title="Affectation" description="La durée et la date de fin sont calculées depuis les semaines du plan." icon={<Calendar className="h-5 w-5" aria-hidden="true" />}>

@@ -110,7 +110,7 @@ export default function AdminClientProfilePage() {
   }, [])
 
   const handleOpenSubModal = useCallback(() => {
-    setPlanTemplate(planAssignment?.planTemplateId || "")
+    setPlanTemplate("")
     setPlanLevelGender((planAssignment?.levelGender as "M" | "F") || "M")
     setPlanStartDate(planAssignment?.endDate?.slice(0, 10) || format(new Date(), "yyyy-MM-dd"))
     setPlanNote("")
@@ -134,7 +134,7 @@ export default function AdminClientProfilePage() {
     if (planAssignment?.levelGender) {
       setPlanLevelGender((planAssignment.levelGender as "M" | "F") ?? "M")
     }
-    setPlanTemplate(planAssignment?.planTemplateId ?? "")
+    setPlanTemplate("")
     setPlanStartDate(planAssignment?.endDate?.slice(0, 10) || format(new Date(), "yyyy-MM-dd"))
     setPlanNote("")
     setPlanModal(true)
