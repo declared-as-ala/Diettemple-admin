@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { getMediaBaseUrl } from "@/lib/apiBaseUrl";
 import { fr } from "@/lib/i18n/fr";
 import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { AdminFormErrorSummary, AdminFormSection, AdminModal, AdminModalFooter, AdminSearchableSelect, type AdminFormError } from "@/components/admin";
 import { cn } from "@/lib/utils";
 import {
-  UserPlus, Search, RefreshCw, Users, ChevronRight,
+  UserPlus, Search, RefreshCw, Users, ChevronRight, Mail, Phone,
   Activity, CalendarDays, Loader2, HeartPulse, Target, Dumbbell, LockKeyhole,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
@@ -72,6 +73,40 @@ function getInitials(name?: string, email?: string): string {
 
 // ─── Client Card ──────────────────────────────────────────────────────────────
 
+function clientPhotoUrl(value?: string | null): string | null {
+  if (!value) return null;
+  if (/^(https?:|data:|blob:)/.test(value)) return value;
+  return `${getMediaBaseUrl()}${value.startsWith("/") ? "" : "/"}${value}`;
+}
+
+function ClientAvatar({ client, className }: { client: ClientRow; className?: string }) {
+  const photo = clientPhotoUrl(client.photoUri);
+  return (
+    <span className={cn("relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary/85 text-sm font-bold text-primary-foreground shadow-sm ring-1 ring-black/5", className)}>
+      <span>{getInitials(client.name, client.email)}</span>
+      {photo ? (
+        <img
+          src={photo}
+          alt={`Photo de ${client.name || "ce client"}`}
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={(event) => { event.currentTarget.style.display = "none"; }}
+        />
+      ) : null}
+    </span>
+  );
+}
+
+function ClientStatus({ segment }: { segment: string }) {
+  const style = SEGMENT_STYLE[segment] || SEGMENT_STYLE.unassigned;
+  return (
+    <span className={cn("inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold", style.pill)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} aria-hidden="true" />
+      {SEGMENT_LABEL[segment] || segment}
+    </span>
+  );
+}
+
 function ClientCard({ client, onClick }: { client: ClientRow; onClick: () => void }) {
   const seg = client.segment;
   const style = SEGMENT_STYLE[seg] || SEGMENT_STYLE.unassigned;
@@ -81,23 +116,11 @@ function ClientCard({ client, onClick }: { client: ClientRow; onClick: () => voi
   return (
     <button
       onClick={onClick}
-      className="group w-full text-left rounded-2xl border border-border bg-card hover:border-primary/30 hover:shadow-md hover:shadow-black/5 transition-all duration-150 overflow-hidden"
+      className="group w-full overflow-hidden text-left transition-colors duration-150 hover:bg-muted/35 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
       <div className="p-4 flex items-start gap-3">
         {/* Avatar */}
-        <div className="relative h-10 w-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm overflow-hidden bg-primary/80">
-          {client.photoUri ? (
-            <img
-              src={client.photoUri}
-              alt={client.name || "Client"}
-              className="absolute inset-0 h-full w-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-          ) : null}
-          <span>{getInitials(client.name, client.email)}</span>
-        </div>
+        <ClientAvatar client={client} />
 
         {/* Info */}
         <div className="flex-1 min-w-0">
@@ -166,7 +189,7 @@ function ClientCard({ client, onClick }: { client: ClientRow; onClick: () => voi
 
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden animate-pulse">
+    <div className="overflow-hidden border-b border-border/70 bg-card animate-pulse last:border-b-0">
       <div className="p-4 flex items-start gap-3">
         <div className="h-10 w-10 rounded-xl bg-muted flex-shrink-0" />
         <div className="flex-1 space-y-2">
@@ -186,6 +209,60 @@ function SkeletonCard() {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+function ClientList({ clients, onOpen }: { clients: ClientRow[]; onOpen: (client: ClientRow) => void }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[980px] border-collapse">
+          <thead>
+            <tr className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-3.5">Client</th>
+              <th className="px-4 py-3.5">Contact</th>
+              <th className="px-4 py-3.5">Abonnement</th>
+              <th className="px-4 py-3.5">Dernier entraînement</th>
+              <th className="px-4 py-3.5">Échéance</th>
+              <th className="w-14 px-4 py-3.5"><span className="sr-only">Ouvrir</span></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/70">
+            {clients.map((client) => {
+              const daysLeft = client.subscription ? daysUntil(client.subscription.endAt) : null;
+              return (
+                <tr
+                  key={client._id}
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Ouvrir le dossier de ${client.name || "ce client"}`}
+                  onClick={() => onOpen(client)}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(client); } }}
+                  className="group cursor-pointer transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                >
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <ClientAvatar client={client} />
+                      <div className="min-w-0"><p className="max-w-56 truncate text-sm font-semibold text-foreground">{client.name || "Client sans nom"}</p><p className="mt-0.5 text-xs text-muted-foreground">Inscrit le {format(new Date(client.createdAt), "dd MMM yyyy", { locale: dateFnsFr })}</p></div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="space-y-1 text-sm"><p className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="max-w-56 truncate">{client.email || "—"}</span></p>{client.phone ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{client.phone}</p> : null}</div>
+                  </td>
+                  <td className="px-4 py-3.5"><div className="flex flex-col items-start gap-1.5"><ClientStatus segment={client.segment} />{client.subscription?.levelName ? <span className="text-xs font-medium text-muted-foreground">{client.subscription.levelName}</span> : null}</div></td>
+                  <td className="px-4 py-3.5"><span className="flex items-center gap-2 text-sm text-muted-foreground"><Activity className="h-4 w-4 shrink-0" aria-hidden="true" />{client.lastWorkoutDate ? formatDistanceToNow(new Date(client.lastWorkoutDate), { addSuffix: true, locale: dateFnsFr }) : "Jamais entraîné"}</span></td>
+                  <td className="px-4 py-3.5"><div className="space-y-1"><span className="flex items-center gap-2 text-sm text-foreground"><CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{client.subscription ? format(new Date(client.subscription.endAt), "dd MMM yyyy", { locale: dateFnsFr }) : "—"}</span>{daysLeft !== null ? <p className={cn("pl-6 text-xs font-medium", daysLeft < 0 ? "text-red-600" : daysLeft <= 7 ? "text-amber-600" : "text-muted-foreground")}>{daysLeft < 0 ? `Expiré depuis ${Math.abs(daysLeft)} j` : `${daysLeft} j restants`}</p> : null}</div></td>
+                  <td className="px-4 py-3.5 text-right"><span className="inline-grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition-colors group-hover:bg-background group-hover:text-foreground"><ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="divide-y divide-border md:hidden">
+        {clients.map((client) => <ClientCard key={client._id} client={client} onClick={() => onOpen(client)} />)}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminClientsPage() {
   const router = useRouter();
@@ -389,7 +466,7 @@ export default function AdminClientsPage() {
       {/* ── CONTENT ── */}
       <div className="flex-1 p-6">
         {loading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : clients.length === 0 ? (
@@ -412,15 +489,7 @@ export default function AdminClientsPage() {
           </div>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {clients.map((c) => (
-                <ClientCard
-                  key={c._id}
-                  client={c}
-                  onClick={() => router.push(`/admin/clients/${c._id}`)}
-                />
-              ))}
-            </div>
+            <ClientList clients={clients} onOpen={(client) => router.push(`/admin/clients/${client._id}`)} />
 
             {/* Pagination */}
             {pagination.pages > 1 && (
