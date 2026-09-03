@@ -17,6 +17,8 @@ export default function AdminLayout({
   const pathname = usePathname()
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // Skip auth check for login page
   const isLoginPage = pathname === "/admin/login"
@@ -83,11 +85,19 @@ export default function AdminLayout({
 
   return (
     <ToastProvider>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <TopBar />
-          <main className="flex-1 overflow-y-auto p-6 animate-fade-in">
+      <div
+        className="min-h-screen bg-background"
+        style={{ "--admin-sidebar-width": sidebarCollapsed ? "5rem" : "16rem" } as React.CSSProperties}
+      >
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+          mobileOpen={mobileSidebarOpen}
+          onMobileOpenChange={setMobileSidebarOpen}
+        />
+        <div className="min-h-screen transition-[padding] duration-300 lg:pl-[var(--admin-sidebar-width)]">
+          <TopBar onMenuClick={() => setMobileSidebarOpen(true)} />
+          <main className="min-w-0 p-4 sm:p-6 animate-fade-in">
             {children}
           </main>
         </div>

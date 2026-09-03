@@ -13,7 +13,7 @@ import { AdminFormErrorSummary, AdminFormSection, AdminModal, AdminModalFooter, 
 import { cn } from "@/lib/utils";
 import {
   UserPlus, Search, RefreshCw, Users, ChevronRight, Mail, Phone,
-  Activity, CalendarDays, Loader2, HeartPulse, Target, Dumbbell, LockKeyhole,
+  Activity, CalendarDays, Loader2, HeartPulse, Target, Dumbbell, LockKeyhole, X,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr as dateFnsFr } from "date-fns/locale";
@@ -107,18 +107,21 @@ function ClientStatus({ segment }: { segment: string }) {
   );
 }
 
-function ClientCard({ client, onClick }: { client: ClientRow; onClick: () => void }) {
+function ClientCard({ client, onClick, selected, onToggle }: { client: ClientRow; onClick: () => void; selected: boolean; onToggle: () => void }) {
   const seg = client.segment;
   const style = SEGMENT_STYLE[seg] || SEGMENT_STYLE.unassigned;
   const levelName = client.subscription?.levelName;
   const daysLeft = client.subscription ? daysUntil(client.subscription.endAt) : null;
 
-  return (
+  return (<div className={cn("relative", selected && "bg-primary/5")}>
+    <label className="absolute left-3 top-4 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-lg bg-card/90 shadow-sm ring-1 ring-border" onClick={(event) => event.stopPropagation()}>
+      <input type="checkbox" checked={selected} onChange={onToggle} aria-label={`Sélectionner ${client.name || "ce client"}`} className="h-4 w-4 accent-primary" />
+    </label>
     <button
       onClick={onClick}
       className="group w-full overflow-hidden text-left transition-colors duration-150 hover:bg-muted/35 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
-      <div className="p-4 flex items-start gap-3">
+      <div className="p-4 pl-14 flex items-start gap-3">
         {/* Avatar */}
         <ClientAvatar client={client} />
 
@@ -181,7 +184,7 @@ function ClientCard({ client, onClick }: { client: ClientRow; onClick: () => voi
           </span>
         )}
       </div>
-    </button>
+    </button></div>
   );
 }
 
@@ -210,13 +213,18 @@ function SkeletonCard() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-function ClientList({ clients, onOpen }: { clients: ClientRow[]; onOpen: (client: ClientRow) => void }) {
+function ClientList({ clients, selectedIds, onToggle, onTogglePage, onOpen }: { clients: ClientRow[]; selectedIds: Set<string>; onToggle: (id: string) => void; onTogglePage: () => void; onOpen: (client: ClientRow) => void }) {
+  const allSelected = clients.length > 0 && clients.every((client) => selectedIds.has(client._id));
+  const someSelected = clients.some((client) => selectedIds.has(client._id)) && !allSelected;
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected; }, [someSelected]);
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[980px] border-collapse">
           <thead>
             <tr className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="w-12 px-4 py-3.5"><input ref={selectAllRef} type="checkbox" checked={allSelected} onChange={onTogglePage} aria-label="Sélectionner tous les clients de cette page" className="h-4 w-4 accent-primary" /></th>
               <th className="px-5 py-3.5">Client</th>
               <th className="px-4 py-3.5">Contact</th>
               <th className="px-4 py-3.5">Abonnement</th>
@@ -236,8 +244,9 @@ function ClientList({ clients, onOpen }: { clients: ClientRow[]; onOpen: (client
                   aria-label={`Ouvrir le dossier de ${client.name || "ce client"}`}
                   onClick={() => onOpen(client)}
                   onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(client); } }}
-                  className="group cursor-pointer transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  className={cn("group cursor-pointer transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", selectedIds.has(client._id) && "bg-primary/5")}
                 >
+                  <td className="px-4 py-3.5" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selectedIds.has(client._id)} onChange={() => onToggle(client._id)} aria-label={`Sélectionner ${client.name || "ce client"}`} className="h-4 w-4 accent-primary" /></td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <ClientAvatar client={client} />
@@ -258,7 +267,7 @@ function ClientList({ clients, onOpen }: { clients: ClientRow[]; onOpen: (client
         </table>
       </div>
       <div className="divide-y divide-border md:hidden">
-        {clients.map((client) => <ClientCard key={client._id} client={client} onClick={() => onOpen(client)} />)}
+        {clients.map((client) => <ClientCard key={client._id} client={client} selected={selectedIds.has(client._id)} onToggle={() => onToggle(client._id)} onClick={() => onOpen(client)} />)}
       </div>
     </div>
   );
@@ -270,6 +279,7 @@ export default function AdminClientsPage() {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
   const [loading, setLoading] = useState(true);
   const [segment, setSegment] = useState<Segment>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const abortRef = useRef<AbortController | null>(null);
   const hasLoadedOnce = useRef(false);
   const { query, setQuery, effectiveQuery, isDebouncing } = useDebouncedSearch({ debounceMs: 400, minLength: 2 });
@@ -404,6 +414,13 @@ export default function AdminClientsPage() {
   };
 
   const isSearching = isDebouncing || (!!effectiveQuery && loading);
+  const toggleSelection = (id: string) => setSelectedIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const toggleVisiblePage = () => setSelectedIds((current) => {
+    const next = new Set(current);
+    const allVisibleSelected = clients.length > 0 && clients.every((client) => next.has(client._id));
+    clients.forEach((client) => allVisibleSelected ? next.delete(client._id) : next.add(client._id));
+    return next;
+  });
 
   return (
     <div className="flex flex-col h-full min-h-screen bg-background">
@@ -465,6 +482,12 @@ export default function AdminClientsPage() {
 
       {/* ── CONTENT ── */}
       <div className="flex-1 p-6">
+        {selectedIds.size > 0 && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3" role="status">
+            <p className="text-sm font-semibold">{selectedIds.size} client{selectedIds.size > 1 ? "s" : ""} sélectionné{selectedIds.size > 1 ? "s" : ""}</p>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}><X className="mr-2 h-4 w-4" />Effacer la sélection</Button>
+          </div>
+        )}
         {loading ? (
           <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -489,7 +512,7 @@ export default function AdminClientsPage() {
           </div>
         ) : (
           <>
-            <ClientList clients={clients} onOpen={(client) => router.push(`/admin/clients/${client._id}`)} />
+            <ClientList clients={clients} selectedIds={selectedIds} onToggle={toggleSelection} onTogglePage={toggleVisiblePage} onOpen={(client) => router.push(`/admin/clients/${client._id}`)} />
 
             {/* Pagination */}
             {pagination.pages > 1 && (
@@ -565,7 +588,7 @@ export default function AdminClientsPage() {
               <div className="space-y-2"><Label htmlFor="plan-level-filter">Filtrer par niveau</Label><select id="plan-level-filter" value={addPlanLevelFilter} onChange={(event) => setAddPlanLevelFilter(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"><option value="all">Tous les niveaux</option>{["INITIATE", "FIGHTER", "WARRIOR", "CHAMPION", "ELITE"].map((level) => <option key={level} value={level}>{level.charAt(0) + level.slice(1).toLowerCase()}</option>)}</select></div>
               <div className="space-y-2"><Label htmlFor="plan-gender-filter">Filtrer par sexe</Label><select id="plan-gender-filter" value={addPlanGenderFilter} onChange={(event) => setAddPlanGenderFilter(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"><option value="all">Tous</option><option value="M">Homme</option><option value="F">Femme</option></select></div>
             </div>
-            <AdminSearchableSelect items={filteredAddPlans} selectedKeys={addSelectedPlanId ? [addSelectedPlanId] : []} onSelectionChange={(keys) => setAddSelectedPlanId(keys[0] || "")} getKey={(plan) => plan._id} getLabel={(plan) => plan.name} getSearchText={(plan) => `${plan.name} ${plan.level || ""} ${plan.gender || ""}`} renderMeta={(plan) => `${plan.level ? plan.level.charAt(0) + plan.level.slice(1).toLowerCase() : "Niveau non renseigné"} · ${plan.gender === "M" ? "Homme" : plan.gender === "F" ? "Femme" : "Tous"} · ${plan.weeks?.length ?? 5} semaines`} placeholder="Rechercher un plan par nom…" emptyText="Aucun plan actif ne correspond aux filtres." loading={addPlansLoading} label="Plans actifs disponibles" />
+            <AdminSearchableSelect items={filteredAddPlans} selectedKeys={addSelectedPlanId ? [addSelectedPlanId] : []} onSelectionChange={(keys) => setAddSelectedPlanId(keys[0] || "")} getKey={(plan) => plan._id} getLabel={(plan) => plan.name} getSearchText={(plan) => `${plan.name} ${plan.level || ""} ${plan.gender || ""}`} renderMeta={(plan) => `${plan.level ? plan.level.charAt(0) + plan.level.slice(1).toLowerCase() : "Niveau non renseigné"} · ${plan.gender === "M" ? "Homme" : plan.gender === "F" ? "Femme" : "Tous"} · ${plan.weeks?.length ? `${plan.weeks.length} semaines` : "Durée non configurée"}`} placeholder="Rechercher un plan par nom…" emptyText="Aucun plan actif ne correspond aux filtres." loading={addPlansLoading} label="Plans actifs disponibles" />
             <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm text-foreground" aria-live="polite"><p className="font-semibold">Niveau automatique : {selectedAddPlan?.level ? selectedAddPlan.level.charAt(0) + selectedAddPlan.level.slice(1).toLowerCase() : "Aucun plan sélectionné"}</p><p className="mt-1 text-muted-foreground">Le niveau est déterminé par le plan sélectionné et n’est jamais envoyé comme propriété éditable du client.</p></div>
           </AdminFormSection>
         </div>

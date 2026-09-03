@@ -14,18 +14,15 @@ import OverviewTab from "@/components/client-detail/OverviewTab"
 import TrainingTab from "@/components/client-detail/TrainingTab"
 import DietTab from "@/components/client-detail/DietTab"
 import TimelineTab from "@/components/client-detail/TimelineTab"
-import SubscriptionModal from "@/components/client-detail/SubscriptionModal"
 import WorkoutPlanModal from "@/components/client-detail/WorkoutPlanModal"
+import ClientProfileModal from "@/components/client-detail/ClientProfileModal"
 import NoteModal from "@/components/client-detail/NoteModal"
 import NutritionTemplateModal from "@/components/client-detail/NutritionTemplateModal"
 import ClientDetailSkeleton from "@/components/client-detail/ClientDetailSkeleton"
 import BodyCompositionTab from "@/components/client-detail/BodyCompositionTab"
 import WeeklyProgressTab from "@/components/client-detail/WeeklyProgressTab"
 import { useClientProfile } from "@/components/client-detail/useClientProfile"
-import type {
-  TabId, OrderFilter, SubScenario, Recommendation, NutritionPlan,
-} from "@/components/client-detail/types"
-import { quickEndDate } from "@/components/client-detail/utils"
+import type { TabId, OrderFilter, Recommendation, NutritionPlan } from "@/components/client-detail/types"
 import { ConfirmModal } from "@/components/shared/ConfirmModal"
 
 export default function AdminClientProfilePage() {
@@ -54,7 +51,6 @@ export default function AdminClientProfilePage() {
 
   // ─── Client level (User.level — separate from LevelTemplate) ───────────
   const [clientLevel, setClientLevel] = useState("")
-  const [levelSaving, setLevelSaving] = useState(false)
 
   // ─── Nutrition target form state ───────────────────────────────────────
   const [kcal, setKcal] = useState("")
@@ -64,17 +60,9 @@ export default function AdminClientProfilePage() {
   const [savingTargets, setSavingTargets] = useState(false)
 
   // ─── Subscription modal state ──────────────────────────────────────────
-  const [subModal, setSubModal] = useState(false)
-  const [subScenario, setSubScenario] = useState<SubScenario>("renew")
-  const [selectedTemplate, setSelectedTemplate] = useState("")
-  const [selectedLevelName, setSelectedLevelName] = useState("")
-  const [selectedLevelGender, setSelectedLevelGender] = useState<"M" | "F">("M")
-  const [subEndDate, setSubEndDate] = useState("")
-  const [subStartDate, setSubStartDate] = useState(format(new Date(), "yyyy-MM-dd"))
-  const [subNote, setSubNote] = useState("")
-  const [subSaving, setSubSaving] = useState(false)
   const [restartS1Saving, setRestartS1Saving] = useState(false)
   const [restartConfirmOpen, setRestartConfirmOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
 
   // ─── Workout plan modal state ──────────────────────────────────────────
   const [planModal, setPlanModal] = useState(false)
@@ -122,25 +110,13 @@ export default function AdminClientProfilePage() {
   }, [])
 
   const handleOpenSubModal = useCallback(() => {
-    const hasSub = !!profile?.subscription
-    setSubScenario(hasSub ? "renew" : "new")
-    setSubEndDate(quickEndDate(30))
-    setSubStartDate(format(new Date(), "yyyy-MM-dd"))
-    setSelectedTemplate(profile?.subscription?.levelTemplateId?._id || "")
-    setSelectedLevelName(profile?.subscription?.levelTemplateId?.name || "")
-    setSelectedLevelGender(
-      (profile?.subscription?.levelTemplateId?.gender as "M" | "F") || "M"
-    )
-    setSubNote("")
-    setSubModal(true)
+    setPlanTemplate(planAssignment?.planTemplateId || "")
+    setPlanLevelGender((planAssignment?.levelGender as "M" | "F") || "M")
+    setPlanStartDate(planAssignment?.endDate?.slice(0, 10) || format(new Date(), "yyyy-MM-dd"))
+    setPlanNote("")
+    setPlanModal(true)
     loadLevelTemplates()
-  }, [profile, loadLevelTemplates])
-
-  const handleChangePlan = useCallback(() => {
-    setSubScenario("change")
-    setSubModal(true)
-    loadLevelTemplates()
-  }, [loadLevelTemplates])
+  }, [planAssignment, loadLevelTemplates])
 
   // ─── Workout plan (PlanAssignment) handlers ────────────────────────────
 
@@ -159,7 +135,7 @@ export default function AdminClientProfilePage() {
       setPlanLevelGender((planAssignment.levelGender as "M" | "F") ?? "M")
     }
     setPlanTemplate(planAssignment?.planTemplateId ?? "")
-    setPlanStartDate(format(new Date(), "yyyy-MM-dd"))
+    setPlanStartDate(planAssignment?.endDate?.slice(0, 10) || format(new Date(), "yyyy-MM-dd"))
     setPlanNote("")
     setPlanModal(true)
     loadLevelTemplates()
@@ -197,69 +173,18 @@ export default function AdminClientProfilePage() {
     }
   }, [id, planTemplate, planStartDate, planNote, planAssignment, toast, refetchPlanAssignment, invalidateTimeline])
 
-  const handleSaveSubscription = useCallback(async () => {
-    const sub = profile?.subscription
-    const templateId =
-      selectedTemplate ||
-      (selectedLevelName
-        ? levelTemplates.find(
-            (t) => t.name === selectedLevelName && (t.gender || "M") === selectedLevelGender
-          )?._id
-        : undefined)
-    setSubSaving(true)
+  const handleRenewWorkoutPlan = useCallback(async () => {
     try {
-      if (subScenario === "renew" && sub) {
-        if (!subEndDate) {
-          toast("Choisissez une date de fin", "error")
-          setSubSaving(false)
-          return
-        }
-        await api.renewSubscription(sub._id, {
-          newEndAt: subEndDate + "T23:59:59.999Z",
-          note: subNote || undefined,
-        })
-        toast("Abonnement renouvelé ✓", "success")
-      } else if (subScenario === "change" && sub) {
-        if (!templateId) {
-          toast("Choisissez un plan", "error")
-          setSubSaving(false)
-          return
-        }
-        await api.changeSubscriptionLevel(sub._id, {
-          newLevelTemplateId: templateId,
-          keepDates: !subEndDate,
-          ...(subEndDate ? { newEndAt: subEndDate + "T23:59:59.999Z" } : {}),
-          note: subNote || undefined,
-        })
-        toast("Plan mis à jour ✓", "success")
-      } else {
-        if (!templateId) {
-          toast("Choisissez un plan", "error")
-          setSubSaving(false)
-          return
-        }
-        await api.assignSubscription({
-          userId: id,
-          levelTemplateId: templateId,
-          startAt: subStartDate + "T00:00:00.000Z",
-          endAt: subEndDate + "T23:59:59.999Z",
-          note: subNote || undefined,
-        })
-        toast("Abonnement assigné ✓", "success")
-      }
-      setSubModal(false)
+      await api.renewWorkoutPlan(id)
+      toast("Renouvellement planifié à la suite du plan actuel", "success")
+      setPlanModal(false)
+      await Promise.all([refetchPlanAssignment(), refetchProfile()])
       invalidateTimeline()
-      await refetchProfile()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string }
-      toast(e?.response?.data?.message || e?.message || "Erreur", "error")
-    } finally {
-      setSubSaving(false)
+      toast(e.response?.data?.message || e.message || "Renouvellement impossible", "error")
     }
-  }, [
-    profile, selectedTemplate, selectedLevelName, levelTemplates, selectedLevelGender,
-    subScenario, subEndDate, subStartDate, subNote, id, toast, invalidateTimeline, refetchProfile,
-  ])
+  }, [id, invalidateTimeline, refetchPlanAssignment, refetchProfile, toast])
 
   const handleRestartProgramWeek1 = useCallback(async () => {
     if (!planAssignment?.id) return
@@ -298,23 +223,6 @@ export default function AdminClientProfilePage() {
       setNoteSaving(false)
     }
   }, [id, noteDate, noteMessage, noteTitle, toast, invalidateTimeline, refetchProfile])
-
-  const handleUpdateLevel = useCallback(
-    async (level: string) => {
-      if (level === clientLevel) return
-      setLevelSaving(true)
-      try {
-        await api.updateUserLevel(id, level)
-        setClientLevel(level)
-        toast(`Niveau mis à jour : ${level} ✓`, "success")
-      } catch {
-        toast("Erreur lors de la mise à jour du niveau", "error")
-      } finally {
-        setLevelSaving(false)
-      }
-    },
-    [id, clientLevel, toast]
-  )
 
   const handleSaveNutrition = useCallback(async () => {
     setSavingTargets(true)
@@ -482,6 +390,8 @@ export default function AdminClientProfilePage() {
         onBack={() => router.push("/admin/clients")}
         onOpenSubModal={handleOpenSubModal}
         onOpenNoteModal={handleOpenNoteModal}
+        onEditClient={() => setProfileModalOpen(true)}
+        planAssignment={planAssignment}
       />
 
       <div className="flex-1 px-6 py-6">
@@ -519,6 +429,7 @@ export default function AdminClientProfilePage() {
             onAssignWorkoutPlan={handleOpenAssignWorkoutPlan}
             onChangeWorkoutPlan={handleOpenChangeWorkoutPlan}
             onRestartWeek1={() => setRestartConfirmOpen(true)}
+            onRenewPlan={handleRenewWorkoutPlan}
           />
         )}
 
@@ -561,32 +472,7 @@ export default function AdminClientProfilePage() {
         )}
       </div>
 
-      <SubscriptionModal
-        open={subModal}
-        onOpenChange={setSubModal}
-        sub={profile.subscription}
-        scenario={subScenario}
-        onScenarioChange={setSubScenario}
-        templates={levelTemplates}
-        templatesLoading={levelTemplatesLoading}
-        selectedTemplate={selectedTemplate}
-        onSelectTemplate={(id, name, gender) => {
-          setSelectedTemplate(id)
-          setSelectedLevelName(name)
-          setSelectedLevelGender(gender)
-        }}
-        selectedGender={selectedLevelGender}
-        onGenderChange={setSelectedLevelGender}
-        endDate={subEndDate}
-        onEndDateChange={setSubEndDate}
-        startDate={subStartDate}
-        onStartDateChange={setSubStartDate}
-        note={subNote}
-        onNoteChange={setSubNote}
-        saving={subSaving}
-        onSave={handleSaveSubscription}
-      />
-
+      <ClientProfileModal open={profileModalOpen} onOpenChange={setProfileModalOpen} profile={profile} onSaved={refetchProfile} />
       <NoteModal
         open={noteModal}
         onOpenChange={setNoteModal}
@@ -625,6 +511,7 @@ export default function AdminClientProfilePage() {
         onNoteChange={setPlanNote}
         saving={planSaving}
         onSave={handleSaveWorkoutPlan}
+        onRenew={handleRenewWorkoutPlan}
       />
       <ConfirmModal open={restartConfirmOpen} onOpenChange={setRestartConfirmOpen} title="Redémarrer le programme en semaine 1 ?" description="La date de début du programme sera fixée à aujourd’hui. L’abonnement et l’historique existants ne seront pas supprimés." confirmLabel="Redémarrer en semaine 1" cancelLabel="Annuler" variant="default" loading={restartS1Saving} onConfirm={handleRestartProgramWeek1} />
     </div>

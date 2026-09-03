@@ -22,6 +22,7 @@ interface TrainingTabProps {
   onAssignWorkoutPlan: () => void
   onChangeWorkoutPlan: () => void
   onRestartWeek1: () => void
+  onRenewPlan: () => void
 }
 
 // ── Exercise load card ────────────────────────────────────────────────────────
@@ -135,7 +136,9 @@ export default function TrainingTab({
   onAssignWorkoutPlan,
   onChangeWorkoutPlan,
   onRestartWeek1,
+  onRenewPlan,
 }: TrainingTabProps) {
+  const [todayMs] = useState(() => Date.now())
   // ── Workout plan section (PlanAssignment) ──────────────────────────────────
 
   const renderWorkoutPlanCard = () => {
@@ -157,7 +160,7 @@ export default function TrainingTab({
             <div>
               <p className="font-medium">Aucun programme assigné</p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Assigne un programme de 5 semaines pour que le client puisse s&apos;entraîner.
+                Assigne un programme pour que le client puisse s&apos;entraîner.
               </p>
             </div>
             <Button onClick={onAssignWorkoutPlan} className="gap-2">
@@ -172,14 +175,12 @@ export default function TrainingTab({
     const statusMeta = STATUS_META[planAssignment.status] ?? STATUS_META.archived
     const startD = new Date(planAssignment.startDate)
     const endD = new Date(planAssignment.endDate)
-    const todayMs = Date.now()
     const startMs = startD.getTime()
     const endMs = endD.getTime()
     const totalMs = Math.max(1, endMs - startMs)
     const elapsedMs = Math.max(0, Math.min(totalMs, todayMs - startMs))
-    const progressPct = planAssignment.progress?.completionPercent ?? Math.round((elapsedMs / totalMs) * 100)
     const dayElapsed = Math.floor(elapsedMs / (24 * 60 * 60 * 1000))
-    const currentWeekNum = planAssignment.progress?.currentWeek ?? Math.min(5, Math.max(1, Math.floor(dayElapsed / 7) + 1))
+    const currentWeekNum = planAssignment.progress?.currentWeek ?? Math.min(planAssignment.durationWeeks, Math.max(1, Math.floor(dayElapsed / 7) + 1))
     const daysLeft = planAssignment.progress?.remainingDays ?? Math.max(0, Math.ceil((endMs - todayMs) / (24 * 60 * 60 * 1000)))
 
     return (
@@ -191,6 +192,9 @@ export default function TrainingTab({
               Programme d&apos;entraînement
             </span>
             <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={onRenewPlan}>
+                <Calendar className="h-3 w-3 mr-1" /> Renouveler
+              </Button>
               <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={onChangeWorkoutPlan}>
                 <TrendingUp className="h-3 w-3 mr-1" />
                 Changer
@@ -236,7 +240,7 @@ export default function TrainingTab({
               <p className="text-sm text-muted-foreground">
                 {planAssignment.levelGender === "F" ? "Programme Femme" : "Programme Homme"}
                 {" · "}
-                <Clock className="h-3 w-3 inline" /> Durée: 5 semaines fixes
+                <Clock className="h-3 w-3 inline" /> Durée : {planAssignment.durationWeeks} semaine{planAssignment.durationWeeks > 1 ? "s" : ""}
               </p>
             </div>
           </div>
@@ -246,11 +250,11 @@ export default function TrainingTab({
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-muted-foreground">Progression</span>
               <span className="text-sm font-bold">
-                S{currentWeekNum} / 5
+                S{currentWeekNum} / {planAssignment.durationWeeks}
               </span>
             </div>
             <div className="flex gap-1.5 mb-1">
-              {[1, 2, 3, 4, 5].map((w) => (
+              {Array.from({ length: planAssignment.durationWeeks }, (_, index) => index + 1).map((w) => (
                 <div
                   key={w}
                   className={cn(
@@ -266,7 +270,7 @@ export default function TrainingTab({
               ))}
             </div>
             <div className="flex justify-between">
-              {[1, 2, 3, 4, 5].map((w) => (
+              {Array.from({ length: planAssignment.durationWeeks }, (_, index) => index + 1).map((w) => (
                 <span
                   key={w}
                   className={cn(
@@ -288,7 +292,7 @@ export default function TrainingTab({
             </span>
             <span className="flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" />
-              Fin : <strong className="text-foreground ml-1">{fmtDate(planAssignment.endDate)}</strong>
+              Dernier jour : <strong className="text-foreground ml-1">{fmtDate(planAssignment.finalActiveDate || planAssignment.endDate)}</strong>
             </span>
             {planAssignment.status === "active" && daysLeft > 0 && (
               <span className="flex items-center gap-1 text-primary font-medium">

@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils"
 import { getLevelImageUrl, normalizeLevelName } from "@/lib/levelAssets"
 import {
   ArrowLeft, RefreshCw, MessageSquarePlus, User, Users, Phone, Mail,
-  Activity, UtensilsCrossed, Clock, Trophy, TrendingUp,
+  Activity, UtensilsCrossed, Clock, Trophy, TrendingUp, Pencil,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { ProfileData, TabId } from "./types"
+import type { PlanAssignmentData, ProfileData, TabId } from "./types"
 import { daysUntil, fmtDate, fmtRelative } from "./utils"
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -35,6 +35,8 @@ interface ClientHeaderProps {
   onBack: () => void
   onOpenSubModal: () => void
   onOpenNoteModal: () => void
+  onEditClient: () => void
+  planAssignment: PlanAssignmentData | null
 }
 
 export default function ClientHeader({
@@ -45,20 +47,23 @@ export default function ClientHeader({
   onBack,
   onOpenSubModal,
   onOpenNoteModal,
+  onEditClient,
+  planAssignment,
 }: ClientHeaderProps) {
   const sub = profile.subscription
   const client = profile.client
   const meta = profile.profileMeta
-  const levelName = sub?.levelTemplateId?.name ?? ""
+  const levelName = planAssignment?.levelName || sub?.levelTemplateId?.name || ""
   const clientDisplayName = sub?.levelTemplateId?.clientDisplayName || levelName
   const levelGender = sub?.levelTemplateId?.gender ?? ""
   const tierForUi = normalizeLevelName(clientLevel || clientDisplayName || levelName)
   const heroLevel = tierForUi || clientDisplayName || levelName || "Intiate"
   const gradientClass =
     LEVEL_COLORS[tierForUi] ?? LEVEL_COLORS[clientLevel] ?? LEVEL_COLORS[levelName] ?? "from-slate-800 via-slate-900 to-black"
-  const isActive = sub?.effectiveStatus === "ACTIVE"
-  const isExpired = sub?.effectiveStatus === "EXPIRED"
-  const daysLeft = sub ? daysUntil(sub.endAt) : 0
+  const isActive = planAssignment?.status === "active" || (!planAssignment && sub?.effectiveStatus === "ACTIVE")
+  const isExpired = planAssignment?.status === "completed" || (!planAssignment && sub?.effectiveStatus === "EXPIRED")
+  const planEndDate = planAssignment?.finalActiveDate || sub?.endAt
+  const daysLeft = planEndDate ? daysUntil(planEndDate) : 0
   const displayName = client.name || "Client sans nom"
   const photo = meta?.photoUri || client.photoUri
 
@@ -77,7 +82,7 @@ export default function ClientHeader({
             </button>
             <span className="text-muted-foreground/40">/</span>
             <span className="font-semibold text-sm truncate">{displayName}</span>
-            {sub && (
+            {(planAssignment || sub) && (
               <span
                 className={cn(
                   "hidden md:inline-flex text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider",
@@ -88,11 +93,14 @@ export default function ClientHeader({
                       : "bg-muted text-muted-foreground"
                 )}
               >
-                {isActive ? "Actif" : isExpired ? "Expiré" : sub.effectiveStatus}
+                {isActive ? "Actif" : isExpired ? "Terminé" : planAssignment?.status || sub?.effectiveStatus}
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onEditClient}>
+              <Pencil className="h-3.5 w-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Modifier</span>
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -108,8 +116,8 @@ export default function ClientHeader({
               onClick={onOpenSubModal}
             >
               <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">{sub ? "Gérer l'abonnement" : "Configurer"}</span>
-              <span className="sm:hidden">{sub ? "Gérer" : "Configurer"}</span>
+              <span className="hidden sm:inline">{sub ? "Gérer le plan" : "Configurer"}</span>
+              <span className="sm:hidden">{sub ? "Plan" : "Configurer"}</span>
             </Button>
           </div>
         </div>
@@ -179,7 +187,7 @@ export default function ClientHeader({
                     {tierForUi}
                   </span>
                 )}
-                {sub && (
+                {(planAssignment || sub) && (
                   <span
                     className={cn(
                       "text-[11px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
@@ -190,7 +198,7 @@ export default function ClientHeader({
                           : "bg-white/10 text-white/60"
                     )}
                   >
-                    {isActive ? "Abonné actif" : isExpired ? "Expiré" : sub.effectiveStatus}
+                    {isActive ? "Plan actif" : isExpired ? "Terminé" : planAssignment?.status || sub?.effectiveStatus}
                   </span>
                 )}
               </div>
@@ -229,17 +237,20 @@ export default function ClientHeader({
                     Plan client : {clientDisplayName} (Réf : {levelName})
                   </span>
                 )}
+                {planAssignment?.progress?.currentWeek && (
+                  <span className="inline-flex items-center gap-1.5 font-medium text-white/80">Semaine {planAssignment.progress.currentWeek} sur {planAssignment.durationWeeks}</span>
+                )}
               </div>
             </div>
 
             {/* Subscription end card */}
-            {sub && (
+            {planEndDate && (
               <div className="hidden sm:flex flex-col items-end text-right bg-white/8 backdrop-blur rounded-xl border border-white/10 px-4 py-3 flex-shrink-0">
                 <p className="text-[10px] uppercase tracking-wider text-white/50 font-semibold">
-                  {isActive ? "Abonnement expire le" : "Abonnement expiré le"}
+                  {isActive ? "Accès au plan jusqu’au" : "Plan terminé le"}
                 </p>
                 <p className="text-white font-bold text-sm mt-0.5">
-                  {fmtDate(sub.endAt)}
+                  {fmtDate(planEndDate)}
                 </p>
                 <p
                   className={cn(

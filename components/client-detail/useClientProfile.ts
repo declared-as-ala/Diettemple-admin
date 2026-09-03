@@ -148,8 +148,10 @@ export function useClientProfile(id: string) {
           id: data.assignment.id,
           startDate: data.assignment.startDate,
           endDate: data.assignment.endDate,
-          durationWeeks: data.assignment.durationWeeks || 5,
+          finalActiveDate: data.assignment.finalActiveDate,
+          durationWeeks: data.assignment.durationWeeks,
           status: data.assignment.status,
+          planTemplateId: data.plan?.id,
           levelName: data.plan?.name,
           levelGender: data.plan?.gender,
           progress: {
@@ -215,7 +217,8 @@ export function useClientProfile(id: string) {
 
   useEffect(() => {
     loadProfile()
-  }, [loadProfile])
+    loadPlanAssignment()
+  }, [loadPlanAssignment, loadProfile])
 
   // Trigger lazy tab loaders based on active tab
   const ensureTabData = useCallback(

@@ -6,8 +6,9 @@ export interface PlanAssignmentData {
   id: string
   startDate: string
   endDate: string
+  finalActiveDate?: string
   durationWeeks: number
-  status: "active" | "completed" | "paused" | "archived"
+  status: "scheduled" | "active" | "completed" | "cancelled" | "replaced" | "paused" | "archived"
   planTemplateId?: string
   levelName?: string
   levelGender?: string
@@ -31,6 +32,10 @@ export type SubScenario = "renew" | "change" | "new"
 export interface ClientData {
   _id: string
   name?: string
+  firstName?: string
+  lastName?: string
+  dateOfBirth?: string
+  address?: { line1?: string; line2?: string; city?: string; region?: string; postalCode?: string; country?: string }
   email?: string
   phone?: string
   sexe?: 'M' | 'F'
@@ -84,6 +89,9 @@ export interface ProfileCompletionFlags {
 export interface ProfileData {
   client: ClientData
   subscription: SubscriptionData | null
+  currentAssignment?: unknown | null
+  scheduledAssignment?: unknown | null
+  assignmentHistory?: unknown[]
   nutritionAssignment: null
   lastCoachNote: { date: string; message?: string; title?: string } | null
   lastWorkoutDate: string | null

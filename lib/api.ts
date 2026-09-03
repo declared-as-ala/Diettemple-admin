@@ -378,6 +378,21 @@ class ApiClient {
     return response.data;
   }
 
+  async renewWorkoutPlan(userId: string, data?: { note?: string }) {
+    const response = await this.client.post(`/admin/workout-plan/${userId}/renew`, data || {});
+    return response.data;
+  }
+
+  async cancelWorkoutPlan(userId: string, data?: { note?: string }) {
+    const response = await this.client.post(`/admin/workout-plan/${userId}/cancel`, data || {});
+    return response.data;
+  }
+
+  async getWorkoutPlanHistory(userId: string) {
+    const response = await this.client.get(`/admin/workout-plan/${userId}/history`);
+    return response.data;
+  }
+
   async pauseWorkoutPlan(userId: string) {
     const response = await this.client.post(`/admin/workout-plan/${userId}/pause`);
     return response.data;
@@ -468,6 +483,23 @@ class ApiClient {
 
   async updateClientProfile(clientId: string, data: any) {
     const response = await this.client.put(`/admin/clients/${clientId}`, data);
+    return response.data;
+  }
+
+  async uploadClientPhoto(clientId: string, photo: File) {
+    const formData = new FormData();
+    formData.append('photo', photo);
+    const response = await this.client.post(`/admin/clients/${clientId}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return response.data;
+  }
+
+  async deleteClientPhoto(clientId: string) {
+    const response = await this.client.delete(`/admin/clients/${clientId}/photo`);
+    return response.data;
+  }
+
+  async resetClientPassword(clientId: string, newPassword: string) {
+    const response = await this.client.post(`/admin/clients/${clientId}/reset-password`, { newPassword });
     return response.data;
   }
 
