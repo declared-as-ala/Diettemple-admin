@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { getLevelImageUrl, normalizeLevelName } from "@/lib/levelAssets"
 import {
   ArrowLeft, RefreshCw, MessageSquarePlus, User, Users, Phone, Mail,
-  Activity, UtensilsCrossed, Clock, Trophy, TrendingUp, Pencil,
+  Clock, Trophy,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { PlanAssignmentData, ProfileData, TabId } from "./types"
@@ -19,12 +19,9 @@ const LEVEL_COLORS: Record<string, string> = {
 }
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: "overview", label: "Profil", icon: User },
-  { id: "bodyComposition", label: "Composition corporelle", icon: Activity },
-  { id: "diet", label: "Objectifs nutritionnels", icon: UtensilsCrossed },
-  { id: "training", label: "Plan", icon: Trophy },
-  { id: "weeklyProgress", label: "Progression hebdomadaire", icon: TrendingUp },
-  { id: "timeline", label: "Journal", icon: Clock },
+  { id: "fiche", label: "Fiche client", icon: User },
+  { id: "plan", label: "Plan", icon: Trophy },
+  { id: "journal", label: "Journal", icon: Clock },
 ]
 
 interface ClientHeaderProps {
@@ -35,7 +32,6 @@ interface ClientHeaderProps {
   onBack: () => void
   onOpenSubModal: () => void
   onOpenNoteModal: () => void
-  onEditClient: () => void
   planAssignment: PlanAssignmentData | null
 }
 
@@ -47,7 +43,6 @@ export default function ClientHeader({
   onBack,
   onOpenSubModal,
   onOpenNoteModal,
-  onEditClient,
   planAssignment,
 }: ClientHeaderProps) {
   const sub = profile.subscription
@@ -57,14 +52,14 @@ export default function ClientHeader({
   const clientDisplayName = sub?.levelTemplateId?.clientDisplayName || levelName
   const levelGender = sub?.levelTemplateId?.gender ?? ""
   const tierForUi = normalizeLevelName(clientLevel || clientDisplayName || levelName)
-  const heroLevel = tierForUi || clientDisplayName || levelName || "Intiate"
+  const heroLevel = tierForUi || clientDisplayName || levelName || "Initiate"
   const gradientClass =
     LEVEL_COLORS[tierForUi] ?? LEVEL_COLORS[clientLevel] ?? LEVEL_COLORS[levelName] ?? "from-slate-800 via-slate-900 to-black"
   const isActive = planAssignment?.status === "active" || (!planAssignment && sub?.effectiveStatus === "ACTIVE")
   const isExpired = planAssignment?.status === "completed" || (!planAssignment && sub?.effectiveStatus === "EXPIRED")
   const planEndDate = planAssignment?.finalActiveDate || sub?.endAt
   const daysLeft = planEndDate ? daysUntil(planEndDate) : 0
-  const displayName = client.name || "Client sans nom"
+  const displayName = client.name || (client.firstName && client.lastName ? `${client.firstName} ${client.lastName}` : "Client sans nom")
   const photo = meta?.photoUri || client.photoUri
 
   return (
@@ -98,9 +93,6 @@ export default function ClientHeader({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onEditClient}>
-              <Pencil className="h-3.5 w-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Modifier</span>
-            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -116,8 +108,8 @@ export default function ClientHeader({
               onClick={onOpenSubModal}
             >
               <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">{sub ? "Gérer le plan" : "Configurer"}</span>
-              <span className="sm:hidden">{sub ? "Plan" : "Configurer"}</span>
+              <span className="hidden sm:inline">{planAssignment || sub ? "Gérer le plan" : "Configurer le plan"}</span>
+              <span className="sm:hidden">Plan</span>
             </Button>
           </div>
         </div>
@@ -134,7 +126,7 @@ export default function ClientHeader({
           }}
         />
 
-        {/* BIG level hero image — significantly visible on the right */}
+        {/* Level hero background badge */}
         <div className="absolute right-0 top-0 bottom-0 w-full pointer-events-none select-none">
           <img
             src={getLevelImageUrl(heroLevel)}
@@ -144,7 +136,6 @@ export default function ClientHeader({
               ;(e.target as HTMLImageElement).style.display = "none"
             }}
           />
-          {/* crisp foreground version (medium) */}
           <img
             src={getLevelImageUrl(heroLevel)}
             alt=""
@@ -157,8 +148,7 @@ export default function ClientHeader({
         </div>
 
         {/* Content */}
-        <div className="relative z-10 px-6 py-8 lg:pr-64">
-          {/* Identity row */}
+        <div className="relative z-10 px-6 py-7 lg:pr-64">
           <div className="flex items-start gap-5">
             {/* Avatar */}
             <div className="relative flex-shrink-0">
@@ -203,12 +193,12 @@ export default function ClientHeader({
                 )}
               </div>
 
-              <h1 className="mt-1.5 text-2xl md:text-3xl font-bold text-white truncate leading-tight tracking-tight">
+              <h1 className="mt-1 text-2xl md:text-3xl font-bold text-white truncate leading-tight tracking-tight">
                 {displayName}
               </h1>
 
               {/* Contact + account meta row */}
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/60">
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/70">
                 {client.email && (
                   <span className="inline-flex items-center gap-1.5">
                     <Mail className="h-3 w-3" />
@@ -228,25 +218,27 @@ export default function ClientHeader({
                   </span>
                 )}
                 {levelName && (
-                  <span className="inline-flex items-center gap-1.5 text-white/80 font-medium">
+                  <span className="inline-flex items-center gap-1.5 text-white/90 font-medium">
                     {levelGender === "F" ? (
                       <Users className="h-3.5 w-3.5" />
                     ) : (
                       <User className="h-3.5 w-3.5" />
                     )}
-                    Plan client : {clientDisplayName} (Réf : {levelName})
+                    Plan : {clientDisplayName || levelName}
                   </span>
                 )}
                 {planAssignment?.progress?.currentWeek && (
-                  <span className="inline-flex items-center gap-1.5 font-medium text-white/80">Semaine {planAssignment.progress.currentWeek} sur {planAssignment.durationWeeks}</span>
+                  <span className="inline-flex items-center gap-1.5 font-medium text-white/90">
+                    Semaine {planAssignment.progress.currentWeek} / {planAssignment.durationWeeks}
+                  </span>
                 )}
               </div>
             </div>
 
-            {/* Subscription end card */}
+            {/* Plan end card */}
             {planEndDate && (
-              <div className="hidden sm:flex flex-col items-end text-right bg-white/8 backdrop-blur rounded-xl border border-white/10 px-4 py-3 flex-shrink-0">
-                <p className="text-[10px] uppercase tracking-wider text-white/50 font-semibold">
+              <div className="hidden sm:flex flex-col items-end text-right bg-white/10 backdrop-blur rounded-xl border border-white/15 px-4 py-3 flex-shrink-0">
+                <p className="text-[10px] uppercase tracking-wider text-white/60 font-semibold">
                   {isActive ? "Accès au plan jusqu’au" : "Plan terminé le"}
                 </p>
                 <p className="text-white font-bold text-sm mt-0.5">
@@ -267,14 +259,12 @@ export default function ClientHeader({
               </div>
             )}
           </div>
-
-          {/* Level is now read-only, derived from assigned plan */}
         </div>
       </div>
 
       {/* ── TAB BAR (sticky under top bar) ── */}
       <div className="sticky top-[49px] z-20 bg-background/95 backdrop-blur border-b border-border">
-        <div className="flex gap-0.5 px-6 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 px-6 overflow-x-auto scrollbar-none">
           {TABS.map(({ id: tid, label, icon: Icon }) => {
             const active = tab === tid
             return (
@@ -282,9 +272,9 @@ export default function ClientHeader({
                 key={tid}
                 onClick={() => onTabChange(tid)}
                 className={cn(
-                  "relative flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors",
+                  "relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors",
                   active
-                    ? "text-foreground"
+                    ? "text-foreground font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >

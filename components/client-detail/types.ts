@@ -1,6 +1,6 @@
 // ─── Client 360 shared types ─────────────────────────────────────────────────
 
-export type TabId = "overview" | "bodyComposition" | "diet" | "training" | "weeklyProgress" | "timeline"
+export type TabId = "fiche" | "plan" | "journal"
 
 export interface PlanAssignmentData {
   id: string
@@ -133,11 +133,13 @@ export interface ExerciseLoadHistoryItem {
   exerciseId: string
   exerciseName: string
   muscleGroup?: string | null
+  personalRecord?: number
   lastWeight: number
   lastReps: number[]
-  totalVolume: number
+  totalVolume?: number
   lastCompletedAt?: string | null
   progressionStatus: "stable" | "eligible" | "failed"
+  sessionsCount?: number
   sets: Array<{
     setNumber: number
     weightKg: number
@@ -176,6 +178,7 @@ export interface LevelTemplate {
   name: string
   clientDisplayName?: string
   gender?: string
+  objective?: string
   isActive?: boolean
   level?: string
   weeks?: unknown[]

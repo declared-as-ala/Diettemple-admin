@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,20 +19,30 @@ import {
 } from "@/lib/plannerHelpers";
 import {
   ArrowLeft, Save, RotateCcw, Check, AlertCircle,
-  User, Users, Calendar, Info,
+  User, Users, Calendar, Info, ChevronRight, Folder,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLevelImageUrl, normalizeLevelName } from "@/lib/levelAssets";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { AdminFormErrorSummary, AdminFormSection, type AdminFormError } from "@/components/admin";
 import { Textarea } from "@/components/ui/textarea";
+import { PLAN_OBJECTIVES, getObjectiveDef, normalizeObjectiveKey } from "@/lib/planObjectives";
 
 const LEVEL_COLORS: Record<string, string> = {
-  Intiate:  "from-slate-600 to-slate-800",
-  Fighter:  "from-blue-600 to-blue-900",
-  Champion: "from-amber-500 to-amber-800",
-  Elite:    "from-rose-600 to-rose-900",
+  Initiate:  "from-slate-600 to-slate-800",
+  Fighter:   "from-blue-600 to-blue-900",
+  Warrior:   "from-purple-600 to-purple-900",
+  Champion:  "from-amber-500 to-amber-800",
+  Elite:     "from-rose-600 to-rose-900",
 };
+
+const PLAN_LEVELS = [
+  { value: "INITIATE", label: "Initiate" },
+  { value: "FIGHTER", label: "Fighter" },
+  { value: "WARRIOR", label: "Warrior" },
+  { value: "CHAMPION", label: "Champion" },
+  { value: "ELITE", label: "Elite" },
+] as const;
 
 export default function LevelTemplateEditorPage() {
   const params = useParams();
@@ -52,8 +62,13 @@ export default function LevelTemplateEditorPage() {
   const [tab, setTab] = useState<"info" | "planner">(
     searchParams?.get("tab") === "info" ? "info" : "planner"
   );
+
   const [editName, setEditName] = useState("");
   const [editClientDisplayName, setEditClientDisplayName] = useState("");
+  const [editGender, setEditGender] = useState<"M" | "F">("M");
+  const [editObjective, setEditObjective] = useState("mass_gain");
+  const [editLevel, setEditLevel] = useState("INITIATE");
+  const [editDurationWeeks, setEditDurationWeeks] = useState(5);
   const [editDescription, setEditDescription] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
   const [sessionSearch, setSessionSearch] = useState("");
@@ -71,6 +86,10 @@ export default function LevelTemplateEditorPage() {
       setLevelTemplate(plan);
       setEditName(String(plan.name ?? ""));
       setEditClientDisplayName(String(plan.clientDisplayName || plan.name || ""));
+      setEditGender((plan.gender as "M" | "F") || "M");
+      setEditObjective(String(plan.objective || "mass_gain"));
+      setEditLevel(String(plan.level || "INITIATE").toUpperCase());
+      setEditDurationWeeks(Number(plan.durationWeeks) || 5);
       setEditDescription(String(plan.description ?? ""));
       setEditIsActive(plan.isActive !== false);
       const rawWeeks = plan.weeks && Array.isArray(plan.weeks) ? plan.weeks : [];
@@ -107,6 +126,10 @@ export default function LevelTemplateEditorPage() {
   const infoDirty = Boolean(levelTemplate && (
     editName !== String(levelTemplate.name ?? "") ||
     editClientDisplayName !== String(levelTemplate.clientDisplayName ?? levelTemplate.name ?? "") ||
+    editGender !== (levelTemplate.gender || "M") ||
+    editObjective !== (levelTemplate.objective || "mass_gain") ||
+    editLevel !== String(levelTemplate.level || "INITIATE").toUpperCase() ||
+    editDurationWeeks !== (levelTemplate.durationWeeks || 5) ||
     editDescription !== String(levelTemplate.description ?? "") ||
     editIsActive !== (levelTemplate.isActive !== false)
   ));
@@ -140,12 +163,26 @@ export default function LevelTemplateEditorPage() {
       await api.updateLevelTemplate(id, {
         name: editName.trim(),
         clientDisplayName: editClientDisplayName.trim(),
+        gender: editGender,
+        objective: editObjective,
+        level: editLevel,
+        durationWeeks: editDurationWeeks,
         description: editDescription.trim(),
         isActive: editIsActive,
       });
-      setLevelTemplate((p) => (p ? { ...p, name: editName.trim(), clientDisplayName: editClientDisplayName.trim(), description: editDescription.trim(), isActive: editIsActive } : p));
+      setLevelTemplate((p) => (p ? {
+        ...p,
+        name: editName.trim(),
+        clientDisplayName: editClientDisplayName.trim(),
+        gender: editGender,
+        objective: editObjective,
+        level: editLevel,
+        durationWeeks: editDurationWeeks,
+        description: editDescription.trim(),
+        isActive: editIsActive,
+      } : p));
       setLastSaved(new Date());
-      toast("Informations sauvegardées", "success");
+      toast("Informations sauvegardées ✓", "success");
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       const message = e.response?.data?.message || e.message || "Impossible d’enregistrer les informations.";
@@ -190,16 +227,21 @@ export default function LevelTemplateEditorPage() {
   };
 
   const requestLeave = () => {
+    const g = levelTemplate?.gender || "M";
+    const obj = normalizeObjectiveKey((levelTemplate?.objective as string) || "mass_gain");
+    const targetUrl = `/admin/level-templates?gender=${g}&objective=${obj}`;
     if (anyDirty) setLeaveConfirmOpen(true);
-    else router.push("/admin/level-templates");
+    else router.push(targetUrl);
   };
 
   const canSave = true;
   const levelName = levelTemplate ? String(levelTemplate.name ?? "") : "";
   const clientDisplayName = levelTemplate ? String(levelTemplate.clientDisplayName || levelTemplate.name || "") : "";
   const gender = levelTemplate ? String(levelTemplate.gender ?? "M") : "M";
+  const objectiveKey = normalizeObjectiveKey((levelTemplate?.objective as string) || "mass_gain");
+  const objectiveDef = getObjectiveDef(objectiveKey);
   const tierForUi = normalizeLevelName(levelName);
-  const gradientClass = LEVEL_COLORS[tierForUi] ?? "from-gray-600 to-gray-900";
+  const gradientClass = LEVEL_COLORS[tierForUi] ?? "from-slate-700 to-slate-900";
   const levelImage = getLevelImageUrl(levelName);
 
   if (loading || !levelTemplate) return <PageLoader />;
@@ -217,38 +259,46 @@ export default function LevelTemplateEditorPage() {
         <div className="relative z-10 flex items-center gap-4 px-6 py-4">
           <button
             onClick={requestLeave}
-            className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm transition-colors"
+            className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm transition-colors font-medium"
           >
             <ArrowLeft className="h-4 w-4" />
-            Plans
+            Retour
           </button>
 
           <div className="w-px h-5 bg-white/20" />
 
-          <img
-            src={levelImage}
-            alt={levelName}
-            className="h-10 w-10 rounded-full object-cover border-2 border-white/30 shadow-lg"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-
           <div>
-            <div className="flex items-center gap-2">
+            {/* Breadcrumb row */}
+            <div className="flex items-center gap-1.5 text-xs text-white/70 mb-0.5">
+              <button onClick={() => router.push("/admin/level-templates")} className="hover:text-white">
+                Plans
+              </button>
+              <ChevronRight className="h-3 w-3 text-white/40" />
+              <button onClick={() => router.push(`/admin/level-templates?gender=${gender}`)} className="hover:text-white">
+                {gender === "F" ? "Femmes" : "Hommes"}
+              </button>
+              <ChevronRight className="h-3 w-3 text-white/40" />
+              <button onClick={() => router.push(`/admin/level-templates?gender=${gender}&objective=${objectiveKey}`)} className="hover:text-white">
+                {objectiveDef.label}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-white font-bold text-lg">{levelName}</h1>
-              <span className="flex items-center gap-1 text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-xs text-white/80 bg-white/10 px-2 py-0.5 rounded-full font-medium">
                 {gender === "F" ? <Users className="h-3 w-3" /> : <User className="h-3 w-3" />}
                 {gender === "F" ? "Femme" : "Homme"}
               </span>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full", levelTemplate.isActive !== false ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/50")}>
+              <span className="text-xs text-white/80 bg-white/10 px-2 py-0.5 rounded-full font-medium">
+                {objectiveDef.label}
+              </span>
+              <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", levelTemplate.isActive !== false ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/50")}>
                 {levelTemplate.isActive !== false ? "Actif" : "Inactif"}
               </span>
             </div>
             <p className="text-white/80 text-xs font-medium mt-0.5">
               Nom client : {clientDisplayName}
             </p>
-            {levelTemplate.description ? (
-              <p className="text-white/50 text-xs mt-0.5">{String(levelTemplate.description)}</p>
-            ) : null}
           </div>
 
           <div className="ml-auto flex items-center gap-3">
@@ -279,8 +329,8 @@ export default function LevelTemplateEditorPage() {
         {/* Tab bar */}
         <div className="relative z-10 flex gap-1 px-6 pb-0">
           {[
-            { key: "planner" as const, label: "Planning 5 semaines", icon: Calendar },
-            { key: "info" as const, label: "Informations", icon: Info },
+            { key: "planner" as const, label: `Planning ${weeks.length || 5} semaines`, icon: Calendar },
+            { key: "info" as const, label: "Informations & Classification", icon: Info },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -288,7 +338,7 @@ export default function LevelTemplateEditorPage() {
               className={cn(
                 "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors",
                 tab === key
-                  ? "bg-background text-foreground"
+                  ? "bg-background text-foreground font-semibold"
                   : "text-white/60 hover:text-white/90 hover:bg-white/5"
               )}
             >
@@ -305,62 +355,120 @@ export default function LevelTemplateEditorPage() {
         {tab === "info" && (
           <div className="mx-auto max-w-3xl space-y-5">
             <AdminFormErrorSummary errors={infoErrors} />
-            <AdminFormSection title="Informations générales" description="Modifiez l’identité et la visibilité du plan. Le niveau et le sexe restent liés au plan existant." icon={<Info className="h-5 w-5" aria-hidden="true" />}>
+
+            <AdminFormSection title="Classification du dossier" icon={<Folder className="h-4 w-4" />}>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-gender">Sexe</Label>
+                  <select
+                    id="edit-gender"
+                    value={editGender}
+                    onChange={(e) => setEditGender(e.target.value as "M" | "F")}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="M">Hommes (M)</option>
+                    <option value="F">Femmes (F)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-objective">Objectif</Label>
+                  <select
+                    id="edit-objective"
+                    value={editObjective}
+                    onChange={(e) => setEditObjective(e.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {PLAN_OBJECTIVES.map((obj) => (
+                      <option key={obj.key} value={obj.key}>
+                        {obj.label}
+                      </option>
+                    ))}
+                    <option value="unclassified">Non classé</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-level">Niveau</Label>
+                  <select
+                    id="edit-level"
+                    value={editLevel}
+                    onChange={(e) => setEditLevel(e.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {PLAN_LEVELS.map((lvl) => (
+                      <option key={lvl.value} value={lvl.value}>
+                        {lvl.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </AdminFormSection>
+
+            <AdminFormSection title="Identité du plan" icon={<Info className="h-4 w-4" />}>
               <div className="space-y-4">
-                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="edit-plan-name" className="font-semibold">Nom interne du plan *</Label>
-                    <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">Visible uniquement par l'équipe</span>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-plan-name">Nom interne *</Label>
+                    <Input
+                      id="edit-plan-name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="h-10"
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground">Visible uniquement par les coachs et les administrateurs.</p>
-                  <Input id="edit-plan-name" value={editName} onChange={(event) => setEditName(event.target.value)} className="h-11 bg-card" aria-invalid={infoErrors.some((error) => error.field === "edit-plan-name")} />
-                  {infoErrors.some((error) => error.field === "edit-plan-name") && (
-                    <p className="text-sm text-destructive font-medium">Le nom interne du plan est obligatoire.</p>
-                  )}
-                </div>
 
-                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="edit-plan-client-name" className="font-semibold">Nom affiché au client *</Label>
-                    <span className="text-[11px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md">Visible application & espaces clients</span>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-plan-client-name">Nom affiché au client *</Label>
+                    <Input
+                      id="edit-plan-client-name"
+                      value={editClientDisplayName}
+                      onChange={(e) => setEditClientDisplayName(e.target.value)}
+                      className="h-10"
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground">Nom propre et compréhensible affiché dans l’application mobile et les espaces clients.</p>
-                  <Input id="edit-plan-client-name" value={editClientDisplayName} onChange={(event) => setEditClientDisplayName(event.target.value)} className="h-11 bg-card" aria-invalid={infoErrors.some((error) => error.field === "edit-plan-client-name")} />
-                  {infoErrors.some((error) => error.field === "edit-plan-client-name") && (
-                    <p className="text-sm text-destructive font-medium">Veuillez saisir le nom affiché au client.</p>
-                  )}
-                </div>
 
-                <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 space-y-1" aria-live="polite">
-                  <p className="text-xs font-semibold text-primary uppercase tracking-wider">Aperçu dans l’application</p>
-                  <p className="text-base font-bold text-foreground">
-                    {editClientDisplayName.trim() || editName.trim() || "Programme Initiate — Fondations"}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-plan-description">Description</Label>
-                  <Textarea id="edit-plan-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} placeholder="Décrivez l’objectif, le public cible et la structure du plan." className="min-h-28 bg-card" />
-                </div>
-
-                <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
-                  <input type="checkbox" checked={editIsActive} onChange={(event) => setEditIsActive(event.target.checked)} className="h-4 w-4 accent-primary" />
-                  Plan actif et disponible à l’affectation
-                </label>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border bg-muted/30 p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Sexe / dossier</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{gender === "F" ? "Femme" : "Homme"}</p>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="edit-duration">Durée (semaines)</Label>
+                    <Input
+                      id="edit-duration"
+                      type="number"
+                      min={1}
+                      max={52}
+                      value={editDurationWeeks}
+                      onChange={(e) => setEditDurationWeeks(parseInt(e.target.value, 10) || 5)}
+                      className="h-10"
+                    />
                   </div>
-                  <div className="rounded-xl border border-border bg-muted/30 p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Durée du planning</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{weeks.length || 5} semaines</p>
+
+                  <div className="space-y-1.5 flex flex-col justify-end pb-1">
+                    <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editIsActive}
+                        onChange={(e) => setEditIsActive(e.target.checked)}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      Plan actif et disponible à l'affectation
+                    </label>
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label htmlFor="edit-plan-description">Description</Label>
+                    <Textarea
+                      id="edit-plan-description"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="Décrivez l’objectif, le public cible et la structure du plan."
+                      className="min-h-24"
+                    />
                   </div>
                 </div>
               </div>
             </AdminFormSection>
-            <Button onClick={handleSaveInfo} className="h-11 w-full" disabled={infoSaving || !infoDirty}>
+
+            <Button onClick={handleSaveInfo} className="h-11 w-full font-semibold" disabled={infoSaving || !infoDirty}>
               <Save className="h-4 w-4 mr-2" />
               {infoSaving ? "Enregistrement…" : "Enregistrer les modifications"}
             </Button>
@@ -376,15 +484,21 @@ export default function LevelTemplateEditorPage() {
                   placeholder="Rechercher des séances…"
                   value={sessionSearch}
                   onChange={(e) => setSessionSearch(e.target.value)}
-                  className="h-8 text-sm w-56"
+                  className="h-8 text-xs w-56"
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-medium">
                   {weeks.reduce((s, w) => s + countWeekSessions(w), 0)} séances planifiées
                 </p>
               </div>
               <div className="flex gap-1.5 flex-wrap">
                 {weeks.map((w, wi) => (
-                  <Button key={w.weekNumber} variant="outline" size="sm" onClick={() => setResetWeekIndex(wi)} className="text-xs h-9 px-2 text-muted-foreground hover:text-destructive">
+                  <Button
+                    key={w.weekNumber}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setResetWeekIndex(wi)}
+                    className="text-xs h-8 px-2 text-muted-foreground hover:text-destructive"
+                  >
                     <RotateCcw className="h-3 w-3 mr-1" />S{w.weekNumber}
                   </Button>
                 ))}
@@ -399,7 +513,7 @@ export default function LevelTemplateEditorPage() {
             />
 
             <div className="flex justify-end pt-2">
-              <Button onClick={handleSaveWeeks} disabled={!canSave || saving} size="lg">
+              <Button onClick={handleSaveWeeks} disabled={!canSave || saving} size="lg" className="font-semibold">
                 <Save className="h-4 w-4 mr-2" />
                 {saving ? "Sauvegarde en cours…" : "Sauvegarder le planning"}
               </Button>
@@ -408,8 +522,30 @@ export default function LevelTemplateEditorPage() {
         )}
       </div>
 
-      <ConfirmModal open={resetWeekIndex !== null} onOpenChange={(open) => { if (!open) setResetWeekIndex(null); }} title="Réinitialiser cette semaine ?" description={resetWeekIndex !== null ? `Toutes les séances de la semaine ${weeks[resetWeekIndex]?.weekNumber ?? resetWeekIndex + 1} seront retirées du planning. Les autres semaines resteront intactes.` : undefined} confirmLabel="Réinitialiser la semaine" cancelLabel="Continuer la modification" variant="destructive" onConfirm={() => { if (resetWeekIndex !== null) handleResetWeek(resetWeekIndex); }} />
-      <ConfirmModal open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen} title="Abandonner les modifications ?" description="Les informations et changements de planning non enregistrés seront perdus." confirmLabel="Abandonner" cancelLabel="Continuer la modification" variant="destructive" onConfirm={() => router.push("/admin/level-templates")} />
+      <ConfirmModal
+        open={resetWeekIndex !== null}
+        onOpenChange={(open) => { if (!open) setResetWeekIndex(null); }}
+        title="Réinitialiser cette semaine ?"
+        description={resetWeekIndex !== null ? `Toutes les séances de la semaine ${weeks[resetWeekIndex]?.weekNumber ?? resetWeekIndex + 1} seront retirées du planning. Les autres semaines resteront intactes.` : undefined}
+        confirmLabel="Réinitialiser la semaine"
+        cancelLabel="Continuer la modification"
+        variant="destructive"
+        onConfirm={() => { if (resetWeekIndex !== null) handleResetWeek(resetWeekIndex); }}
+      />
+      <ConfirmModal
+        open={leaveConfirmOpen}
+        onOpenChange={setLeaveConfirmOpen}
+        title="Abandonner les modifications ?"
+        description="Les informations et changements de planning non enregistrés seront perdus."
+        confirmLabel="Abandonner"
+        cancelLabel="Continuer la modification"
+        variant="destructive"
+        onConfirm={() => {
+          const g = levelTemplate?.gender || "M";
+          const obj = normalizeObjectiveKey((levelTemplate?.objective as string) || "mass_gain");
+          router.push(`/admin/level-templates?gender=${g}&objective=${obj}`);
+        }}
+      />
     </div>
   );
 }

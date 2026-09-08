@@ -61,7 +61,7 @@ class ApiClient {
   }
 
   // Level Templates (coaching)
-  async getLevelTemplates(params?: { page?: number; limit?: number; search?: string; active?: string }) {
+  async getLevelTemplates(params?: { page?: number; limit?: number; search?: string; active?: string; gender?: string; objective?: string; level?: string }) {
     const response = await this.client.get('/admin/level-templates', { params });
     return response.data;
   }
@@ -71,12 +71,12 @@ class ApiClient {
     return response.data;
   }
 
-  async createLevelTemplate(data: { name: string; clientDisplayName?: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; isActive?: boolean; level?: string; minimumSessionsPerWeek?: number; maximumSessionsPerWeek?: number }) {
+  async createLevelTemplate(data: { name: string; clientDisplayName?: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; objective?: string; isActive?: boolean; level?: string; durationWeeks?: number; minimumSessionsPerWeek?: number; maximumSessionsPerWeek?: number }) {
     const response = await this.client.post('/admin/level-templates', data);
     return response.data;
   }
 
-  async updateLevelTemplate(id: string, data: { name?: string; clientDisplayName?: string; description?: string; imageUrl?: string; isActive?: boolean }) {
+  async updateLevelTemplate(id: string, data: { name?: string; clientDisplayName?: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; objective?: string; isActive?: boolean; level?: string; durationWeeks?: number; minimumSessionsPerWeek?: number; maximumSessionsPerWeek?: number }) {
     const response = await this.client.put(`/admin/level-templates/${id}`, data);
     return response.data;
   }

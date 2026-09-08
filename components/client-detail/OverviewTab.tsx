@@ -6,54 +6,20 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Check, AlertCircle, Activity, MessageSquare, CreditCard, Flame,
-  RefreshCw, ShoppingBag, Loader2, User, Package, DollarSign, Clock,
-  ChevronRight, ExternalLink,
-} from "lucide-react"
-import type { ProfileData, ClientOrder, Recommendation, OrderFilter } from "./types"
-import {
-  fmtDate, fmtRelative, calcProfileCompletion, getMissingFields,
-  COMPLETION_FIELD_LABELS, formatMoney,
-} from "./utils"
-import { api } from "@/lib/api"
-import { useToast } from "@/components/ui/toast"
-import { AdminFormSection, AdminModal, AdminModalFooter } from "@/components/admin"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select"
-
-// ─── Profile Completion Ring ─────────────────────────────────────────────────
-
-function CompletionRing({ percent }: { percent: number }) {
-  const r = 22
-  const circ = 2 * Math.PI * r
-  const offset = circ - (percent / 100) * circ
-  const color =
-    percent >= 80
-      ? "text-emerald-500"
-      : percent >= 50
-        ? "text-amber-500"
-        : "text-red-500"
-
-  return (
-    <div className="relative h-14 w-14 flex-shrink-0">
-      <svg viewBox="0 0 52 52" className="h-14 w-14 -rotate-90">
-        <circle cx="26" cy="26" r={r} fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30" />
-        <circle
-          cx="26" cy="26" r={r} fill="none" stroke="currentColor" strokeWidth="4"
-          strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-          className={cn(color, "transition-all duration-700")}
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
-        {percent}%
-      </span>
-    </div>
-  )
-}
+  User, Activity, CreditCard, Flame,
+  ShoppingBag, Loader2, Package, DollarSign, Clock,
+  ChevronRight, ExternalLink, MessageSquare, Pencil,
+  ShieldCheck, RefreshCw, Scale, Phone, Mail, MapPin,
+  Calendar, CheckCircle2,
+} from "lucide-react"
+import type { ProfileData, ClientOrder, OrderFilter, PlanAssignmentData } from "./types"
+import { fmtDate, fmtRelative, formatMoney } from "./utils"
+import { api } from "@/lib/api"
+import { useToast } from "@/components/ui/toast"
+import { AdminModal, AdminModalFooter } from "@/components/admin"
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
@@ -91,118 +57,85 @@ function KpiCard({
   )
 }
 
-// ─── Setup Checklist chip ───────────────────────────────────────────────────
-
-function ChecklistChip({ label, done }: { label: string; done: boolean }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors border",
-        done
-          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
-          : "bg-muted/40 text-muted-foreground border-border"
-      )}
-    >
-      {done ? (
-        <Check className="h-3.5 w-3.5 flex-shrink-0" />
-      ) : (
-        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-      )}
-      {label}
-    </div>
-  )
-}
-
-// ─── Main OverviewTab ────────────────────────────────────────────────────────
+// ─── Main OverviewTab (Fiche Client) ──────────────────────────────────────────
 
 interface OverviewTabProps {
   profile: ProfileData
+  planAssignment?: PlanAssignmentData | null
   orders: ClientOrder[]
   ordersLoading: boolean
   orderFilter: OrderFilter
   onOrderFilterChange: (f: OrderFilter) => void
-  recommendations: Recommendation[]
+  onOpenEditFiche: () => void
   onOpenSubModal: () => void
   onOpenNoteModal: () => void
-  onGoToDiet: () => void
-  onGoToTraining: () => void
+  onGoToPlan: () => void
   onRefetchProfile: () => void
 }
 
 export default function OverviewTab({
   profile,
+  planAssignment,
   orders,
   ordersLoading,
   orderFilter,
   onOrderFilterChange,
-  recommendations,
+  onOpenEditFiche,
   onOpenSubModal,
   onOpenNoteModal,
-  onGoToDiet,
-  onGoToTraining,
+  onGoToPlan,
   onRefetchProfile,
 }: OverviewTabProps) {
+  const { toast } = useToast()
   const sub = profile.subscription
   const client = profile.client
-  const isActive = sub?.effectiveStatus === "ACTIVE"
-  const isExpired = sub?.effectiveStatus === "EXPIRED"
-  const levelName = sub?.levelTemplateId?.name ?? ""
-  const daysLeft = sub ? Math.ceil((new Date(sub.endAt).getTime() - Date.now()) / 86400000) : 0
-  const hasNutrition = !!client.nutritionTarget?.dailyCalories
   const meta = profile.profileMeta
-  const completionPct = calcProfileCompletion(meta?.profileCompletion)
-  const missing = getMissingFields(meta?.profileCompletion)
   const commerce = profile.commerceSummary
 
-  const { toast } = useToast()
-  const [editOpen, setEditOpen] = useState(false)
-  const [editName, setEditName] = useState(client.name || "")
-  const [editSexe, setEditSexe] = useState<"M" | "F">((client.sexe as "M" | "F") || "M")
-  const [editAge, setEditAge] = useState(client.age || "")
-  const [editTaille, setEditTaille] = useState(client.taille || "")
-  const [editPoids, setEditPoids] = useState(client.poids || "")
-  const [editObjectif, setEditObjectif] = useState(client.objectif || "")
-  const [editFitnessLevel, setEditFitnessLevel] = useState<"A" | "B">((client.fitnessLevel as "A" | "B") || "A")
-  const [editSaving, setEditSaving] = useState(false)
-  const editDirty =
-    editName !== (client.name || "") ||
-    editSexe !== ((client.sexe as "M" | "F") || "M") ||
-    String(editAge) !== String(client.age || "") ||
-    String(editTaille) !== String(client.taille || "") ||
-    String(editPoids) !== String(client.poids || "") ||
-    editObjectif !== (client.objectif || "") ||
-    editFitnessLevel !== ((client.fitnessLevel as "A" | "B") || "A")
+  const isActive = planAssignment?.status === "active" || (!planAssignment && sub?.effectiveStatus === "ACTIVE")
+  const isExpired = planAssignment?.status === "completed" || (!planAssignment && sub?.effectiveStatus === "EXPIRED")
+  const levelName = planAssignment?.levelName || sub?.levelTemplateId?.name || ""
+  const clientDisplayName = sub?.levelTemplateId?.clientDisplayName || levelName
 
-  const handleEditProfile = () => {
-    setEditName(client.name || "")
-    setEditSexe((client.sexe as "M" | "F") || "M")
-    setEditAge(client.age || "")
-    setEditTaille(client.taille || "")
-    setEditPoids(client.poids || "")
-    setEditObjectif(client.objectif || "")
-    setEditFitnessLevel((client.fitnessLevel as "A" | "B") || "A")
-    setEditOpen(true)
+  // ── Quick Nutrition Edit Modal state ──
+  const [nutritionModalOpen, setNutritionModalOpen] = useState(false)
+  const [nutKcal, setNutKcal] = useState("")
+  const [nutProt, setNutProt] = useState("")
+  const [nutCarbs, setNutCarbs] = useState("")
+  const [nutFat, setNutFat] = useState("")
+  const [nutSaving, setNutSaving] = useState(false)
+
+  const handleOpenNutritionEdit = () => {
+    const nt = client.nutritionTarget
+    setNutKcal(nt?.dailyCalories ? String(nt.dailyCalories) : "")
+    setNutProt(nt?.proteinG ? String(nt.proteinG) : "")
+    setNutCarbs(nt?.carbsG ? String(nt.carbsG) : "")
+    setNutFat(nt?.fatG ? String(nt.fatG) : "")
+    setNutritionModalOpen(true)
   }
 
-  const handleSaveProfile = async () => {
-    setEditSaving(true)
+  const handleSaveNutrition = async () => {
+    setNutSaving(true)
     try {
-      await api.updateClientProfile(client._id, {
-        name: editName,
-        sexe: editSexe,
-        age: editAge,
-        taille: editTaille,
-        poids: editPoids,
-        objectif: editObjectif,
-        fitnessLevel: editFitnessLevel,
-      })
-      toast("Profil mis à jour ✓", "success")
-      setEditOpen(false)
+      const payload: {
+        dailyCalories?: number
+        proteinG?: number
+        carbsG?: number
+        fatG?: number
+      } = {}
+      if (nutKcal) payload.dailyCalories = parseInt(nutKcal, 10)
+      if (nutProt) payload.proteinG = parseInt(nutProt, 10)
+      if (nutCarbs) payload.carbsG = parseInt(nutCarbs, 10)
+      if (nutFat) payload.fatG = parseInt(nutFat, 10)
+
+      await api.setClientNutritionTarget(client._id, payload)
+      toast("Objectifs nutritionnels mis à jour ✓", "success")
+      setNutritionModalOpen(false)
       onRefetchProfile()
-    } catch (e: any) {
-      toast(e.message || "Erreur de mise à jour", "error")
+    } catch {
+      toast("Erreur lors de la mise à jour", "error")
     } finally {
-      setEditSaving(false)
+      setNutSaving(false)
     }
   }
 
@@ -213,200 +146,350 @@ export default function OverviewTab({
     return orders.filter((o) => o.status === "delivered")
   }, [orders, orderFilter])
 
+  const addressString = useMemo(() => {
+    const addr = client.address
+    if (!addr) return null
+    const parts = [
+      addr.line1,
+      addr.line2,
+      addr.postalCode ? `${addr.postalCode} ${addr.city || ""}`.trim() : addr.city,
+      addr.region,
+      addr.country,
+    ].filter(Boolean)
+    return parts.length > 0 ? parts.join(", ") : null
+  }, [client.address])
+
+  const hasNutrition = !!client.nutritionTarget?.dailyCalories
+
   return (
     <div className="space-y-6">
-      {/* ── Recommendations (priority banner) ── */}
-      {recommendations.length > 0 && (
-        <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/5 via-amber-500/[0.03] to-transparent p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <h3 className="text-sm font-semibold">
-                Recommandations
-                <span className="ml-2 text-xs text-muted-foreground font-normal">
-                  {recommendations.length} à traiter
-                </span>
-              </h3>
-            </div>
+      {/* ── 1. FICHE CLIENT HEADER BAR ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border rounded-xl p-4 shadow-sm">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+            <User className="h-5 w-5" />
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {recommendations.slice(0, 6).map((rec) => (
-              <div
-                key={rec.id}
-                className={cn(
-                  "rounded-lg border px-3 py-2.5 flex items-start justify-between gap-3",
-                  rec.severity === "high"
-                    ? "border-red-500/25 bg-red-500/5"
-                    : rec.severity === "medium"
-                      ? "border-amber-500/25 bg-amber-500/5"
-                      : "border-blue-500/25 bg-blue-500/5"
-                )}
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-foreground">Fiche client</h2>
+              <Badge
+                variant={isActive ? "default" : isExpired ? "destructive" : "secondary"}
+                className="text-[10px]"
               >
-                <div className="flex items-start gap-2 min-w-0 flex-1">
-                  <span
-                    className={cn(
-                      "h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0",
-                      rec.severity === "high"
-                        ? "bg-red-500"
-                        : rec.severity === "medium"
-                          ? "bg-amber-500"
-                          : "bg-blue-500"
-                    )}
-                  />
-                  <span className="text-xs leading-relaxed">{rec.message}</span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-[11px] shrink-0 px-2.5"
-                  onClick={rec.action}
-                >
-                  {rec.actionLabel}
-                </Button>
-              </div>
-            ))}
+                {isActive ? "Client actif" : isExpired ? "Plan expiré" : "Prospect / Inactif"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Identité, données physiologiques, objectifs nutritionnels et programme.
+            </p>
           </div>
         </div>
-      )}
-
-      {/* ── Setup checklist ── */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Configuration client 360
-          </p>
-          <span className="text-[11px] text-muted-foreground">
-            {
-              [
-                profile.setupChecklist.subscription,
-                profile.setupChecklist.trainingPlan,
-                hasNutrition,
-                !!profile.lastCoachNote,
-              ].filter(Boolean).length
-            }
-            /4
-          </span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <ChecklistChip label="Abonnement" done={profile.setupChecklist.subscription} />
-          <ChecklistChip label="Plan entraînement" done={profile.setupChecklist.trainingPlan} />
-          <ChecklistChip label="Diet configuré" done={hasNutrition} />
-          <ChecklistChip label="Note récente" done={!!profile.lastCoachNote} />
-        </div>
+        <Button
+          onClick={onOpenEditFiche}
+          className="gap-1.5 h-9 text-xs font-semibold shrink-0"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          Modifier la fiche
+        </Button>
       </div>
 
-      {/* ── Profile + Subscription + Nutrition row ── */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Profile card */}
-        <Card>
+      {/* ── 2. MAIN 12-COLUMN DASHBOARD GRID ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
+        
+        {/* ── CARD A: INFORMATIONS PERSONNELLES (6 cols) ── */}
+        <Card className="lg:col-span-6 flex flex-col justify-between">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                Profil
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2 font-semibold">
+                <User className="h-4 w-4 text-primary" />
+                Informations personnelles
               </CardTitle>
-              <CompletionRing percent={completionPct} />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                onClick={onOpenEditFiche}
+              >
+                <Pencil className="h-3 w-3" />
+                Modifier
+              </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">
-              {[
-                { label: "Sexe", value: client.sexe === "M" ? "Homme" : client.sexe === "F" ? "Femme" : null },
-                { label: "Âge", value: client.age ? `${client.age} ans` : null },
-                { label: "Taille", value: client.taille ? `${client.taille} cm` : null },
-                { label: "Poids", value: client.poids ? `${client.poids} kg` : null },
-                { label: "Objectif", value: client.objectif },
-                { label: "Niveau", value: client.fitnessLevel ? `Niveau ${client.fitnessLevel}` : null },
-              ].map(({ label, value }) => (
-                <div key={label} className="contents">
-                  <span className="text-muted-foreground py-0.5">{label}</span>
-                  <span
-                    className={cn(
-                      "font-medium py-0.5",
-                      !value && "text-muted-foreground/50 italic"
-                    )}
-                  >
-                    {value || "Non renseigné"}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {missing.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border/60">
-                <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1.5">
-                  {missing.length} champ{missing.length > 1 ? "s" : ""} manquant{missing.length > 1 ? "s" : ""}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {missing.map((m) => (
-                    <span
-                      key={m}
-                      className="text-[10px] px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400"
-                    >
-                      {COMPLETION_FIELD_LABELS[m]}
-                    </span>
-                  ))}
-                </div>
+          <CardContent className="space-y-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                <span className="text-[11px] text-muted-foreground block mb-0.5">Nom / Prénom</span>
+                <span className="font-semibold text-sm text-foreground">
+                  {client.name || (client.firstName && client.lastName ? `${client.firstName} ${client.lastName}` : "Non renseigné")}
+                </span>
               </div>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full h-8 text-xs mt-3"
-              onClick={handleEditProfile}
-            >
-              Modifier le profil
-            </Button>
+
+              <div className="p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                <span className="text-[11px] text-muted-foreground block mb-0.5">Sexe</span>
+                <span className="font-semibold text-foreground">
+                  {client.sexe === "M" ? "Homme" : client.sexe === "F" ? "Femme" : "Non renseigné"}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                <span className="text-[11px] text-muted-foreground block mb-0.5 flex items-center gap-1">
+                  <Mail className="h-3 w-3" /> Email
+                </span>
+                <span className="font-medium text-foreground truncate block">
+                  {client.email || "Non renseigné"}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                <span className="text-[11px] text-muted-foreground block mb-0.5 flex items-center gap-1">
+                  <Phone className="h-3 w-3" /> Téléphone
+                </span>
+                <span className="font-medium text-foreground">
+                  {client.phone || "Non renseigné"}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                <span className="text-[11px] text-muted-foreground block mb-0.5 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" /> Date de naissance / Âge
+                </span>
+                <span className="font-medium text-foreground">
+                  {client.dateOfBirth ? fmtDate(client.dateOfBirth) : ""}
+                  {client.age ? ` (${client.age} ans)` : (!client.dateOfBirth ? "Non renseigné" : "")}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                <span className="text-[11px] text-muted-foreground block mb-0.5 flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> Inscrit depuis
+                </span>
+                <span className="font-medium text-foreground">
+                  {client.createdAt ? `${fmtDate(client.createdAt)} (${fmtRelative(client.createdAt)})` : "—"}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-muted/40 border border-border/50">
+              <span className="text-[11px] text-muted-foreground block mb-0.5 flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Adresse postale
+              </span>
+              <span className="font-medium text-foreground">
+                {addressString || "Aucune adresse enregistrée"}
+              </span>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Subscription card */}
-        <Card>
+        {/* ── CARD B: DONNÉES PHYSIQUES & OBJECTIF (6 cols) ── */}
+        <Card className="lg:col-span-6 flex flex-col justify-between">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-              Abonnement
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2 font-semibold">
+                <Activity className="h-4 w-4 text-emerald-500" />
+                Données physiques & Objectif
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                onClick={onOpenEditFiche}
+              >
+                <Pencil className="h-3 w-3" />
+                Modifier
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
-            {sub ? (
+          <CardContent className="space-y-3 text-xs">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-3 rounded-lg bg-muted/40 border border-border/50 text-center">
+                <span className="text-[11px] text-muted-foreground block mb-1">Taille</span>
+                <span className="text-lg font-bold text-foreground">
+                  {client.taille ? `${client.taille} cm` : "—"}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-muted/40 border border-border/50 text-center">
+                <span className="text-[11px] text-muted-foreground block mb-1">Poids actuel</span>
+                <span className="text-lg font-bold text-foreground">
+                  {client.poids ? `${client.poids} kg` : "—"}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-muted/40 border border-border/50 text-center">
+                <span className="text-[11px] text-muted-foreground block mb-1">Niveau sportif</span>
+                <span className="text-lg font-bold text-foreground">
+                  {client.fitnessLevel ? `Niveau ${client.fitnessLevel}` : "Niveau A"}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <span className="text-[11px] font-semibold text-primary block uppercase tracking-wider mb-1">
+                Objectif personnel
+              </span>
+              <p className="text-sm font-bold text-foreground">
+                {client.objectif || "Non défini"}
+              </p>
+            </div>
+
+            {/* Optional Body Composition */}
+            {(client.bodyComposition?.bodyFatPercentage != null || client.bodyComposition?.muscleMassPercentage != null) && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                  <span className="text-[10px] text-muted-foreground block">Masse grasse</span>
+                  <span className="font-semibold text-xs text-foreground">
+                    {client.bodyComposition.bodyFatPercentage ?? "—"} %
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                  <span className="text-[10px] text-muted-foreground block">Masse musculaire</span>
+                  <span className="font-semibold text-xs text-foreground">
+                    {client.bodyComposition.muscleMassPercentage ?? "—"} %
+                  </span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── CARD C: OBJECTIFS NUTRITIONNELS (6 cols) ── */}
+        <Card className="lg:col-span-6 flex flex-col justify-between">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2 font-semibold">
+                <Flame className="h-4 w-4 text-amber-500" />
+                Objectifs nutritionnels
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={handleOpenNutritionEdit}
+              >
+                <Pencil className="h-3 w-3" />
+                Modifier
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {hasNutrition ? (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-extrabold text-foreground tracking-tight">
+                    {client.nutritionTarget?.dailyCalories}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                    kcal / jour
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { label: "Protéines", value: client.nutritionTarget?.proteinG, color: "bg-blue-500" },
+                    { label: "Glucides", value: client.nutritionTarget?.carbsG, color: "bg-amber-500" },
+                    { label: "Lipides", value: client.nutritionTarget?.fatG, color: "bg-rose-500" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="rounded-xl bg-muted/50 border border-border/60 p-2.5">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={cn("h-2 w-2 rounded-full", color)} />
+                        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+                      </div>
+                      <p className="text-base font-bold text-foreground">{value ?? "—"} g</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-6 border border-dashed border-border rounded-xl">
+                <Flame className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground font-medium mb-3">
+                  Aucun objectif nutritionnel configuré
+                </p>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleOpenNutritionEdit}>
+                  Définir les macros
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── CARD D: ABONNEMENT / PLAN (6 cols) ── */}
+        <Card className="lg:col-span-6 flex flex-col justify-between">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2 font-semibold">
+                <CreditCard className="h-4 w-4 text-purple-500" />
+                Abonnement / Plan
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={onOpenSubModal}
+              >
+                <RefreshCw className="h-3 w-3" />
+                Gérer le plan
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {planAssignment || sub ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold truncate">{levelName || "—"}</span>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase font-medium">Plan actif</p>
+                    <p className="text-base font-bold text-foreground">
+                      {clientDisplayName || levelName || "Programme DietTemple"}
+                    </p>
+                  </div>
                   <Badge
                     variant={isActive ? "default" : isExpired ? "destructive" : "secondary"}
                     className="text-[10px]"
                   >
-                    {isActive ? "Actif" : isExpired ? "Expiré" : sub.effectiveStatus}
+                    {isActive ? "Actif" : isExpired ? "Terminé" : planAssignment?.status || sub?.effectiveStatus}
                   </Badge>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[11px] text-muted-foreground">
-                    Début : <span className="text-foreground font-medium">{fmtDate(sub.startAt)}</span>
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {isActive ? "Expire le" : "Expiré le"}{" "}
-                    <span className="text-foreground font-medium">{fmtDate(sub.endAt)}</span>
-                    {isActive && daysLeft <= 14 && daysLeft > 0 && (
-                      <span className="ml-1.5 text-amber-600 dark:text-amber-400 font-semibold">
-                        · J-{daysLeft}
-                      </span>
-                    )}
-                  </p>
+
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 rounded-lg bg-muted/40 border border-border/50">
+                    <span className="text-[10px] text-muted-foreground block">Début</span>
+                    <span className="font-semibold text-foreground">
+                      {fmtDate(planAssignment?.startDate || sub?.startAt)}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/40 border border-border/50">
+                    <span className="text-[10px] text-muted-foreground block">Fin</span>
+                    <span className="font-semibold text-foreground">
+                      {fmtDate(planAssignment?.finalActiveDate || planAssignment?.endDate || sub?.endAt)}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/40 border border-border/50">
+                    <span className="text-[10px] text-muted-foreground block">Semaine</span>
+                    <span className="font-semibold text-foreground">
+                      {planAssignment?.progress?.currentWeek
+                        ? `${planAssignment.progress.currentWeek} / ${planAssignment.durationWeeks}`
+                        : "—"}
+                    </span>
+                  </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full h-8 text-xs"
-                  onClick={onOpenSubModal}
-                >
-                  <RefreshCw className="h-3 w-3 mr-1.5" />
-                  Gérer l&apos;abonnement
-                </Button>
+
+                <div className="flex items-center justify-between pt-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs text-primary font-semibold gap-1 p-0 hover:bg-transparent"
+                    onClick={onGoToPlan}
+                  >
+                    Voir les détails du plan d'entraînement <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="text-center py-4">
+              <div className="text-center py-6 border border-dashed border-border rounded-xl">
                 <CreditCard className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground mb-3">Aucun abonnement configuré</p>
+                <p className="text-xs text-muted-foreground font-medium mb-3">
+                  Aucun abonnement ni programme assigné
+                </p>
                 <Button size="sm" className="h-8 text-xs" onClick={onOpenSubModal}>
                   Assigner un plan
                 </Button>
@@ -415,67 +498,86 @@ export default function OverviewTab({
           </CardContent>
         </Card>
 
-        {/* Nutrition card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Flame className="h-4 w-4 text-muted-foreground" />
-              Nutrition
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasNutrition ? (
-              <div className="space-y-3">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold leading-none">
-                    {client.nutritionTarget?.dailyCalories}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">kcal / jour</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { letter: "P", value: client.nutritionTarget?.proteinG, color: "bg-blue-500" },
-                    { letter: "G", value: client.nutritionTarget?.carbsG, color: "bg-amber-500" },
-                    { letter: "L", value: client.nutritionTarget?.fatG, color: "bg-rose-500" },
-                  ].map(({ letter, value, color }) => (
-                    <div key={letter} className="rounded-lg bg-muted/50 px-2 py-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn("h-1.5 w-1.5 rounded-full", color)} />
-                        <span className="text-[10px] font-semibold text-muted-foreground">
-                          {letter}
-                        </span>
-                      </div>
-                      <p className="text-xs font-bold mt-0.5">{value ?? "—"}g</p>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full h-8 text-xs"
-                  onClick={onGoToDiet}
-                >
-                  Modifier les objectifs
-                </Button>
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <Flame className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground mb-3">Aucun objectif défini</p>
-                <Button size="sm" className="h-8 text-xs" onClick={onGoToDiet}>
-                  Configurer le diet
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
-      {/* ── Commerce KPIs ── */}
-      <div>
-        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Commandes & paiements
+      {/* ── 3. RECENT ACTIVITY & COACH NOTES (LOWER PRIORITY) ── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2 font-semibold">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              Activité récente & Notes coach
+            </CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1"
+              onClick={onOpenNoteModal}
+            >
+              + Note coach
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!profile.lastWorkoutDate && !profile.lastCoachNote ? (
+            <p className="text-xs text-muted-foreground py-2">
+              Aucune activité récente enregistrée.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {profile.lastWorkoutDate && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="h-8 w-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center flex-shrink-0">
+                    <Activity className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold">Dernière séance d'entraînement</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {fmtDate(profile.lastWorkoutDate)} · {fmtRelative(profile.lastWorkoutDate)}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs gap-1"
+                    onClick={onGoToPlan}
+                  >
+                    Voir dans Plan <ChevronRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+
+              {profile.lastCoachNote && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold">
+                      {profile.lastCoachNote.title || "Note coach"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {fmtDate(profile.lastCoachNote.date)} · {fmtRelative(profile.lastCoachNote.date)}
+                    </p>
+                    {profile.lastCoachNote.message && (
+                      <p className="text-xs mt-1 text-muted-foreground leading-relaxed">
+                        {profile.lastCoachNote.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── 4. COMMERCE / ORDERS SECTION (LOWER PRIORITY) ── */}
+      <div className="space-y-4">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          Commandes & Achats
         </h3>
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
             icon={ShoppingBag}
@@ -504,316 +606,183 @@ export default function OverviewTab({
             iconColor="bg-amber-500/10 text-amber-500"
           />
         </div>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                Historique des commandes
+              </CardTitle>
+              <div className="flex items-center gap-1">
+                {(
+                  [
+                    { id: "all", label: "Toutes" },
+                    { id: "paid", label: "Payées" },
+                    { id: "unpaid", label: "Non payées" },
+                    { id: "delivered", label: "Livrées" },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => onOrderFilterChange(f.id)}
+                    className={cn(
+                      "text-[11px] px-2.5 py-1 rounded-md border transition-colors",
+                      orderFilter === f.id
+                        ? "bg-primary text-primary-foreground border-primary font-semibold"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {ordersLoading ? (
+              <div className="py-8 text-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="py-8 text-center">
+                <ShoppingBag className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">Aucune commande disponible.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[11px] text-muted-foreground border-b border-border">
+                      <th className="text-left pb-2 font-medium">Référence</th>
+                      <th className="text-left pb-2 font-medium">Statut</th>
+                      <th className="text-left pb-2 font-medium">Paiement</th>
+                      <th className="text-right pb-2 font-medium">Montant</th>
+                      <th className="text-right pb-2 font-medium">Date</th>
+                      <th className="text-right pb-2 font-medium"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map((o) => (
+                      <tr
+                        key={o._id}
+                        className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
+                      >
+                        <td className="py-2.5 font-medium text-xs">
+                          {o.reference || o._id.slice(-6).toUpperCase()}
+                        </td>
+                        <td className="py-2.5">
+                          <Badge
+                            variant={
+                              o.status === "delivered"
+                                ? "default"
+                                : o.status === "cancelled"
+                                  ? "destructive"
+                                  : "secondary"
+                            }
+                            className="text-[10px]"
+                          >
+                            {o.status}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5">
+                          <Badge
+                            variant={o.paymentStatus === "PAID" ? "default" : "outline"}
+                            className="text-[10px]"
+                          >
+                            {o.paymentStatus}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 text-right font-semibold tabular-nums text-xs">
+                          {formatMoney(o.totalPrice)}
+                        </td>
+                        <td className="py-2.5 text-right text-muted-foreground text-xs tabular-nums">
+                          {fmtDate(o.createdAt)}
+                        </td>
+                        <td className="py-2.5 text-right">
+                          <Link
+                            href={`/admin/orders/${o._id}`}
+                            className="inline-flex items-center text-[11px] text-muted-foreground hover:text-foreground"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* ── Recent activity ── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Activity className="h-4 w-4 text-muted-foreground" />
-            Activité récente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!profile.lastWorkoutDate && !profile.lastCoachNote ? (
-            <p className="text-xs text-muted-foreground py-2">
-              Aucune activité enregistrée.
-            </p>
-          ) : (
-            <div className="space-y-3 text-sm">
-              {profile.lastWorkoutDate && (
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                    <Activity className="h-4 w-4 text-purple-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold">Dernière séance</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {fmtDate(profile.lastWorkoutDate)} · {fmtRelative(profile.lastWorkoutDate)}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 text-[11px]"
-                    onClick={onGoToTraining}
-                  >
-                    Voir <ChevronRight className="h-3 w-3 ml-0.5" />
-                  </Button>
-                </div>
-              )}
-              {profile.lastCoachNote && (
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                    <MessageSquare className="h-4 w-4 text-blue-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold">
-                      {profile.lastCoachNote.title || "Note coach"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {fmtDate(profile.lastCoachNote.date)} · {fmtRelative(profile.lastCoachNote.date)}
-                    </p>
-                    {profile.lastCoachNote.message && (
-                      <p className="text-[11px] mt-1 line-clamp-2 text-muted-foreground">
-                        {profile.lastCoachNote.message}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 text-[11px]"
-                    onClick={onOpenNoteModal}
-                  >
-                    + Note
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Orders Table ── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-              Historique des commandes
-            </CardTitle>
-            <div className="flex items-center gap-1">
-              {(
-                [
-                  { id: "all", label: "Toutes" },
-                  { id: "paid", label: "Payées" },
-                  { id: "unpaid", label: "Non payées" },
-                  { id: "delivered", label: "Livrées" },
-                ] as const
-              ).map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => onOrderFilterChange(f.id)}
-                  className={cn(
-                    "text-[11px] px-2.5 py-1 rounded-md border transition-colors",
-                    orderFilter === f.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {ordersLoading ? (
-            <div className="py-8 text-center">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
-            </div>
-          ) : filteredOrders.length === 0 ? (
-            <div className="py-8 text-center">
-              <ShoppingBag className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">Aucune commande disponible.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-[11px] text-muted-foreground border-b border-border">
-                    <th className="text-left pb-2 font-medium">Référence</th>
-                    <th className="text-left pb-2 font-medium">Statut</th>
-                    <th className="text-left pb-2 font-medium">Paiement</th>
-                    <th className="text-right pb-2 font-medium">Montant</th>
-                    <th className="text-right pb-2 font-medium">Date</th>
-                    <th className="text-right pb-2 font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrders.map((o) => (
-                    <tr
-                      key={o._id}
-                      className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="py-2.5 font-medium">
-                        {o.reference || o._id.slice(-6).toUpperCase()}
-                      </td>
-                      <td className="py-2.5">
-                        <Badge
-                          variant={
-                            o.status === "delivered"
-                              ? "default"
-                              : o.status === "cancelled"
-                                ? "destructive"
-                                : "secondary"
-                          }
-                          className="text-[10px]"
-                        >
-                          {o.status}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5">
-                        <Badge
-                          variant={o.paymentStatus === "PAID" ? "default" : "outline"}
-                          className="text-[10px]"
-                        >
-                          {o.paymentStatus}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 text-right font-semibold tabular-nums">
-                        {formatMoney(o.totalPrice)}
-                      </td>
-                      <td className="py-2.5 text-right text-muted-foreground text-xs tabular-nums">
-                        {fmtDate(o.createdAt)}
-                      </td>
-                      <td className="py-2.5 text-right">
-                        <Link
-                          href={`/admin/orders/${o._id}`}
-                          className="inline-flex items-center text-[11px] text-muted-foreground hover:text-foreground"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+      {/* ── Quick Nutrition Edit Modal ── */}
       <AdminModal
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        title="Modifier le profil du client"
-        description="Mettez à jour les informations personnelles et les objectifs du client."
-        icon={<User className="h-5 w-5" />}
-        size="lg"
-        dirty={editDirty}
-        busy={editSaving}
-        footer={(requestClose) => (
+        open={nutritionModalOpen}
+        onOpenChange={setNutritionModalOpen}
+        title="Modifier les objectifs nutritionnels"
+        description="Définissez les calories journalières et la répartition en macronutriments."
+        icon={<Flame className="h-5 w-5 text-amber-500" />}
+        size="md"
+        busy={nutSaving}
+        footer={(close) => (
           <AdminModalFooter
-            status={editDirty ? "Modifications non enregistrées" : "Profil à jour"}
-            statusTone={editDirty ? "warning" : "valid"}
-            submitLabel="Enregistrer les modifications"
+            submitLabel="Enregistrer les objectifs"
             loadingLabel="Enregistrement…"
-            loading={editSaving}
-            submitDisabled={!editDirty || !editName.trim()}
-            onCancel={requestClose}
-            onSubmit={handleSaveProfile}
+            loading={nutSaving}
+            onCancel={close}
+            onSubmit={handleSaveNutrition}
           />
         )}
       >
-        <div className="space-y-4">
-          <AdminFormSection
-            title="Informations personnelles"
-            description="Identité et données essentielles du profil."
-            icon={<User className="h-4 w-4" />}
-          >
-            <div className="space-y-1">
-              <Label htmlFor="editName">Nom complet</Label>
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5 col-span-2">
+              <Label htmlFor="quick-nut-kcal" className="text-xs">Calories journalières (kcal / jour)</Label>
               <Input
-                id="editName"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Ex: Jean Dupont"
-                className="h-11"
+                id="quick-nut-kcal"
+                type="number"
+                value={nutKcal}
+                onChange={(e) => setNutKcal(e.target.value)}
+                placeholder="2200"
+                className="h-10 text-sm font-semibold"
               />
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="editSexe">Sexe</Label>
-                <Select
-                  value={editSexe}
-                  onValueChange={(val: "M" | "F") => setEditSexe(val)}
-                >
-                  <SelectTrigger id="editSexe" className="h-11 w-full">
-                    <SelectValue placeholder="Choisir" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="M">Homme</SelectItem>
-                    <SelectItem value="F">Femme</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="editAge">Âge</Label>
-                <Input
-                  id="editAge"
-                  type="number"
-                  value={editAge}
-                  onChange={(e) => setEditAge(e.target.value)}
-                  placeholder="Ex: 30"
-                  className="h-11"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="editTaille">Taille (cm)</Label>
-                <Input
-                  id="editTaille"
-                  type="number"
-                  value={editTaille}
-                  onChange={(e) => setEditTaille(e.target.value)}
-                  placeholder="Ex: 175"
-                  className="h-11"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="editPoids">Poids (kg)</Label>
-                <Input
-                  id="editPoids"
-                  type="number"
-                  value={editPoids}
-                  onChange={(e) => setEditPoids(e.target.value)}
-                  placeholder="Ex: 78"
-                  className="h-11"
-                />
-              </div>
-            </div>
-
-          </AdminFormSection>
-
-          <AdminFormSection
-            title="Objectifs et niveau"
-            description="Ces informations personnalisent le suivi sportif du client."
-            icon={<Activity className="h-4 w-4" />}
-          >
-            <div className="space-y-1">
-              <Label htmlFor="editFitnessLevel">Niveau Fitness</Label>
-              <Select
-                value={editFitnessLevel}
-                onValueChange={(val: "A" | "B") => setEditFitnessLevel(val)}
-              >
-                <SelectTrigger id="editFitnessLevel" className="h-11 w-full">
-                  <SelectValue placeholder="Choisir" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A">Niveau A</SelectItem>
-                  <SelectItem value="B">Niveau B</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="editObjectif">Objectif principal</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-nut-prot" className="text-xs">Protéines (g)</Label>
               <Input
-                id="editObjectif"
-                value={editObjectif}
-                onChange={(e) => setEditObjectif(e.target.value)}
-                placeholder="Ex: Perte de poids, Prise de masse"
-                className="h-11"
+                id="quick-nut-prot"
+                type="number"
+                value={nutProt}
+                onChange={(e) => setNutProt(e.target.value)}
+                placeholder="160"
+                className="h-9 text-sm"
               />
             </div>
-          </AdminFormSection>
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-nut-carbs" className="text-xs">Glucides (g)</Label>
+              <Input
+                id="quick-nut-carbs"
+                type="number"
+                value={nutCarbs}
+                onChange={(e) => setNutCarbs(e.target.value)}
+                placeholder="250"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-nut-fat" className="text-xs">Lipides (g)</Label>
+              <Input
+                id="quick-nut-fat"
+                type="number"
+                value={nutFat}
+                onChange={(e) => setNutFat(e.target.value)}
+                placeholder="70"
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
         </div>
       </AdminModal>
     </div>

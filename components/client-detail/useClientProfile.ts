@@ -223,13 +223,19 @@ export function useClientProfile(id: string) {
   // Trigger lazy tab loaders based on active tab
   const ensureTabData = useCallback(
     (tab: TabId) => {
-      if (tab === "overview") loadOrders()
-      if (tab === "diet") loadLogs()
-      if (tab === "timeline") loadTimeline()
-      if (tab === "training") { loadExerciseHistory(); loadPlanAssignment() }
-      if (tab === "weeklyProgress") { loadWeeklyValidation(); loadWeeklyValidationHistory() }
+      if (tab === "fiche") {
+        loadOrders()
+        loadLogs()
+      }
+      if (tab === "plan") {
+        loadExerciseHistory()
+        loadPlanAssignment()
+      }
+      if (tab === "journal") {
+        loadTimeline()
+      }
     },
-    [loadOrders, loadLogs, loadTimeline, loadExerciseHistory, loadPlanAssignment, loadWeeklyValidation, loadWeeklyValidationHistory]
+    [loadOrders, loadLogs, loadExerciseHistory, loadPlanAssignment, loadTimeline]
   )
 
   // ─── Invalidate caches after mutations ───────────────────────────────────
