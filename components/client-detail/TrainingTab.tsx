@@ -29,6 +29,29 @@ interface TrainingTabProps {
 
 // ── Compact Exercise Card with PR highlight & history ─────────────────────────
 
+const MUSCLE_GROUP_LABELS: Record<string, string> = {
+  chest: "Pectoraux",
+  back: "Dos",
+  shoulders: "Épaules",
+  legs: "Jambes",
+  biceps: "Biceps",
+  triceps: "Triceps",
+  core: "Abdominaux",
+  abs: "Abdominaux",
+  quads: "Quadriceps",
+  hamstrings: "Ischios-jambiers",
+  calves: "Mollets",
+  glutes: "Fessiers",
+  cardio: "Cardio",
+  fullbody: "Corps complet",
+}
+
+function formatMuscleGroup(raw?: string | null): string {
+  if (!raw) return "Exercice général"
+  const normalized = raw.trim().toLowerCase()
+  return MUSCLE_GROUP_LABELS[normalized] || raw
+}
+
 function ExerciseCard({ item }: { item: ExerciseLoadHistoryItem }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -98,7 +121,7 @@ function ExerciseCard({ item }: { item: ExerciseLoadHistoryItem }) {
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {item.muscleGroup || "Exercice général"}
+            {formatMuscleGroup(item.muscleGroup)}
           </p>
         </div>
 
