@@ -22,6 +22,7 @@ import {
   Users,
   X,
   LogOut,
+  ShieldCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -48,6 +49,9 @@ const MARKETING_ITEMS = [
   { href: "/admin/leads", label: "Rendez-vous", icon: Users },
   { href: "/admin/landing-videos", label: "Vidéos Landing", icon: Video },
 ]
+const ADMINISTRATION_ITEMS = [
+  { href: "/admin/team", label: "Équipe & Accès", icon: ShieldCheck },
+]
 
 const ALL_SECTIONS = [
   { label: "OVERVIEW", items: OVERVIEW_ITEMS },
@@ -56,6 +60,7 @@ const ALL_SECTIONS = [
   { label: fr.sidebar.nutritionSection, items: NUTRITION_ITEMS },
   { label: fr.sidebar.boutique, items: BOUTIQUE_ITEMS },
   { label: "MARKETING", items: MARKETING_ITEMS },
+  { label: "ADMINISTRATION", items: ADMINISTRATION_ITEMS },
 ]
 
 type SidebarProps = {

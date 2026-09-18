@@ -944,6 +944,51 @@ class ApiClient {
     const response = await this.client.patch(`/admin/support/${id}`, updates);
     return response.data;
   }
+
+  // Team & Access Management
+  async getTeamMembers(params?: { page?: number; limit?: number; search?: string; role?: string }) {
+    const response = await this.client.get('/admin/team', { params });
+    return response.data;
+  }
+
+  async createTeamMember(data: {
+    name: string;
+    email?: string;
+    phone?: string;
+    password: string;
+    role: 'admin' | 'employee';
+  }) {
+    const response = await this.client.post('/admin/team', data);
+    return response.data;
+  }
+
+  async updateTeamMember(
+    id: string,
+    data: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      role?: 'admin' | 'employee';
+    }
+  ) {
+    const response = await this.client.put(`/admin/team/${id}`, data);
+    return response.data;
+  }
+
+  async updateTeamMemberStatus(id: string, isActive: boolean) {
+    const response = await this.client.put(`/admin/team/${id}/status`, { isActive });
+    return response.data;
+  }
+
+  async resetTeamMemberPassword(id: string, password: string) {
+    const response = await this.client.put(`/admin/team/${id}/password`, { password });
+    return response.data;
+  }
+
+  async deleteTeamMember(id: string) {
+    const response = await this.client.delete(`/admin/team/${id}`);
+    return response.data;
+  }
 }
 
 export const api = new ApiClient();
