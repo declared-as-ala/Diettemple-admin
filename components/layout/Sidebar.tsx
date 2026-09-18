@@ -21,6 +21,7 @@ import {
   Video,
   Users,
   X,
+  LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -71,12 +72,17 @@ export function Sidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileOpen
   const [userName, setUserName] = useState("Admin")
   const [userRole, setUserRole] = useState("admin")
   useEffect(() => {
+    const user = auth.getUser()
+    if (user) {
+      if (user.name) setUserName(user.name)
+      if (user.role) setUserRole(user.role)
+    }
     const token = auth.getToken()
     if (!token) return
     try {
       const payload = JSON.parse(atob(token.split(".")[1]))
-      setUserName(payload.name || "Admin")
-      setUserRole(payload.role || "admin")
+      if (payload.name) setUserName(payload.name)
+      if (payload.role) setUserRole(payload.role)
     } catch {}
   }, [])
 
@@ -174,7 +180,7 @@ export function Sidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileOpen
       <div className="p-4 border-t border-sidebar-border">
         {!displayCollapsed ? (
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-sidebar-accent/50">
-            <div className="relative w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+            <div className="relative w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
               <User className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
@@ -183,12 +189,32 @@ export function Sidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileOpen
                 {userRole === "employee" ? "Employé" : fr.sidebar.admin}
               </p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => auth.logout()}
+              title={fr.sidebar.logout}
+              aria-label={fr.sidebar.logout}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         ) : (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2">
             <div className="relative w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
               <User className="h-5 w-5 text-primary" />
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => auth.logout()}
+              title={fr.sidebar.logout}
+              aria-label={fr.sidebar.logout}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         )}
       </div>

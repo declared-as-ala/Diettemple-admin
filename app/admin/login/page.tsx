@@ -1,14 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import Cookies from "js-cookie"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading"
 import { Mail, Lock, ArrowRight } from "lucide-react"
 import { getApiBaseUrl } from "@/lib/apiBaseUrl"
+import { auth } from "@/lib/auth"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -16,6 +18,35 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+
+  // If already authenticated, redirect to appropriate landing page
+  useEffect(() => {
+    const token = auth.getToken()
+    if (!token) return
+
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]))
+      const role = payload.role
+      if (role === "employee") {
+        router.replace("/admin/products")
+        return
+      }
+      if (role === "admin") {
+        router.replace("/admin/dashboard")
+        return
+      }
+    } catch {}
+
+    const storedUser = auth.getUser()
+    if (storedUser?.role === "employee") {
+      router.replace("/admin/products")
+      return
+    }
+    if (storedUser?.role === "admin") {
+      router.replace("/admin/dashboard")
+      return
+    }
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,14 +77,24 @@ export default function LoginPage() {
         throw new Error('Accès administrateur ou employé requis')
       }
 
-      // Store token using document.cookie
-      document.cookie = `admin_token=${data.token}; expires=${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString()}; path=/`
-      
+      // Store token using Cookies and document.cookie for maximum compatibility
+      Cookies.set('admin_token', data.token, {
+        expires: 7,
+        path: '/',
+        sameSite: 'lax',
+        secure: typeof window !== 'undefined' && window.location.protocol === 'https:',
+      });
+      document.cookie = `admin_token=${data.token}; expires=${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString()}; path=/; SameSite=Lax${typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''}`
+
+      try {
+        localStorage.setItem('admin_user', JSON.stringify(data.user));
+      } catch {}
+
       // Redirect depending on role
       if (data.user.role === 'employee') {
-        router.push("/admin/clients")
+        router.replace("/admin/products")
       } else {
-        router.push("/admin/level-templates")
+        router.replace("/admin/dashboard")
       }
     } catch (err: any) {
       setError(err.message || "Échec de la connexion. Vérifiez vos identifiants.")

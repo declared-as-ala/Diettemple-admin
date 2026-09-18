@@ -60,6 +60,11 @@ class ApiClient {
     return response.data;
   }
 
+  async getMe(): Promise<{ user: any }> {
+    const response = await this.client.get('/auth/me');
+    return response.data;
+  }
+
   // Level Templates (coaching)
   async getLevelTemplates(params?: { page?: number; limit?: number; search?: string; active?: string; gender?: string; objective?: string; level?: string }) {
     const response = await this.client.get('/admin/level-templates', { params });
