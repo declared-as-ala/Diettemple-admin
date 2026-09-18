@@ -19,3 +19,16 @@ export function getApiBaseUrl(): string {
 export function getMediaBaseUrl(): string {
   return getApiBaseUrl().replace(/\/api\/?$/, '');
 }
+
+/**
+ * Resolves a media URL whether it is a full external URL or a relative MinIO path (/media/...)
+ */
+export function resolveMediaUrl(pathOrUrl?: string | null): string {
+  if (!pathOrUrl) return '';
+  if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://') || pathOrUrl.startsWith('blob:') || pathOrUrl.startsWith('data:')) {
+    return pathOrUrl;
+  }
+  const base = getMediaBaseUrl();
+  const cleaned = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  return `${base}${cleaned}`;
+}

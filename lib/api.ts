@@ -263,6 +263,40 @@ class ApiClient {
     return response.data;
   }
 
+  async uploadProductImage(file: File, productId?: string, alt?: string): Promise<{ images: ProductMediaImage[]; image: ProductMediaImage }> {
+    const formData = new FormData();
+    formData.append('images', file);
+    if (productId) formData.append('productId', productId);
+    if (alt) formData.append('alt', alt);
+
+    const response = await this.client.post('/admin/products/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  async importProductExternalImage(productId: string, imageUrl: string, alt?: string): Promise<{ image: ProductMediaImage; product: any }> {
+    const response = await this.client.post(`/admin/products/${productId}/import-image`, { imageUrl, alt });
+    return response.data;
+  }
+
+  async deleteProductImage(productId: string, key: string): Promise<{ product: any }> {
+    const response = await this.client.delete(`/admin/products/${productId}/images`, { data: { key } });
+    return response.data;
+  }
+
+  async getProductStockHistory(productId: string): Promise<{ movements: StockMovement[] }> {
+    const response = await this.client.get(`/admin/products/${productId}/stock-history`);
+    return response.data;
+  }
+
+  async adjustProductStock(productId: string, quantity: number, reason?: string): Promise<{ product: any; movement: StockMovement }> {
+    const response = await this.client.post(`/admin/products/${productId}/adjust-stock`, { quantity, reason });
+    return response.data;
+  }
+
   async getCategories() {
     const response = await this.client.get('/admin/products/categories');
     return response.data;
@@ -992,3 +1026,43 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
+
+export interface ProductMediaImage {
+  key: string;
+  bucket: string;
+  url?: string;
+  isPrimary: boolean;
+  order: number;
+  alt?: string;
+}
+
+export interface ProductSEO {
+  title?: string;
+  description?: string;
+  slug?: string;
+  keywords?: string[];
+  canonical?: string;
+  index?: boolean;
+}
+
+export interface StockMovement {
+  _id: string;
+  productId: string;
+  orderId?: {
+    _id: string;
+    reference: string;
+    status: string;
+  };
+  type: 'adjustment' | 'order' | 'cancellation' | 'return';
+  previousQuantity: number;
+  quantityChange: number;
+  newQuantity: number;
+  reason?: string;
+  performedBy?: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  createdAt: string;
+}

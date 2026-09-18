@@ -34,8 +34,6 @@ import {
   MoreHorizontal,
   Edit3,
   KeyRound,
-  UserCheck,
-  UserX,
   Trash2,
   Mail,
   Phone,
@@ -198,28 +196,6 @@ export default function TeamAccessPage() {
     }
   }
 
-  // Handle Toggle Active Status
-  const handleToggleStatus = async (member: TeamMember) => {
-    const isSelf = Boolean(currentUser?._id && String(currentUser._id) === String(member._id))
-    if (isSelf && member.isActive) {
-      toast("Vous ne pouvez pas désactiver votre propre compte administrateur.", "error")
-      return
-    }
-
-    if (member.role === "admin" && member.isActive && stats.adminCount <= 1) {
-      toast("Impossible de désactiver le dernier administrateur actif de la plateforme.", "error")
-      return
-    }
-
-    try {
-      const nextStatus = !member.isActive
-      const res = await api.updateTeamMemberStatus(member._id, nextStatus)
-      toast(res.message || `Le compte de ${member.name} a été ${nextStatus ? "réactivé" : "désactivé"}.`, "success")
-      loadMembers(true)
-    } catch (err: any) {
-      toast(err.response?.data?.message || err.message || "Échec de modification du statut", "error")
-    }
-  }
 
   // Handle Reset Password
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -342,7 +318,7 @@ export default function TeamAccessPage() {
       </div>
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="card-hover border-border/80 bg-card/60 backdrop-blur-sm">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div>
@@ -381,20 +357,6 @@ export default function TeamAccessPage() {
             </div>
             <div className="h-10 w-10 rounded-xl bg-secondary/80 text-secondary-foreground flex items-center justify-center shrink-0">
               <Briefcase className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover border-border/80 bg-card/60 backdrop-blur-sm">
-          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Comptes actifs</p>
-              <p className="text-2xl font-bold tracking-tight mt-1 tabular-nums text-emerald-500">
-                {stats.activeCount}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-              <UserCheck className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
@@ -468,7 +430,6 @@ export default function TeamAccessPage() {
                       <th className="px-5 py-3.5">Collaborateur</th>
                       <th className="px-4 py-3.5">Email / Téléphone</th>
                       <th className="px-4 py-3.5">Rôle</th>
-                      <th className="px-4 py-3.5">Statut</th>
                       <th className="px-4 py-3.5">Dernière connexion</th>
                       <th className="px-4 py-3.5">Créé le</th>
                       <th className="px-5 py-3.5 text-right">
@@ -545,21 +506,6 @@ export default function TeamAccessPage() {
                             )}
                           </td>
 
-                          {/* Statut */}
-                          <td className="px-4 py-4">
-                            {member.isActive ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                Actif
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-destructive bg-destructive/10 px-2.5 py-1 rounded-full border border-destructive/20">
-                                <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                                Désactivé
-                              </span>
-                            )}
-                          </td>
-
                           {/* Dernière connexion */}
                           <td className="px-4 py-4 text-xs text-muted-foreground">
                             {member.lastLogin ? (
@@ -608,24 +554,6 @@ export default function TeamAccessPage() {
                                 </DropdownMenuItem>
 
                                 <DropdownMenuSeparator />
-
-                                <DropdownMenuItem
-                                  onClick={() => handleToggleStatus(member)}
-                                  className={cn("gap-2", member.isActive && "text-amber-600 dark:text-amber-400")}
-                                  disabled={isSelf && member.isActive}
-                                >
-                                  {member.isActive ? (
-                                    <>
-                                      <UserX className="h-4 w-4" />
-                                      Désactiver le compte
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="h-4 w-4" />
-                                      Réactiver le compte
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
 
                                 <DropdownMenuItem
                                   onClick={() => setDeleteMember(member)}
@@ -690,9 +618,6 @@ export default function TeamAccessPage() {
                               <KeyRound className="h-4 w-4 mr-2" /> Mot de passe
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleToggleStatus(member)} disabled={isSelf && member.isActive}>
-                              {member.isActive ? "Désactiver" : "Réactiver"}
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setDeleteMember(member)} className="text-destructive" disabled={isSelf}>
                               Supprimer
                             </DropdownMenuItem>
@@ -705,11 +630,6 @@ export default function TeamAccessPage() {
                           <Badge className="bg-primary/15 text-primary border-primary/30">Administrateur</Badge>
                         ) : (
                           <Badge variant="secondary">Employé</Badge>
-                        )}
-                        {member.isActive ? (
-                          <span className="text-emerald-500 font-medium">● Actif</span>
-                        ) : (
-                          <span className="text-destructive font-medium">● Désactivé</span>
                         )}
                         <span className="text-muted-foreground">
                           {member.lastLogin
