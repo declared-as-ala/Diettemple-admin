@@ -16,7 +16,19 @@ import {
 import { AdminConfirmDialog, AdminDrawer, AdminFormSection, AdminModalFooter } from "@/components/admin";
 import { format } from "date-fns";
 import { fr } from "@/lib/i18n/fr";
-import { Search, ChevronLeft, ChevronRight, Package, User, MapPin, CreditCard, Truck, CalendarDays } from "lucide-react";
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Package,
+  User,
+  MapPin,
+  CreditCard,
+  Truck,
+  CalendarDays,
+  Trash2,
+  X,
+} from "lucide-react";
 
 type OrderStatus = "pending" | "pending_payment" | "paid" | "failed" | "confirmed" | "shipped" | "delivered" | "cancelled";
 type PaymentStatus = "PENDING" | "PAID" | "FAILED";
@@ -85,10 +97,22 @@ export default function AdminOrdersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+
+  // Status management drawer
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState<OrderStatus>("confirmed");
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
+
+  // Selection & Bulk delete
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Single delete
+  const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState(false);
+
   const LIMIT = 20;
 
   const loadOrders = useCallback(async () => {
@@ -121,6 +145,28 @@ export default function AdminOrdersPage() {
       )
     : orders;
 
+  // Multiple selection helpers
+  const allFilteredIds = filtered.map((o) => o._id);
+  const isAllSelected =
+    allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedOrderIds.includes(id));
+  const isSomeSelected =
+    allFilteredIds.some((id) => selectedOrderIds.includes(id)) && !isAllSelected;
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedOrderIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      setSelectedOrderIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Status update
   const handleUpdateStatus = async () => {
     if (!selectedOrder) return;
     setStatusSaving(true);
@@ -135,6 +181,38 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // Single order delete
+  const handleDeleteSingleOrder = async () => {
+    if (!deleteOrderId) return;
+    setDeletingOrder(true);
+    try {
+      await api.deleteOrder(deleteOrderId);
+      setSelectedOrderIds((prev) => prev.filter((id) => id !== deleteOrderId));
+      setDeleteOrderId(null);
+      loadOrders();
+    } catch (err) {
+      console.error("Delete order error:", err);
+    } finally {
+      setDeletingOrder(false);
+    }
+  };
+
+  // Bulk orders delete
+  const handleBulkDeleteOrders = async () => {
+    if (selectedOrderIds.length === 0) return;
+    setBulkDeleting(true);
+    try {
+      await api.bulkDeleteOrders(selectedOrderIds);
+      setSelectedOrderIds([]);
+      setBulkDeleteOpen(false);
+      loadOrders();
+    } catch (err) {
+      console.error("Bulk delete orders error:", err);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -143,6 +221,39 @@ export default function AdminOrdersPage() {
           <p className="text-muted-foreground text-sm">{total} commande{total !== 1 ? "s" : ""} au total</p>
         </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selectedOrderIds.length > 0 && (
+        <div className="flex items-center justify-between p-3 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-foreground transition-all animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3 text-sm font-medium">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold">
+              {selectedOrderIds.length}
+            </span>
+            <span>
+              {selectedOrderIds.length} commande{selectedOrderIds.length > 1 ? "s" : ""} sélectionnée{selectedOrderIds.length > 1 ? "s" : ""}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedOrderIds([])}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+            >
+              <X size={12} /> Désélectionner
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkDeleteOpen(true)}
+              className="gap-1.5 h-8 text-xs font-semibold shadow-sm"
+            >
+              <Trash2 size={13} />
+              Supprimer la sélection ({selectedOrderIds.length})
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-48">
@@ -188,6 +299,18 @@ export default function AdminOrdersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-muted-foreground">
+                    <th className="w-12 px-4 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isSomeSelected;
+                        }}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                        aria-label="Sélectionner toutes les commandes"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left font-medium">Référence</th>
                     <th className="px-4 py-3 text-left font-medium">Client</th>
                     <th className="px-4 py-3 text-left font-medium">Articles</th>
@@ -195,52 +318,80 @@ export default function AdminOrdersPage() {
                     <th className="px-4 py-3 text-left font-medium">Paiement</th>
                     <th className="px-4 py-3 text-left font-medium">Statut</th>
                     <th className="px-4 py-3 text-left font-medium">Date</th>
-                    <th className="px-4 py-3 text-left font-medium">Actions</th>
+                    <th className="px-4 py-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((order) => (
-                    <tr key={order._id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-mono font-medium">{order.reference}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium">{order.deliveryAddress?.fullName ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">{order.deliveryAddress?.phone ?? ""}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div>{order.items.length} article{order.items.length !== 1 ? "s" : ""}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-36">
-                          {order.items.map((i) => i.name).join(", ")}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium">{order.totalPrice.toFixed(2)} TND</td>
-                      <td className="px-4 py-3">
-                        <div className="text-xs">{order.paymentMethod === "CASH_ON_DELIVERY" ? "Paiement à la livraison" : order.paymentMethod ?? "—"}</div>
-                        <Badge
-                          variant={order.paymentStatus === "PAID" ? "default" : order.paymentStatus === "FAILED" ? "destructive" : "secondary"}
-                          className="text-xs mt-0.5"
-                        >
-                          {order.paymentStatus === "PAID" ? "Payé" : order.paymentStatus === "FAILED" ? "Échoué" : "En attente"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={STATUS_VARIANTS[order.status]}>
-                          {STATUS_LABELS[order.status]}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {format(new Date(order.createdAt), "dd MMM yyyy")}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => { setSelectedOrder(order); setNewStatus(order.status); }}
-                        >
-                          Gérer
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filtered.map((order) => {
+                    const isSelected = selectedOrderIds.includes(order._id);
+                    return (
+                      <tr
+                        key={order._id}
+                        className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${
+                          isSelected ? "bg-emerald-500/5 hover:bg-emerald-500/10" : ""
+                        }`}
+                      >
+                        <td className="w-12 px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(order._id)}
+                            className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                            aria-label={`Sélectionner commande ${order.reference}`}
+                          />
+                        </td>
+                        <td className="px-4 py-3 font-mono font-medium">{order.reference}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium">{order.deliveryAddress?.fullName ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">{order.deliveryAddress?.phone ?? ""}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div>{order.items.length} article{order.items.length !== 1 ? "s" : ""}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-36">
+                            {order.items.map((i) => i.name).join(", ")}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">{order.totalPrice.toFixed(2)} TND</td>
+                        <td className="px-4 py-3">
+                          <div className="text-xs">{order.paymentMethod === "CASH_ON_DELIVERY" ? "Paiement à la livraison" : order.paymentMethod ?? "—"}</div>
+                          <Badge
+                            variant={order.paymentStatus === "PAID" ? "default" : order.paymentStatus === "FAILED" ? "destructive" : "secondary"}
+                            className="text-xs mt-0.5"
+                          >
+                            {order.paymentStatus === "PAID" ? "Payé" : order.paymentStatus === "FAILED" ? "Échoué" : "En attente"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={STATUS_VARIANTS[order.status]}>
+                            {STATUS_LABELS[order.status]}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {format(new Date(order.createdAt), "dd MMM yyyy")}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setSelectedOrder(order); setNewStatus(order.status); }}
+                            >
+                              Gérer
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeleteOrderId(order._id)}
+                              title="Supprimer la commande"
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -262,6 +413,7 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
+      {/* Drawer details and status update */}
       <AdminDrawer
         open={!!selectedOrder}
         onOpenChange={(open) => { if (!open) setSelectedOrder(null); }}
@@ -340,6 +492,7 @@ export default function AdminOrdersPage() {
         )}
       </AdminDrawer>
 
+      {/* Confirm status change dialog */}
       <AdminConfirmDialog
         open={statusConfirmOpen}
         onOpenChange={setStatusConfirmOpen}
@@ -350,6 +503,32 @@ export default function AdminOrdersPage() {
         variant={newStatus === "cancelled" ? "destructive" : "default"}
         loading={statusSaving}
         onConfirm={handleUpdateStatus}
+      />
+
+      {/* Single delete order dialog */}
+      <AdminConfirmDialog
+        open={!!deleteOrderId}
+        onOpenChange={(open) => { if (!open) setDeleteOrderId(null); }}
+        title="Supprimer la commande ?"
+        description="Cette action supprimera définitivement cette commande de la base de données."
+        confirmLabel="Supprimer définitivement"
+        cancelLabel="Annuler"
+        variant="destructive"
+        loading={deletingOrder}
+        onConfirm={handleDeleteSingleOrder}
+      />
+
+      {/* Bulk delete orders dialog */}
+      <AdminConfirmDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        title={`Supprimer les ${selectedOrderIds.length} commandes sélectionnées ?`}
+        description={`Cette action supprimera définitivement ${selectedOrderIds.length} commande${selectedOrderIds.length > 1 ? "s" : ""} de la base de données. Cette opération est irréversible.`}
+        confirmLabel={`Supprimer (${selectedOrderIds.length})`}
+        cancelLabel="Annuler"
+        variant="destructive"
+        loading={bulkDeleting}
+        onConfirm={handleBulkDeleteOrders}
       />
     </div>
   );
