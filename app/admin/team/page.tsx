@@ -135,11 +135,7 @@ export default function TeamAccessPage() {
         setStats(res.stats)
       }
     } catch (err: any) {
-      toast({
-        title: "Erreur",
-        description: err.response?.data?.message || err.message || "Impossible de charger la liste des membres",
-        variant: "destructive",
-      })
+      toast(err.response?.data?.message || err.message || "Impossible de charger la liste des membres", "error")
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -154,34 +150,27 @@ export default function TeamAccessPage() {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!createForm.name.trim()) {
-      toast({ title: "Champ requis", description: "Le nom complet est obligatoire", variant: "destructive" })
+      toast("Le nom complet est obligatoire", "error")
       return
     }
     if (!createForm.email?.trim() && !createForm.phone?.trim()) {
-      toast({ title: "Champ requis", description: "Veuillez renseigner un email ou un numéro de téléphone", variant: "destructive" })
+      toast("Veuillez renseigner un email ou un numéro de téléphone", "error")
       return
     }
     if (!createForm.password || createForm.password.length < 6) {
-      toast({ title: "Mot de passe trop court", description: "Le mot de passe doit comporter au moins 6 caractères", variant: "destructive" })
+      toast("Le mot de passe doit comporter au moins 6 caractères", "error")
       return
     }
 
     try {
       setIsSubmitting(true)
       const res = await api.createTeamMember(createForm)
-      toast({
-        title: "Membre ajouté",
-        description: res.message || "Le compte a été créé avec succès",
-      })
+      toast(res.message || "Le compte a été créé avec succès", "success")
       setIsCreateOpen(false)
       setCreateForm({ name: "", email: "", phone: "", password: "", role: "employee" })
       loadMembers(true)
     } catch (err: any) {
-      toast({
-        title: "Erreur de création",
-        description: err.response?.data?.message || err.message || "Échec de création du compte",
-        variant: "destructive",
-      })
+      toast(err.response?.data?.message || err.message || "Échec de création du compte", "error")
     } finally {
       setIsSubmitting(false)
     }
@@ -192,25 +181,18 @@ export default function TeamAccessPage() {
     e.preventDefault()
     if (!editMember) return
     if (!editForm.name.trim()) {
-      toast({ title: "Champ requis", description: "Le nom complet ne peut pas être vide", variant: "destructive" })
+      toast("Le nom complet ne peut pas être vide", "error")
       return
     }
 
     try {
       setIsSubmitting(true)
       const res = await api.updateTeamMember(editMember._id, editForm)
-      toast({
-        title: "Membre mis à jour",
-        description: res.message || "Les informations ont été enregistrées",
-      })
+      toast(res.message || "Les informations ont été enregistrées", "success")
       setEditMember(null)
       loadMembers(true)
     } catch (err: any) {
-      toast({
-        title: "Erreur de mise à jour",
-        description: err.response?.data?.message || err.message || "Échec de modification",
-        variant: "destructive",
-      })
+      toast(err.response?.data?.message || err.message || "Échec de modification", "error")
     } finally {
       setIsSubmitting(false)
     }
@@ -218,39 +200,24 @@ export default function TeamAccessPage() {
 
   // Handle Toggle Active Status
   const handleToggleStatus = async (member: TeamMember) => {
-    const isSelf = currentUser?._id && String(currentUser._id) === String(member._id)
+    const isSelf = Boolean(currentUser?._id && String(currentUser._id) === String(member._id))
     if (isSelf && member.isActive) {
-      toast({
-        title: "Action non autorisée",
-        description: "Vous ne pouvez pas désactiver votre propre compte administrateur.",
-        variant: "destructive",
-      })
+      toast("Vous ne pouvez pas désactiver votre propre compte administrateur.", "error")
       return
     }
 
     if (member.role === "admin" && member.isActive && stats.adminCount <= 1) {
-      toast({
-        title: "Action non autorisée",
-        description: "Impossible de désactiver le dernier administrateur actif de la plateforme.",
-        variant: "destructive",
-      })
+      toast("Impossible de désactiver le dernier administrateur actif de la plateforme.", "error")
       return
     }
 
     try {
       const nextStatus = !member.isActive
       const res = await api.updateTeamMemberStatus(member._id, nextStatus)
-      toast({
-        title: nextStatus ? "Compte réactivé" : "Compte désactivé",
-        description: res.message || `Le compte de ${member.name} a été ${nextStatus ? "réactivé" : "désactivé"}.`,
-      })
+      toast(res.message || `Le compte de ${member.name} a été ${nextStatus ? "réactivé" : "désactivé"}.`, "success")
       loadMembers(true)
     } catch (err: any) {
-      toast({
-        title: "Erreur de statut",
-        description: err.response?.data?.message || err.message || "Échec de modification du statut",
-        variant: "destructive",
-      })
+      toast(err.response?.data?.message || err.message || "Échec de modification du statut", "error")
     }
   }
 
@@ -259,29 +226,18 @@ export default function TeamAccessPage() {
     e.preventDefault()
     if (!passwordMember) return
     if (!newPassword || newPassword.length < 6) {
-      toast({
-        title: "Mot de passe trop court",
-        description: "Le mot de passe doit comporter au moins 6 caractères",
-        variant: "destructive",
-      })
+      toast("Le mot de passe doit comporter au moins 6 caractères", "error")
       return
     }
 
     try {
       setIsSubmitting(true)
       const res = await api.resetTeamMemberPassword(passwordMember._id, newPassword)
-      toast({
-        title: "Mot de passe mis à jour",
-        description: res.message || "Le mot de passe a été réinitialisé avec succès.",
-      })
+      toast(res.message || "Le mot de passe a été réinitialisé avec succès.", "success")
       setPasswordMember(null)
       setNewPassword("")
     } catch (err: any) {
-      toast({
-        title: "Erreur de réinitialisation",
-        description: err.response?.data?.message || err.message || "Échec de réinitialisation",
-        variant: "destructive",
-      })
+      toast(err.response?.data?.message || err.message || "Échec de réinitialisation", "error")
     } finally {
       setIsSubmitting(false)
     }
@@ -290,23 +246,15 @@ export default function TeamAccessPage() {
   // Handle Delete Member
   const handleDeleteSubmit = async () => {
     if (!deleteMember) return
-    const isSelf = currentUser?._id && String(currentUser._id) === String(deleteMember._id)
+    const isSelf = Boolean(currentUser?._id && String(currentUser._id) === String(deleteMember._id))
     if (isSelf) {
-      toast({
-        title: "Action non autorisée",
-        description: "Vous ne pouvez pas supprimer votre propre compte.",
-        variant: "destructive",
-      })
+      toast("Vous ne pouvez pas supprimer votre propre compte.", "error")
       setDeleteMember(null)
       return
     }
 
     if (deleteMember.role === "admin" && stats.adminCount <= 1) {
-      toast({
-        title: "Action non autorisée",
-        description: "La plateforme doit conserver au moins un compte administrateur.",
-        variant: "destructive",
-      })
+      toast("La plateforme doit conserver au moins un compte administrateur.", "error")
       setDeleteMember(null)
       return
     }
@@ -314,18 +262,11 @@ export default function TeamAccessPage() {
     try {
       setIsSubmitting(true)
       const res = await api.deleteTeamMember(deleteMember._id)
-      toast({
-        title: "Membre supprimé",
-        description: res.message || "Le compte a été supprimé définitivement.",
-      })
+      toast(res.message || "Le compte a été supprimé définitivement.", "success")
       setDeleteMember(null)
       loadMembers(true)
     } catch (err: any) {
-      toast({
-        title: "Erreur de suppression",
-        description: err.response?.data?.message || err.message || "Échec de la suppression",
-        variant: "destructive",
-      })
+      toast(err.response?.data?.message || err.message || "Échec de la suppression", "error")
     } finally {
       setIsSubmitting(false)
     }
