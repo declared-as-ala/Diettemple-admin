@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import {
   DndContext, DragEndEvent, PointerSensor, useSensor, useSensors,
   closestCenter, useDroppable, useDraggable,
@@ -17,7 +17,7 @@ import { PageLoader } from "@/components/ui/loading"
 import {
   ArrowLeft, Save, Search, GripVertical, Video, Settings2, X, Plus,
   Clock, Dumbbell, AlertCircle, CheckCircle2, Layers,
-  ListChecks, SlidersHorizontal, TrendingUp,
+  ListChecks, SlidersHorizontal, TrendingUp, Copy, Folder,
 } from "lucide-react"
 import { AdminDrawer, AdminFormSection, AdminModalFooter, AdminSearchableSelect } from "@/components/admin"
 import { cn } from "@/lib/utils"
@@ -45,6 +45,7 @@ interface SessionItemConfig {
   sets: number
   targetReps: number | { min: number; max: number }
   recommendedStartingWeightKg?: number
+  clientInstruction?: string
   progressionRules: Array<{ condition: string; value: number | { min: number; max: number }; action: string; weightChange?: number; message?: string }>
   order: number
 }
@@ -78,7 +79,13 @@ export default function SessionTemplateBuilderPage() {
   const [search, setSearch] = useState("")
   const [muscleGroup, setMuscleGroup] = useState("")
   const [configIndex, setConfigIndex] = useState<number | null>(null)
+  const router = useRouter()
   const [editTitle, setEditTitle] = useState("")
+  const [editInternalName, setEditInternalName] = useState("")
+  const [editDisplayName, setEditDisplayName] = useState("")
+  const [editFolderId, setEditFolderId] = useState("")
+  const [folders, setFolders] = useState<any[]>([])
+  const [duplicating, setDuplicating] = useState(false)
   const [editDescription, setEditDescription] = useState("")
   const [editDifficulty, setEditDifficulty] = useState("")
   const [editDurationMinutes, setEditDurationMinutes] = useState<number | "">("")
@@ -95,6 +102,9 @@ export default function SessionTemplateBuilderPage() {
       if (!t) return
       setSessionTemplate(t)
       setEditTitle(t.title ?? "")
+      setEditInternalName(t.internalName || t.title || "")
+      setEditDisplayName(t.displayName || t.title || "")
+      setEditFolderId(typeof t.folderId === "object" ? t.folderId?._id ?? "" : (t.folderId || ""))
       setEditDescription(t.description ?? "")
       setEditDifficulty(t.difficulty ?? "")
       setEditDurationMinutes(t.durationMinutes ?? "")
@@ -117,6 +127,7 @@ export default function SessionTemplateBuilderPage() {
         sets: it.sets ?? 3,
         targetReps: normalizeTargetReps(it.targetReps),
         recommendedStartingWeightKg: it.recommendedStartingWeightKg,
+        clientInstruction: it.clientInstruction || "",
         progressionRules: Array.isArray(it.progressionRules) ? it.progressionRules : [],
         order: it.order ?? idx,
       }))
@@ -170,6 +181,10 @@ export default function SessionTemplateBuilderPage() {
   useEffect(() => { loadExercises() }, [loadExercises])
 
   useEffect(() => {
+    api.getFolders('session').then(res => setFolders(res.folders || [])).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     if (!dirty) return
     const fn = (e: BeforeUnloadEvent) => { e.preventDefault() }
     window.addEventListener("beforeunload", fn)
@@ -188,11 +203,15 @@ export default function SessionTemplateBuilderPage() {
         sets: it.sets,
         targetReps: it.targetReps,
         recommendedStartingWeightKg: it.recommendedStartingWeightKg,
+        clientInstruction: it.clientInstruction || undefined,
         progressionRules: it.progressionRules,
         order: idx,
       }))
       await api.updateSessionTemplate(id, {
-        title: editTitle,
+        title: editInternalName || editTitle,
+        internalName: editInternalName || editTitle,
+        displayName: editDisplayName || editTitle,
+        folderId: editFolderId || null,
         description: editDescription || undefined,
         difficulty: editDifficulty || undefined,
         durationMinutes: editDurationMinutes === "" ? undefined : Number(editDurationMinutes),
@@ -255,6 +274,22 @@ export default function SessionTemplateBuilderPage() {
     setDirty(true)
   }
 
+
+  const handleDuplicate = async () => {
+    setDuplicating(true)
+    try {
+      const res = await api.duplicateSessionTemplate(id)
+      toast("Séance dupliquée avec succès ✓", "success")
+      if (res.session?._id) {
+        router.push(`/admin/session-templates/${res.session._id}`)
+      }
+    } catch (err: any) {
+      toast(err.response?.data?.message || err.message || "Erreur lors de la duplication", "error")
+    } finally {
+      setDuplicating(false)
+    }
+  }
+
   const updateItem = (index: number, patch: Partial<SessionItemConfig>) => {
     setItems(prev => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)))
     setDirty(true)
@@ -289,26 +324,63 @@ export default function SessionTemplateBuilderPage() {
 
       {/* ── Sticky header ────────────────────────────────────────────── */}
       <div className="sticky top-0 z-20 flex items-center justify-between gap-4 px-6 py-3 bg-background/95 backdrop-blur-sm border-b border-border flex-wrap">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-wrap">
           <Link href="/admin/session-templates">
             <Button variant="ghost" size="sm" className="gap-2 shrink-0">
               <ArrowLeft className="h-4 w-4" /> Séances
             </Button>
           </Link>
-          <div className="h-4 w-px bg-border" />
-          <Input
-            value={editTitle}
-            onChange={e => { setEditTitle(e.target.value); setDirty(true) }}
-            className="font-bold text-lg bg-transparent border-transparent hover:border-border focus:border-border w-64"
-            placeholder="Titre de la séance"
-          />
+          <div className="h-4 w-px bg-border hidden sm:block" />
+
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+              Nom interne (Staff)
+            </span>
+            <Input
+              value={editInternalName}
+              onChange={e => { setEditInternalName(e.target.value); setDirty(true) }}
+              className="font-bold text-xs bg-muted/30 border-border h-8 w-48 sm:w-56"
+              placeholder="Ex: INI_Full_S1_A"
+              title="Nom technique interne réservé au coach/staff"
+            />
+          </div>
+
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] uppercase font-bold text-primary tracking-wider">
+              Nom affiché (Client App)
+            </span>
+            <Input
+              value={editDisplayName}
+              onChange={e => { setEditDisplayName(e.target.value); setDirty(true) }}
+              className="font-medium text-xs bg-muted/30 border-border h-8 w-52 sm:w-60"
+              placeholder="Ex: Full Body — Séance 1"
+              title="Nom affiché dans l'application mobile client"
+            />
+          </div>
+
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+              Dossier
+            </span>
+            <select
+              value={editFolderId}
+              onChange={e => { setEditFolderId(e.target.value); setDirty(true) }}
+              className="h-8 rounded-md border border-border bg-muted/30 px-2 text-xs font-medium"
+            >
+              <option value="">📁 Sans dossier</option>
+              {folders.map(f => (
+                <option key={f._id} value={f._id}>📁 {f.name}</option>
+              ))}
+            </select>
+          </div>
+
           {dirty && (
-            <span className="text-xs text-amber-500 flex items-center gap-1 shrink-0">
+            <span className="text-xs text-amber-500 flex items-center gap-1 shrink-0 self-end mb-1">
               <AlertCircle className="h-3 w-3" /> Non sauvegardé
             </span>
           )}
           {saveSuccess && !dirty && (
-            <span className="text-xs text-emerald-500 flex items-center gap-1 shrink-0">
+            <span className="text-xs text-emerald-500 flex items-center gap-1 shrink-0 self-end mb-1">
               <CheckCircle2 className="h-3 w-3" /> Sauvegardé
             </span>
           )}
@@ -344,8 +416,13 @@ export default function SessionTemplateBuilderPage() {
             />
           </div>
 
-          <Button onClick={handleSave} disabled={saving} className="gap-2 min-w-[100px]">
-            <Save className="h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={handleDuplicate} disabled={duplicating} className="gap-1.5 h-8 text-xs">
+            <Copy className="h-3.5 w-3.5" />
+            {duplicating ? "Duplication…" : "Dupliquer"}
+          </Button>
+
+          <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 h-8 text-xs min-w-[90px]">
+            <Save className="h-3.5 w-3.5" />
             {saving ? "Sauvegarde…" : "Sauvegarder"}
           </Button>
         </div>
@@ -709,6 +786,7 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
   const [targetReps, setTargetReps] = useState<number | { min: number; max: number }>(config.targetReps)
   const [useRange, setUseRange] = useState(typeof config.targetReps === "object")
   const [recommendedWeight, setRecommendedWeight] = useState<number | "">(config.recommendedStartingWeightKg ?? "")
+  const [clientInstruction, setClientInstruction] = useState(config.clientInstruction || "")
   const [alternatives, setAlternatives] = useState<string[]>(config.alternatives.slice(0, 3))
   const [progressionRules, setProgressionRules] = useState(config.progressionRules)
   const [allExercisesForAlternatives, setAllExercisesForAlternatives] = useState<any[]>(allExercises)
@@ -719,6 +797,7 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
     setTargetReps(config.targetReps)
     setUseRange(typeof config.targetReps === "object")
     setRecommendedWeight(config.recommendedStartingWeightKg ?? "")
+    setClientInstruction(config.clientInstruction || "")
     setAlternatives(config.alternatives.slice(0, 3))
     setProgressionRules(config.progressionRules)
   }, [config])
@@ -768,6 +847,7 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
       sets,
       targetReps: reps,
       recommendedStartingWeightKg: recommendedWeight === "" ? undefined : Number(recommendedWeight),
+      clientInstruction: clientInstruction.trim() || undefined,
       alternatives: alternatives.filter(Boolean),
       progressionRules,
     })
@@ -833,6 +913,21 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
             ) : (
               <Input aria-label="Répétitions cibles" type="number" value={typeof targetReps === "number" ? targetReps : 10} onChange={event => setTargetReps(Number(event.target.value) || 10)} className="h-11 max-w-32 bg-muted/30 text-center text-lg font-semibold text-foreground" />
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="config-client-instruction">Message / Instruction au client (facultatif)</Label>
+            <Input
+              id="config-client-instruction"
+              type="text"
+              value={clientInstruction}
+              onChange={event => setClientInstruction(event.target.value)}
+              placeholder="Ex: Concentre-toi sur la descente lente en 3 secondes."
+              className="h-11 bg-muted/30 text-foreground"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Cette consigne apparaîtra au client sur sa carte vidéo dans l'application mobile.
+            </p>
           </div>
 
           <div className="space-y-2">

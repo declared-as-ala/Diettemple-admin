@@ -92,25 +92,9 @@ export function Sidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileOpen
     return () => window.removeEventListener("keydown", close)
   }, [mobileOpen, onMobileOpenChange])
 
-  const visibleSections = ALL_SECTIONS.map(section => {
-    if (userRole === "employee") {
-      if (section.label === "OVERVIEW" || section.label === "MARKETING") {
-        return null;
-      }
-      const filteredItems = section.items.filter(item => {
-        if (section.label === fr.sidebar.nutritionSection) {
-          return item.href === "/admin/recipes";
-        }
-        if (section.label === fr.sidebar.boutique) {
-          return item.href === "/admin/products";
-        }
-        return true;
-      });
-      if (filteredItems.length === 0) return null;
-      return { ...section, items: filteredItems };
-    }
-    return section;
-  }).filter(Boolean) as typeof ALL_SECTIONS;
+  const visibleSections = userRole === "employee"
+    ? [{ label: fr.sidebar.boutique, items: BOUTIQUE_ITEMS }]
+    : ALL_SECTIONS;
 
   return (<>
     {mobileOpen && <button className="fixed inset-0 z-40 bg-black/55 backdrop-blur-[1px] lg:hidden" onClick={() => onMobileOpenChange(false)} aria-label="Fermer la navigation" />}

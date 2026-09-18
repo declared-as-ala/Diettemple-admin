@@ -26,53 +26,43 @@ export default function AdminLayout({
   useEffect(() => {
     if (isLoginPage) {
       setLoading(false)
-      return // Don't check auth on login page
+      return
     }
 
-    const checkAuth = () => {
-      const authenticated = auth.isAuthenticated()
-      setIsAuthenticated(authenticated)
-      
-      if (!authenticated) {
-        router.push("/admin/login")
-        setLoading(false)
+    const token = auth.getToken()
+    if (!token) {
+      setIsAuthenticated(false)
+      router.push("/admin/login")
+      return
+    }
+
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]))
+      const role = payload.role || "user"
+      if (role !== "admin" && role !== "employee") {
+        auth.logout()
         return
       }
 
-      const token = auth.getToken()
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split(".")[1]))
-          const role = payload.role || "admin"
-          if (role === "employee") {
-            const forbiddenPaths = [
-              "/admin/dashboard",
-              "/admin/orders",
-              "/admin/subscriptions",
-              "/admin/assignments",
-              "/admin/nutrition-plans",
-              "/admin/nutrition-assignments",
-              "/admin/landing-videos",
-              "/admin/level-home-content",
-              "/admin/support",
-              "/admin/leads"
-            ];
-            const isForbidden = forbiddenPaths.some(p => pathname === p || pathname.startsWith(p + "/"));
-            if (isForbidden) {
-              router.push("/admin/clients")
-            }
-          }
-        } catch {}
+      // Employee route guard: only allowed /admin/products and /admin/orders
+      if (role === "employee") {
+        const isAllowed = pathname.startsWith("/admin/products") || pathname.startsWith("/admin/orders")
+        if (!isAllowed) {
+          router.replace("/admin/products")
+          return
+        }
       }
+
+      setIsAuthenticated(true)
+    } catch {
+      auth.logout()
+    } finally {
       setLoading(false)
     }
+  }, [pathname, isLoginPage, router])
 
-    checkAuth()
-  }, [router, pathname, isLoginPage])
-
-  // Allow login page to render without auth check
   if (isLoginPage) {
-    return <>{children}</>
+    return <ToastProvider>{children}</ToastProvider>
   }
 
   if (loading || isAuthenticated === null) {

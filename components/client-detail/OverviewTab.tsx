@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import {
   ShoppingBag, Loader2, Package, DollarSign, Clock,
   ChevronRight, ExternalLink, MessageSquare, Pencil,
   ShieldCheck, RefreshCw, Scale, Phone, Mail, MapPin,
-  Calendar, CheckCircle2,
+  Calendar, CheckCircle2, Trash2, Plus, History, TrendingUp, TrendingDown,
 } from "lucide-react"
 import type { ProfileData, ClientOrder, OrderFilter, PlanAssignmentData } from "./types"
 import { fmtDate, fmtRelative, formatMoney } from "./utils"
@@ -96,6 +96,105 @@ export default function OverviewTab({
   const isExpired = planAssignment?.status === "completed" || (!planAssignment && sub?.effectiveStatus === "EXPIRED")
   const levelName = planAssignment?.levelName || sub?.levelTemplateId?.name || ""
   const clientDisplayName = sub?.levelTemplateId?.clientDisplayName || levelName
+
+  // ── Suivi / Consultations state ──
+  const [consultations, setConsultations] = useState<any[]>([])
+  const [consultationsLoading, setConsultationsLoading] = useState(false)
+  const [consultationModalOpen, setConsultationModalOpen] = useState(false)
+  const [cDate, setCDate] = useState("")
+  const [cWeight, setCWeight] = useState("")
+  const [cMuscle, setCMuscle] = useState("")
+  const [cFat, setCFat] = useState("")
+  const [cNotes, setCNotes] = useState("")
+  const [cSaving, setCSaving] = useState(false)
+
+  const loadConsultations = useCallback(async () => {
+    if (!client?._id) return
+    setConsultationsLoading(true)
+    try {
+      const res = await api.getClientConsultations(client._id)
+      setConsultations(res.consultations || [])
+    } catch {
+      // ignore
+    } finally {
+      setConsultationsLoading(false)
+    }
+  }, [client?._id])
+
+  useEffect(() => {
+    loadConsultations()
+  }, [loadConsultations])
+
+  const handleOpenConsultationModal = () => {
+    setCDate(new Date().toISOString().slice(0, 10))
+    setCWeight(client.poids ? String(client.poids) : "")
+    setCMuscle(client.bodyComposition?.muscleMassPercentage ? String(client.bodyComposition.muscleMassPercentage) : "")
+    setCFat(client.bodyComposition?.bodyFatPercentage ? String(client.bodyComposition.bodyFatPercentage) : "")
+    setCNotes("")
+    setConsultationModalOpen(true)
+  }
+
+  const handleSaveConsultation = async () => {
+    const w = parseFloat(cWeight)
+    const m = parseFloat(cMuscle)
+    const f = parseFloat(cFat)
+    if (isNaN(w) || w <= 0) {
+      toast("Veuillez renseigner un poids valide en kg", "error")
+      return
+    }
+    if (isNaN(m) || m < 0 || m > 100) {
+      toast("Veuillez renseigner un % de masse musculaire valide (0-100)", "error")
+      return
+    }
+    if (isNaN(f) || f < 0 || f > 100) {
+      toast("Veuillez renseigner un % de matière grasse valide (0-100)", "error")
+      return
+    }
+
+    setCSaving(true)
+    try {
+      await api.createClientConsultation(client._id, {
+        date: cDate ? new Date(cDate).toISOString() : new Date().toISOString(),
+        weight: w,
+        muscleMassPercentage: m,
+        bodyFatPercentage: f,
+        notes: cNotes.trim() || undefined,
+      })
+      toast("Consultation enregistrée ✓", "success")
+      setConsultationModalOpen(false)
+      loadConsultations()
+      onRefetchProfile()
+    } catch (err: any) {
+      toast(err?.response?.data?.message || err?.message || "Erreur lors de l'enregistrement", "error")
+    } finally {
+      setCSaving(false)
+    }
+  }
+
+  const handleDeleteConsultation = async (consultationId: string) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette consultation ?")) return
+    try {
+      await api.deleteClientConsultation(consultationId)
+      toast("Consultation supprimée", "success")
+      loadConsultations()
+      onRefetchProfile()
+    } catch (err: any) {
+      toast(err?.response?.data?.message || err?.message || "Erreur de suppression", "error")
+    }
+  }
+
+  // Calculate evolution if 2 or more consultations exist
+  const evolutionStats = useMemo(() => {
+    if (consultations.length < 2) return null
+    // consultations are sorted newest first from backend
+    const latest = consultations[0]
+    const oldest = consultations[consultations.length - 1]
+    return {
+      weightDiff: Number((latest.weight - oldest.weight).toFixed(1)),
+      muscleDiff: Number((latest.muscleMassPercentage - oldest.muscleMassPercentage).toFixed(1)),
+      fatDiff: Number((latest.bodyFatPercentage - oldest.bodyFatPercentage).toFixed(1)),
+    }
+  }, [consultations])
 
   // ── Quick Nutrition Edit Modal state ──
   const [nutritionModalOpen, setNutritionModalOpen] = useState(false)
@@ -349,6 +448,107 @@ export default function OverviewTab({
                 </div>
               </div>
             )}
+
+            {/* ── SUIVI / CONSULTATIONS SECTION ── */}
+            <div className="mt-4 pt-3 border-t border-border/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-emerald-500" />
+                  <span className="font-bold text-xs text-foreground uppercase tracking-wide">
+                    Suivi / Consultations
+                  </span>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                    {consultations.length}
+                  </Badge>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={handleOpenConsultationModal}
+                >
+                  <Plus className="h-3 w-3" />
+                  Nouvelle consultation
+                </Button>
+              </div>
+
+              {/* Evolution Summary Cards if 2+ consultations */}
+              {evolutionStats && (
+                <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-muted/30 border border-border/40 text-center">
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Évol. Poids</span>
+                    <span className={cn("font-bold text-xs flex items-center justify-center gap-0.5 mt-0.5", 
+                      evolutionStats.weightDiff < 0 ? "text-emerald-500" : evolutionStats.weightDiff > 0 ? "text-amber-500" : "text-muted-foreground"
+                    )}>
+                      {evolutionStats.weightDiff > 0 ? `+${evolutionStats.weightDiff.toFixed(1)}` : `${evolutionStats.weightDiff.toFixed(1)}`} kg
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Évol. Muscle</span>
+                    <span className={cn("font-bold text-xs flex items-center justify-center gap-0.5 mt-0.5", 
+                      evolutionStats.muscleDiff > 0 ? "text-emerald-500" : evolutionStats.muscleDiff < 0 ? "text-rose-500" : "text-muted-foreground"
+                    )}>
+                      {evolutionStats.muscleDiff > 0 ? `+${evolutionStats.muscleDiff.toFixed(1)}` : `${evolutionStats.muscleDiff.toFixed(1)}`} %
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Évol. Grasse</span>
+                    <span className={cn("font-bold text-xs flex items-center justify-center gap-0.5 mt-0.5", 
+                      evolutionStats.fatDiff < 0 ? "text-emerald-500" : evolutionStats.fatDiff > 0 ? "text-rose-500" : "text-muted-foreground"
+                    )}>
+                      {evolutionStats.fatDiff > 0 ? `+${evolutionStats.fatDiff.toFixed(1)}` : `${evolutionStats.fatDiff.toFixed(1)}`} %
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Consultations List / History */}
+              {consultationsLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : consultations.length === 0 ? (
+                <div className="p-3 text-center rounded-lg bg-muted/20 border border-border/30 text-muted-foreground text-xs">
+                  Aucun historique de consultation. Cliquez sur <strong>+ Nouvelle consultation</strong> pour consigner le suivi du client.
+                </div>
+              ) : (
+                <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                  {consultations.map((c) => (
+                    <div
+                      key={c._id}
+                      className="p-2.5 rounded-lg bg-card border border-border/60 hover:border-primary/30 transition-colors flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground text-xs">
+                            {fmtDate(c.date)}
+                          </span>
+                          {c.notes && (
+                            <span className="text-[11px] text-muted-foreground truncate italic max-w-[140px]" title={c.notes}>
+                              — {c.notes}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
+                          <span>Poids: <strong className="text-foreground">{c.weight} kg</strong></span>
+                          <span>Muscle: <strong className="text-foreground">{c.muscleMassPercentage}%</strong></span>
+                          <span>Grasse: <strong className="text-foreground">{c.bodyFatPercentage}%</strong></span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                        title="Supprimer cette entrée"
+                        onClick={() => handleDeleteConsultation(c._id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -782,6 +982,96 @@ export default function OverviewTab({
                 className="h-9 text-sm"
               />
             </div>
+          </div>
+        </div>
+      </AdminModal>
+
+      {/* ── Consultation Modal ── */}
+      <AdminModal
+        open={consultationModalOpen}
+        onOpenChange={setConsultationModalOpen}
+        title="Nouvelle consultation"
+        description="Enregistrez les mesures relevées lors du passage du client."
+        icon={<History className="h-5 w-5 text-emerald-500" />}
+        size="md"
+        busy={cSaving}
+        footer={(close) => (
+          <AdminModalFooter
+            submitLabel="Enregistrer la consultation"
+            loadingLabel="Enregistrement…"
+            loading={cSaving}
+            onCancel={close}
+            onSubmit={handleSaveConsultation}
+          />
+        )}
+      >
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="c-date" className="text-xs">Date de consultation</Label>
+            <Input
+              id="c-date"
+              type="date"
+              value={cDate}
+              onChange={(e) => setCDate(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="c-weight" className="text-xs">Poids (kg) *</Label>
+              <Input
+                id="c-weight"
+                type="number"
+                step="0.1"
+                min="30"
+                max="300"
+                value={cWeight}
+                onChange={(e) => setCWeight(e.target.value)}
+                placeholder="Ex: 84.5"
+                className="h-9 text-sm font-semibold"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="c-muscle" className="text-xs">% Masse musculaire *</Label>
+              <Input
+                id="c-muscle"
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={cMuscle}
+                onChange={(e) => setCMuscle(e.target.value)}
+                placeholder="Ex: 38.5"
+                className="h-9 text-sm font-semibold"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="c-fat" className="text-xs">% Matière grasse *</Label>
+              <Input
+                id="c-fat"
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={cFat}
+                onChange={(e) => setCFat(e.target.value)}
+                placeholder="Ex: 22.0"
+                className="h-9 text-sm font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="c-notes" className="text-xs">Notes & observations (facultatif)</Label>
+            <Input
+              id="c-notes"
+              type="text"
+              value={cNotes}
+              onChange={(e) => setCNotes(e.target.value)}
+              placeholder="Ex: Bonne progression, diminution nette du tour de taille"
+              className="h-9 text-sm"
+            />
           </div>
         </div>
       </AdminModal>

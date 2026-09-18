@@ -71,12 +71,12 @@ class ApiClient {
     return response.data;
   }
 
-  async createLevelTemplate(data: { name: string; clientDisplayName?: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; objective?: string; isActive?: boolean; level?: string; durationWeeks?: number; minimumSessionsPerWeek?: number; maximumSessionsPerWeek?: number }) {
+  async createLevelTemplate(data: { name: string; clientDisplayName?: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; objective?: string; isActive?: boolean; level?: string; folderId?: string | null; durationWeeks?: number; minimumSessionsPerWeek?: number; maximumSessionsPerWeek?: number }) {
     const response = await this.client.post('/admin/level-templates', data);
     return response.data;
   }
 
-  async updateLevelTemplate(id: string, data: { name?: string; clientDisplayName?: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; objective?: string; isActive?: boolean; level?: string; durationWeeks?: number; minimumSessionsPerWeek?: number; maximumSessionsPerWeek?: number }) {
+  async updateLevelTemplate(id: string, data: { name?: string; clientDisplayName?: string; description?: string; imageUrl?: string; gender?: 'M' | 'F'; objective?: string; isActive?: boolean; level?: string; folderId?: string | null; durationWeeks?: number; minimumSessionsPerWeek?: number; maximumSessionsPerWeek?: number }) {
     const response = await this.client.put(`/admin/level-templates/${id}`, data);
     return response.data;
   }
@@ -176,7 +176,7 @@ class ApiClient {
   }
 
   // Session Templates (coaching)
-  async getSessionTemplates(params?: { page?: number; limit?: number; search?: string; difficulty?: string }) {
+  async getSessionTemplates(params?: { page?: number; limit?: number; search?: string; difficulty?: string; folderId?: string }) {
     const response = await this.client.get('/admin/session-templates', { params });
     return response.data;
   }
@@ -198,6 +198,32 @@ class ApiClient {
 
   async deleteSessionTemplate(id: string) {
     const response = await this.client.delete(`/admin/session-templates/${id}`);
+    return response.data;
+  }
+
+  async duplicateSessionTemplate(id: string) {
+    const response = await this.client.post(`/admin/session-templates/${id}/duplicate`);
+    return response.data;
+  }
+
+  // Folders (for plans & sessions)
+  async getFolders(type?: 'plan' | 'session') {
+    const response = await this.client.get('/admin/folders', { params: type ? { type } : undefined });
+    return response.data;
+  }
+
+  async createFolder(data: { name: string; type: 'plan' | 'session'; description?: string; order?: number }) {
+    const response = await this.client.post('/admin/folders', data);
+    return response.data;
+  }
+
+  async updateFolder(id: string, data: { name?: string; description?: string; order?: number }) {
+    const response = await this.client.put(`/admin/folders/${id}`, data);
+    return response.data;
+  }
+
+  async deleteFolder(id: string) {
+    const response = await this.client.delete(`/admin/folders/${id}`);
     return response.data;
   }
 
@@ -483,6 +509,32 @@ class ApiClient {
 
   async updateClientProfile(clientId: string, data: any) {
     const response = await this.client.put(`/admin/clients/${clientId}`, data);
+    return response.data;
+  }
+
+  // Consultations (client follow-up)
+  async getClientConsultations(clientId: string) {
+    const response = await this.client.get(`/admin/clients/${clientId}/consultations`);
+    return response.data;
+  }
+
+  async createClientConsultation(
+    clientId: string,
+    data: {
+      date?: string;
+      weight: number;
+      muscleMassPercentage: number;
+      bodyFatPercentage: number;
+      notes?: string;
+    }
+  ) {
+    const response = await this.client.post(`/admin/clients/${clientId}/consultations`, data);
+    return response.data;
+  }
+
+  async deleteClientConsultation(clientIdOrConsultationId: string, consultationId?: string) {
+    const id = consultationId || clientIdOrConsultationId;
+    const response = await this.client.delete(`/admin/consultations/${id}`);
     return response.data;
   }
 
