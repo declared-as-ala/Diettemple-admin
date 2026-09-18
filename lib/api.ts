@@ -258,6 +258,11 @@ class ApiClient {
     return response.data;
   }
 
+  async bulkDeleteProducts(ids: string[]): Promise<{ success: boolean; deletedCount: number }> {
+    const response = await this.client.post('/admin/products/bulk-delete', { ids });
+    return response.data;
+  }
+
   async updateProductImages(id: string, images: string[]) {
     const response = await this.client.post(`/admin/products/${id}/images`, { images });
     return response.data;
@@ -320,6 +325,16 @@ class ApiClient {
 
   async updatePaymentStatus(id: string, paymentStatus: string) {
     const response = await this.client.put(`/admin/orders/${id}/payment-status`, { paymentStatus });
+    return response.data;
+  }
+
+  async deleteOrder(id: string): Promise<{ success: boolean }> {
+    const response = await this.client.delete(`/admin/orders/${id}`);
+    return response.data;
+  }
+
+  async bulkDeleteOrders(ids: string[]): Promise<{ success: boolean; deletedCount: number }> {
+    const response = await this.client.post('/admin/orders/bulk-delete', { ids });
     return response.data;
   }
 
