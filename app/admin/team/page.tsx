@@ -478,7 +478,7 @@ export default function TeamAccessPage() {
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {members.map((member) => {
-                      const isSelf = currentUser?._id && String(currentUser._id) === String(member._id)
+                      const isSelf = Boolean(currentUser?._id && String(currentUser._id) === String(member._id))
                       return (
                         <tr key={member._id} className="transition-colors hover:bg-muted/30">
                           {/* Nom + Avatar */}
@@ -648,7 +648,7 @@ export default function TeamAccessPage() {
               {/* Mobile Card List */}
               <div className="divide-y divide-border/70 md:hidden">
                 {members.map((member) => {
-                  const isSelf = currentUser?._id && String(currentUser._id) === String(member._id)
+                  const isSelf = Boolean(currentUser?._id && String(currentUser._id) === String(member._id))
                   return (
                     <div key={member._id} className="p-4 space-y-3">
                       <div className="flex items-start justify-between">
