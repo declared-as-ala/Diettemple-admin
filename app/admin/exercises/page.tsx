@@ -132,6 +132,7 @@ export default function ExercisesPage() {
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<number>(0)
+  const [videoLoadErrors, setVideoLoadErrors] = useState<Record<string, boolean>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const createVideoInputRef = useRef<HTMLInputElement>(null)
   const selectAllRef = useRef<HTMLInputElement>(null)
@@ -181,6 +182,7 @@ export default function ExercisesPage() {
       hasLoadedOnce.current = true
       const exercisesList = exercisesData.exercises || []
       setExercises(exercisesList)
+      setVideoLoadErrors({})
 
       // Use backend muscle groups when available; otherwise derive from exercises
       const backendGroups: string[] = muscleGroupsData.muscleGroups || []
@@ -337,9 +339,9 @@ export default function ExercisesPage() {
         toast("Type de fichier invalide. Choisissez une vidéo (MP4, MOV, AVI, WEBM)", "error")
         return
       }
-      // Validate file size (100MB)
-      if (file.size > 100 * 1024 * 1024) {
-        toast("Fichier trop volumineux. Taille max. 100 Mo", "error")
+      // Validate file size (500MB, same backend limit)
+      if (file.size > 500 * 1024 * 1024) {
+        toast("Fichier trop volumineux. Taille max. 500 Mo", "error")
         return
       }
       setSelectedVideoFile(file)
@@ -396,6 +398,30 @@ export default function ExercisesPage() {
     }
   }
 
+  const handleRemoveVideo = async () => {
+    if (!selectedExercise || uploadingVideo) return
+
+    setUploadingVideo(true)
+    try {
+      const response = await api.removeExerciseVideo(selectedExercise._id)
+      setExercises((prev) =>
+        prev.map((ex) =>
+          ex._id === selectedExercise._id
+            ? { ...ex, videoUrl: response.exercise?.videoUrl || "", videoSource: undefined, videoFilePath: undefined }
+            : ex
+        )
+      )
+      toast("Video supprimee avec succes", "success")
+      setShowVideoDialog(false)
+      setSelectedVideoFile(null)
+      await loadData()
+    } catch (error: any) {
+      toast(error.message || "Erreur lors de la suppression de la video", "error")
+    } finally {
+      setUploadingVideo(false)
+    }
+  }
+
   const handleWatchVideo = (videoUrl: string) => {
     if (!videoUrl) return
     // Do not open YouTube/external links in our player; only uploaded videos
@@ -420,6 +446,10 @@ export default function ExercisesPage() {
     if (!videoUrl) return null
     if (videoUrl.startsWith('http')) return videoUrl
     return videoUrl.startsWith('/') ? `${MEDIA_BASE_URL}${videoUrl}` : `${MEDIA_BASE_URL}/${videoUrl}`
+  }
+
+  const markVideoLoadError = (exerciseId: string) => {
+    setVideoLoadErrors((previous) => ({ ...previous, [exerciseId]: true }))
   }
 
   const toggleSelect = (id: string) => {
@@ -623,7 +653,10 @@ export default function ExercisesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredExercises.map((exercise) => (
+              {filteredExercises.map((exercise) => {
+                const videoSrc = getVideoUrl(exercise.videoUrl)
+                const videoFailed = Boolean(videoLoadErrors[exercise._id])
+                return (
                 <TableRow key={exercise._id}>
                   <TableCell className="w-10">
                     <input
@@ -638,21 +671,30 @@ export default function ExercisesPage() {
                     {exercise.videoUrl ? (
                       <div className="flex flex-col gap-1">
                         <div
-                          className="relative w-[120px] aspect-video rounded-md overflow-hidden bg-muted border border-border cursor-pointer hover:opacity-90"
-                          onClick={() => handleWatchVideo(exercise.videoUrl)}
+                          className={`relative w-[120px] aspect-video rounded-md overflow-hidden border border-border ${videoFailed ? "bg-destructive/10 cursor-default" : "bg-muted cursor-pointer hover:opacity-90"}`}
+                          onClick={() => { if (!videoFailed) handleWatchVideo(exercise.videoUrl) }}
                         >
-                          <video
-                            src={getVideoUrl(exercise.videoUrl) || undefined}
-                            className="w-full h-full object-cover pointer-events-none"
-                            muted
-                            preload="metadata"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                            <Play className="h-8 w-8 text-white" />
-                          </div>
+                          {videoFailed ? (
+                            <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-medium text-destructive">
+                              Erreur video
+                            </div>
+                          ) : (
+                            <>
+                              <video
+                                src={videoSrc || undefined}
+                                className="w-full h-full object-cover pointer-events-none"
+                                muted
+                                preload="metadata"
+                                onError={() => markVideoLoadError(exercise._id)}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <Play className="h-8 w-8 text-white" />
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
-                          <Badge variant="default" className="gap-1 cursor-pointer bg-green-600 hover:bg-green-700 text-xs" onClick={() => handleWatchVideo(exercise.videoUrl)}>
+                          <Badge variant={videoFailed ? "destructive" : "default"} className={`gap-1 text-xs ${videoFailed ? "" : "cursor-pointer bg-green-600 hover:bg-green-700"}`} onClick={() => { if (!videoFailed) handleWatchVideo(exercise.videoUrl) }}>
                             <Video className="h-3 w-3" />
                             Vidéo
                           </Badge>
@@ -706,7 +748,7 @@ export default function ExercisesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         </CardContent>
@@ -800,7 +842,7 @@ export default function ExercisesPage() {
                   </Field>
                 </div>
 
-                {(selectedVideoFile || (selectedExercise?.videoUrl && (selectedExercise.videoUrl.startsWith('/api/videos/') || selectedExercise.videoUrl.startsWith('/media/')))) && (
+                {(selectedVideoFile || selectedExercise?.videoUrl) && (
                   <div>
                     <h3 className="text-sm font-semibold text-foreground mb-3">Aperçu</h3>
                     <Field>
@@ -841,6 +883,12 @@ export default function ExercisesPage() {
             </FieldGroup>
           </DialogBody>
           <DialogFooter>
+            {selectedExercise?.videoUrl && (
+              <Button variant="destructive" disabled={uploadingVideo} type="button" onClick={handleRemoveVideo}>
+                <Trash2 className="h-4 w-4" />
+                Supprimer la video
+              </Button>
+            )}
             <DialogClose asChild>
               <Button variant="outline" disabled={uploadingVideo}>{fr.buttons.cancel}</Button>
             </DialogClose>

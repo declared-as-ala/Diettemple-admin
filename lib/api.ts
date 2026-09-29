@@ -132,7 +132,6 @@ class ApiClient {
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data',
           Authorization: token ? `Bearer ${token}` : '',
         },
         onUploadProgress: onUploadProgress
@@ -769,6 +768,11 @@ class ApiClient {
           : undefined,
       }
     );
+    return response.data;
+  }
+
+  async removeExerciseVideo(id: string) {
+    const response = await this.client.delete(`/admin/exercises/${id}/video`);
     return response.data;
   }
 
