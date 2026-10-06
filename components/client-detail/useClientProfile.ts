@@ -129,8 +129,15 @@ export function useClientProfile(id: string) {
     if (levelTemplates.length > 0) return
     setLevelTemplatesLoading(true)
     try {
-      const data = await api.getLevelTemplates({ limit: 100 })
-      setLevelTemplates(data?.levelTemplates || [])
+      // The API caps a page at 100: read every page so no programme is missing from the picker.
+      const first = await api.getLevelTemplates({ limit: 100, page: 1 })
+      let all = first?.levelTemplates || []
+      const pages = Number(first?.pagination?.pages || 1)
+      for (let page = 2; page <= Math.min(pages, 20); page += 1) {
+        const next = await api.getLevelTemplates({ limit: 100, page })
+        all = all.concat(next?.levelTemplates || [])
+      }
+      setLevelTemplates(all)
     } catch {
       setLevelTemplates([])
     } finally {

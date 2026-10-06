@@ -52,12 +52,14 @@ export default function WorkoutPlanModal({
   const [objectiveFilter, setObjectiveFilter] = useState("all")
   const [levelFilter, setLevelFilter] = useState("all")
   const [activeOnly, setActiveOnly] = useState(true)
+  // "Tous": list plans of both sexes (the Sexe filter used to hide every plan of the other sex without saying so).
+  const [allGenders, setAllGenders] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const filteredTemplates = useMemo(() => {
     return templates
       .filter((template) => !isChange || template._id !== currentAssignment?.planTemplateId)
-      .filter((template) => (template.gender || "M") === selectedGender)
+      .filter((template) => allGenders || (template.gender || "M") === selectedGender)
       .filter((template) => !activeOnly || template.isActive !== false)
       .filter((template) => {
         if (objectiveFilter === "all") return true
@@ -69,7 +71,19 @@ export default function WorkoutPlanModal({
         return (template.level || "").toUpperCase() === levelFilter
       })
       .sort((a, b) => a.name.localeCompare(b.name, "fr"))
-  }, [activeOnly, currentAssignment?.planTemplateId, isChange, levelFilter, objectiveFilter, selectedGender, templates])
+  }, [activeOnly, allGenders, currentAssignment?.planTemplateId, isChange, levelFilter, objectiveFilter, selectedGender, templates])
+
+  // Why some programmes are not in the list (so nothing disappears silently).
+  const hidden = useMemo(() => {
+    const isCurrent = (t: (typeof templates)[number]) => isChange && t._id === currentAssignment?.planTemplateId
+    return {
+      current: templates.filter(isCurrent).length,
+      otherGender: allGenders ? 0 : templates.filter((t) => !isCurrent(t) && (t.gender || "M") !== selectedGender).length,
+      inactive: activeOnly
+        ? templates.filter((t) => !isCurrent(t) && (allGenders || (t.gender || "M") === selectedGender) && t.isActive === false).length
+        : 0,
+    }
+  }, [activeOnly, allGenders, currentAssignment?.planTemplateId, isChange, selectedGender, templates])
 
   const selectedPlan = templates.find((template) => template._id === selectedTemplate)
   const durationWeeks = selectedPlan?.weeks?.length || 0
@@ -150,15 +164,16 @@ export default function WorkoutPlanModal({
               {/* Sexe */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Sexe</Label>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {(["M", "F"] as const).map((gender) => (
                     <Button
                       key={gender}
                       type="button"
-                      variant={selectedGender === gender ? "default" : "outline"}
+                      variant={!allGenders && selectedGender === gender ? "default" : "outline"}
                       size="sm"
                       className="h-10 text-xs"
                       onClick={() => {
+                        setAllGenders(false)
                         onGenderChange(gender)
                         if (gender !== selectedGender) onSelectTemplate("", "", gender)
                       }}
@@ -167,6 +182,15 @@ export default function WorkoutPlanModal({
                       {gender === "M" ? "Hommes" : "Femmes"}
                     </Button>
                   ))}
+                  <Button
+                    type="button"
+                    variant={allGenders ? "default" : "outline"}
+                    size="sm"
+                    className="h-10 text-xs"
+                    onClick={() => setAllGenders(true)}
+                  >
+                    Tous
+                  </Button>
                 </div>
               </div>
 
@@ -252,6 +276,12 @@ export default function WorkoutPlanModal({
               loading={templatesLoading}
               label="Programme d'entraînement"
             />
+            <p className="mt-2 text-xs text-muted-foreground" data-testid="plan-count">
+              {filteredTemplates.length} programme{filteredTemplates.length !== 1 ? "s" : ""} affiché{filteredTemplates.length !== 1 ? "s" : ""} sur {templates.length}
+              {hidden.otherGender > 0 && ` · ${hidden.otherGender} masqué${hidden.otherGender !== 1 ? "s" : ""} (autre sexe — choisis « Tous »)`}
+              {hidden.inactive > 0 && ` · ${hidden.inactive} inactif${hidden.inactive !== 1 ? "s" : ""} (décoche « Actifs uniquement »)`}
+              {hidden.current > 0 && " · plan actuel masqué"}
+            </p>
           </AdminFormSection>
 
           <AdminFormSection
