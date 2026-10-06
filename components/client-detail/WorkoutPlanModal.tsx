@@ -58,7 +58,6 @@ export default function WorkoutPlanModal({
 
   const filteredTemplates = useMemo(() => {
     return templates
-      .filter((template) => !isChange || template._id !== currentAssignment?.planTemplateId)
       .filter((template) => allGenders || (template.gender || "M") === selectedGender)
       .filter((template) => !activeOnly || template.isActive !== false)
       .filter((template) => {
@@ -77,7 +76,6 @@ export default function WorkoutPlanModal({
   const hidden = useMemo(() => {
     const isCurrent = (t: (typeof templates)[number]) => isChange && t._id === currentAssignment?.planTemplateId
     return {
-      current: templates.filter(isCurrent).length,
       otherGender: allGenders ? 0 : templates.filter((t) => !isCurrent(t) && (t.gender || "M") !== selectedGender).length,
       inactive: activeOnly
         ? templates.filter((t) => !isCurrent(t) && (allGenders || (t.gender || "M") === selectedGender) && t.isActive === false).length
@@ -130,7 +128,11 @@ export default function WorkoutPlanModal({
             submitLabel={isChange ? "Continuer vers la confirmation" : "Assigner le programme"}
             loadingLabel="Enregistrement…"
             loading={saving}
-            submitDisabled={!selectedTemplate || !startDate || selectedTemplate === currentAssignment?.planTemplateId}
+            submitDisabled={
+              !selectedTemplate ||
+              !startDate ||
+              (selectedTemplate === currentAssignment?.planTemplateId && startDate === (currentAssignment?.startDate || "").slice(0, 10))
+            }
             onCancel={requestClose}
             onSubmit={submit}
           />
@@ -263,12 +265,12 @@ export default function WorkoutPlanModal({
                 if (plan) onSelectTemplate(plan._id, plan.name, (plan.gender || "M") as "M" | "F")
               }}
               getKey={(template) => template._id}
-              getLabel={(template) => template.clientDisplayName || template.name}
+              getLabel={(template) => `${template.name}${isChange && template._id === currentAssignment?.planTemplateId ? " — plan actuel" : ""}`}
               getSearchText={(template) => `${template.name} ${template.clientDisplayName || ""} ${template.level || ""} ${template.gender || ""} ${template.objective || ""}`}
               renderMeta={(template) => {
                 const objDef = getObjectiveDef(template.objective)
                 const lvl = template.level ? template.level.charAt(0).toUpperCase() + template.level.slice(1).toLowerCase() : "Initiate"
-                return `${objDef.label} · ${lvl} · ${template.gender === "F" ? "Femme" : "Homme"}`
+                return `${objDef.label} · ${lvl} · ${template.gender === "F" ? "Femme" : "Homme"}${template.clientDisplayName && template.clientDisplayName !== template.name ? ` · affiché client : ${template.clientDisplayName}` : ""}`
               }}
               maxSelections={1}
               placeholder="Rechercher par nom, niveau ou objectif…"
@@ -280,7 +282,6 @@ export default function WorkoutPlanModal({
               {filteredTemplates.length} programme{filteredTemplates.length !== 1 ? "s" : ""} affiché{filteredTemplates.length !== 1 ? "s" : ""} sur {templates.length}
               {hidden.otherGender > 0 && ` · ${hidden.otherGender} masqué${hidden.otherGender !== 1 ? "s" : ""} (autre sexe — choisis « Tous »)`}
               {hidden.inactive > 0 && ` · ${hidden.inactive} inactif${hidden.inactive !== 1 ? "s" : ""} (décoche « Actifs uniquement »)`}
-              {hidden.current > 0 && " · plan actuel masqué"}
             </p>
           </AdminFormSection>
 
@@ -347,7 +348,9 @@ export default function WorkoutPlanModal({
         title="Changer le programme du client ?"
         description={
           selectedPlan
-            ? `Le programme « ${currentAssignment?.levelName ?? "actuel"} » sera remplacé par « ${selectedPlan.name} » à partir du ${startDate}. Les séances passées et les records restent préservés.`
+            ? selectedPlan._id === currentAssignment?.planTemplateId
+              ? `Le programme « ${selectedPlan.name} » sera relancé à partir du ${startDate} (nouvelle affectation). Les séances passées et les records restent préservés.`
+              : `Le programme « ${currentAssignment?.levelName ?? "actuel"} » sera remplacé par « ${selectedPlan.name} » à partir du ${startDate}. Les séances passées et les records restent préservés.`
             : undefined
         }
         confirmLabel="Confirmer le changement"
