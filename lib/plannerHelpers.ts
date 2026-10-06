@@ -186,18 +186,26 @@ export function daysToSessions(days: Record<DayKey, SessionPlacement[]>): Planne
   });
 }
 
-/** Preview generated calendar dates for a sample start date (admin-only, never persisted). */
+/**
+ * Preview of the REAL calendar dates, using the exact rule the backend/mobile apply:
+ * weeks are calendar weeks (Mon-Sun); offset 0 = Monday. Week 1 starts on the client's start date and
+ * ends on the following Sunday, so slots falling before the start date are NOT scheduled (`scheduled: false`).
+ * Admin-only, never persisted.
+ */
 export function previewDatesForWeek(
   sampleStartDate: Date,
-  sessions: PlannedSession[]
-): Array<{ session: PlannedSession; offset: number; date: Date }> {
+  sessions: PlannedSession[],
+  weekNumber = 1
+): Array<{ session: PlannedSession; offset: number; date: Date; scheduled: boolean }> {
+  const DAY = 24 * 60 * 60 * 1000;
   const offsets = computeOffsets(sessions);
   const startMs = Date.UTC(sampleStartDate.getUTCFullYear(), sampleStartDate.getUTCMonth(), sampleStartDate.getUTCDate());
-  return sessions.map((s, idx) => ({
-    session: s,
-    offset: offsets[idx],
-    date: new Date(startMs + offsets[idx] * 24 * 60 * 60 * 1000),
-  }));
+  const startMonday = startMs - ((new Date(startMs).getUTCDay() + 6) % 7) * DAY;
+  const weekMonday = startMonday + (Math.max(1, weekNumber) - 1) * 7 * DAY;
+  return sessions.map((s, idx) => {
+    const dateMs = weekMonday + offsets[idx] * DAY;
+    return { session: s, offset: offsets[idx], date: new Date(dateMs), scheduled: dateMs >= startMs };
+  });
 }
 
 /** Strip client-only ids for the API payload; includes derived days{} + offsets for the backend to store. */

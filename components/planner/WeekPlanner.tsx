@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Plus, Copy, Search, Moon, CalendarClock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { GripVertical, X, Plus, Copy, Search, Moon, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   type WeekState,
@@ -26,7 +26,6 @@ import {
   setIsRestWeek,
   computeOffsets,
   offsetsFitInCycle,
-  previewDatesForWeek,
 } from "@/lib/plannerHelpers";
 
 const OFFSET_DAY_LABELS = ["J0", "J1", "J2", "J3", "J4", "J5", "J6"];
@@ -46,22 +45,8 @@ export function WeekPlanner({
   librarySessions,
   disabled = false,
 }: WeekPlannerProps) {
-  const [previewStartDate, setPreviewStartDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
-        <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-xs font-medium text-muted-foreground">Aperçu des dates — date de départ d&apos;exemple :</span>
-        <input
-          type="date"
-          value={previewStartDate}
-          onChange={(e) => setPreviewStartDate(e.target.value)}
-          className="h-7 rounded-md border border-border bg-background px-2 text-xs"
-        />
-        <span className="text-[11px] text-muted-foreground italic">Aperçu uniquement — jamais enregistré tel quel.</span>
-      </div>
-
       <div className="flex gap-4 overflow-x-auto pb-3">
         {weeks.map((week, wi) => (
           <WeekCard
@@ -73,7 +58,6 @@ export function WeekPlanner({
             sessionTemplateById={sessionTemplateById}
             librarySessions={librarySessions}
             disabled={disabled}
-            previewStartDate={previewStartDate}
           />
         ))}
       </div>
@@ -82,7 +66,7 @@ export function WeekPlanner({
 }
 
 function WeekCard({
-  week, weekIndex, weeks, onChange, sessionTemplateById, librarySessions, disabled, previewStartDate,
+  week, weekIndex, weeks, onChange, sessionTemplateById, librarySessions, disabled,
 }: {
   week: WeekState;
   weekIndex: number;
@@ -91,7 +75,6 @@ function WeekCard({
   sessionTemplateById: Record<string, { title?: string; durationMinutes?: number }>;
   librarySessions: Array<{ _id: string; title?: string; durationMinutes?: number }>;
   disabled: boolean;
-  previewStartDate: string;
 }) {
   const [addQuery, setAddQuery] = useState("");
   const [showAddPanel, setShowAddPanel] = useState(false);
@@ -105,12 +88,6 @@ function WeekCard({
   const total = week.sessions.length;
   const min = week.minimumCompletedSessions;
   const isValidMinimum = week.isRestWeek ? min === 0 : min >= 1 && min <= Math.max(total, 1);
-  const preview = useMemo(() => {
-    const d = new Date(previewStartDate + "T00:00:00.000Z");
-    if (Number.isNaN(d.getTime())) return [];
-    return previewDatesForWeek(d, week.sessions);
-  }, [previewStartDate, week.sessions]);
-
   const filteredLibrary = librarySessions.filter((s) =>
     !addQuery || (s.title ?? "").toLowerCase().includes(addQuery.toLowerCase())
   );
@@ -258,20 +235,6 @@ function WeekCard({
         </div>
       )}
 
-      {/* Date preview */}
-      {!week.isRestWeek && total > 0 && (
-        <div className="p-2.5 border-t border-border/70 bg-muted/10 space-y-1">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Aperçu des dates</p>
-          {preview.map((p, idx) => (
-            <div key={p.session.id} className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Séance {idx + 1}</span>
-              <span className="font-medium text-foreground">
-                {p.date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
