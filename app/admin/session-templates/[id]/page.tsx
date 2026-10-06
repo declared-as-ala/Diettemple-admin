@@ -917,17 +917,29 @@ function ConfigDialog({ index, config, exercise, allExercises, onClose, onUpdate
 
           <div className="space-y-2">
             <Label htmlFor="config-client-instruction">Message / Instruction au client (facultatif)</Label>
-            <Input
+            <textarea
               id="config-client-instruction"
-              type="text"
               value={clientInstruction}
               onChange={event => setClientInstruction(event.target.value)}
               placeholder="Ex: Concentre-toi sur la descente lente en 3 secondes."
-              className="h-11 bg-muted/30 text-foreground"
+              rows={3}
+              className="w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <p className="text-[11px] text-muted-foreground">
-              Cette consigne apparaîtra au client sur sa carte vidéo dans l'application mobile.
+              Le client la reçoit comme un message du coach (bulle de discussion) quand il ouvre cet exercice dans l'application mobile.
             </p>
+            {clientInstruction.trim() && (
+              <div className="rounded-xl border border-border bg-muted/20 p-3" data-testid="client-message-preview">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Aperçu côté client</p>
+                <div className="flex items-end gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">C</div>
+                  <div>
+                    <p className="mb-1 ml-1 text-[11px] font-bold text-foreground">Coach <span className="ml-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-500">Nouveau message</span></p>
+                    <div className="max-w-sm whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-zinc-800 px-3.5 py-2.5 text-sm text-white shadow">{clientInstruction.trim()}</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
