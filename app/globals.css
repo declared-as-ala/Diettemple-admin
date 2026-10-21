@@ -46,67 +46,68 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Design Tokens - Fitness Theme */
+/* Design Tokens — STUDIO MONO: charcoal ink, warm near-white, ONE coral accent */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  /* Light Mode - Clean & Bright */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
+  --background: #f7f7f5;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
 
-  /* Primary - Deep Fitness Green */
-  --primary: oklch(0.38 0.14 142);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Coral is reserved for primary calls to action and key highlights.
+     Text on coral is charcoal: white on #E4572E is only 3.7:1, charcoal is 4.9:1 (AA). */
+  --primary: #e4572e;
+  --primary-foreground: #171717;
 
-  /* Secondary - Neutral Gray */
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --secondary: #efefec;
+  --secondary-foreground: #171717;
 
-  /* Muted */
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
+  --muted: #f1f1ee;
+  --muted-foreground: #66665f;
 
-  /* Accent */
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+  --accent: #f1f1ee;
+  --accent-foreground: #171717;
 
-  /* Success - Green */
-  --success: 34 197 94;
+  --success: 22 128 61;
   --success-foreground: 255 255 255;
 
-  /* Destructive */
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: #c8321f;
   --destructive-foreground: 255 255 255;
 
-  /* Border & Input */
-  --border: oklch(0.90 0.004 286.32);
-  --input: oklch(0.90 0.004 286.32);
-  --ring: oklch(0.38 0.14 142 / 40%);
+  --border: #e7e7e3;
+  --input: #dcdcd7;
+  --ring: oklch(0.65 0.19 38 / 55%);
 
-  /* Sidebar */
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.38 0.14 142);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.38 0.14 142 / 40%);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #fafaf8;
+  --sidebar-accent: #f1f1ee;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #e7e7e3;
+  --sidebar-ring: oklch(0.65 0.19 38 / 55%);
 
-  /* Charts */
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Charts: ink + coral + neutral greys (no blue / purple) */
+  --chart-1: #171717;
+  --chart-2: #e4572e;
+  --chart-3: #6f6f68;
+  --chart-4: #a5a59d;
+  --chart-5: #d2d2cc;
+
+  /* Trend badges */
+  --trend-up: #15803d;
+  --trend-up-bg: #e8f5ec;
+  --trend-down: #b42318;
+  --trend-down-bg: #fdecea;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --shadow-card: 0 1px 2px rgb(23 23 23 / 0.04);
 }
 
 .dark {
-  /* Dark Mode - Dark Neutral Charcoal Aesthetic */
   --background: oklch(0.14 0.005 285.82);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.19 0.006 285.88);
@@ -114,51 +115,48 @@
   --popover: oklch(0.19 0.006 285.88);
   --popover-foreground: oklch(0.985 0 0);
 
-  /* Primary - Lime/Green Accent */
-  --primary: oklch(0.76 0.18 142);
-  --primary-foreground: oklch(0.14 0.005 285.82);
+  --primary: #ee6a41;
+  --primary-foreground: #171717;
 
-  /* Secondary */
   --secondary: oklch(0.24 0.006 286.03);
   --secondary-foreground: oklch(0.985 0 0);
 
-  /* Muted */
   --muted: oklch(0.22 0.006 286.03);
   --muted-foreground: oklch(0.70 0.015 286.06);
 
-  /* Accent */
   --accent: oklch(0.24 0.006 286.03);
   --accent-foreground: oklch(0.985 0 0);
 
-  /* Success */
   --success: 74 222 128;
   --success-foreground: 2 6 23;
 
-  /* Destructive */
   --destructive: oklch(0.65 0.20 25);
   --destructive-foreground: 255 255 255;
 
-  /* Border & Input */
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.76 0.18 142 / 50%);
+  --ring: oklch(0.72 0.17 38 / 55%);
 
-  /* Sidebar - Darker */
   --sidebar: oklch(0.16 0.005 285.82);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.76 0.18 142);
-  --sidebar-primary-foreground: oklch(0.14 0.005 285.82);
+  --sidebar-primary: #fafaf8;
+  --sidebar-primary-foreground: #171717;
   --sidebar-accent: oklch(0.22 0.006 286.03);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.76 0.18 142 / 50%);
+  --sidebar-ring: oklch(0.72 0.17 38 / 55%);
 
-  /* Charts */
-  --chart-1: oklch(0.76 0.18 142);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  --chart-1: #fafaf8;
+  --chart-2: #ee6a41;
+  --chart-3: #a5a59d;
+  --chart-4: #6f6f68;
+  --chart-5: #45453f;
+
+  --trend-up: #5ed38a;
+  --trend-up-bg: oklch(0.3 0.05 150);
+  --trend-down: #ff8a7a;
+  --trend-down-bg: oklch(0.3 0.07 25);
+  --shadow-card: none;
 }
 
 @layer base {
@@ -169,8 +167,33 @@
     @apply bg-background text-foreground;
   }
   body {
-    @apply bg-background text-foreground antialiased min-h-screen;
+    @apply bg-background text-foreground antialiased min-h-screen font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Numbers: Geist Mono, tabular figures */
+.num {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Lenis smooth scroll */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: clip; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

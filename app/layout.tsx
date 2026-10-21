@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -14,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body suppressHydrationWarning>
         <Script
           id="theme-script"
@@ -23,7 +25,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  const theme = localStorage.getItem('diettemple-theme') || 'dark';
+                  const theme = localStorage.getItem('diettemple-theme') || 'light';
                   const root = document.documentElement;
                   const body = document.body;
                   root.classList.remove('light', 'dark');
@@ -38,7 +40,7 @@ export default function RootLayout({
             `,
           }}
         />
-        <ThemeProvider defaultTheme="dark" storageKey="diettemple-theme">
+        <ThemeProvider defaultTheme="light" storageKey="diettemple-theme">
           {children}
         </ThemeProvider>
       </body>

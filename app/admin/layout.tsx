@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { TopBar } from "@/components/layout/TopBar"
+import { CommandPalette } from "@/components/layout/CommandPalette"
+import { SmoothScroll } from "@/components/layout/SmoothScroll"
 import { ToastProvider } from "@/components/ui/toast"
 import { PageLoader } from "@/components/ui/loading"
 import { auth } from "@/lib/auth"
@@ -136,13 +138,15 @@ export default function AdminLayout({
         className="min-h-screen bg-background"
         style={{ "--admin-sidebar-width": sidebarCollapsed ? "5rem" : "16rem" } as React.CSSProperties}
       >
+        <SmoothScroll />
+        <CommandPalette />
         <Sidebar
           collapsed={sidebarCollapsed}
           onCollapsedChange={setSidebarCollapsed}
           mobileOpen={mobileSidebarOpen}
           onMobileOpenChange={setMobileSidebarOpen}
         />
-        <div className="min-h-screen transition-[padding] duration-300 lg:pl-[var(--admin-sidebar-width)]">
+        <div className="min-h-screen transition-[padding] duration-200 ease-[var(--ease-out)] lg:pl-[var(--admin-sidebar-width)]">
           <TopBar onMenuClick={() => setMobileSidebarOpen(true)} />
           <main className="min-w-0 p-4 sm:p-6 animate-fade-in">
             {children}
