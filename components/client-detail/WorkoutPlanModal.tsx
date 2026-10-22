@@ -51,7 +51,7 @@ export default function WorkoutPlanModal({
   const isChange = !!currentAssignment
   const [objectiveFilter, setObjectiveFilter] = useState("all")
   const [levelFilter, setLevelFilter] = useState("all")
-  const [activeOnly, setActiveOnly] = useState(true)
+  const [activeOnly, setActiveOnly] = useState(false)
   // "Tous": list plans of both sexes (the Sexe filter used to hide every plan of the other sex without saying so).
   const [allGenders, setAllGenders] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -265,7 +265,7 @@ export default function WorkoutPlanModal({
                 if (plan) onSelectTemplate(plan._id, plan.name, (plan.gender || "M") as "M" | "F")
               }}
               getKey={(template) => template._id}
-              getLabel={(template) => `${template.name}${isChange && template._id === currentAssignment?.planTemplateId ? " — plan actuel" : ""}`}
+              getLabel={(template) => `${template.name}${isChange && template._id === currentAssignment?.planTemplateId ? " — plan actuel" : ""}${template.isActive === false ? " — inactif" : ""}`}
               getSearchText={(template) => `${template.name} ${template.clientDisplayName || ""} ${template.level || ""} ${template.gender || ""} ${template.objective || ""}`}
               renderMeta={(template) => {
                 const objDef = getObjectiveDef(template.objective)
