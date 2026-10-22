@@ -34,6 +34,7 @@ import {
   FolderOpen,
   Filter,
   MoveRight,
+  Copy,
 } from "lucide-react"
 
 const PLAN_LEVELS = [
@@ -360,6 +361,23 @@ export default function LevelTemplatesPage() {
     }
   }
 
+  // ─── Duplicate Plan ───
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
+  const handleDuplicatePlan = async (plan: { _id: string }) => {
+    if (duplicatingId) return
+    setDuplicatingId(plan._id)
+    try {
+      await api.duplicateLevelTemplate(plan._id)
+      toast("Programme dupliqué (copie inactive)", "success")
+      await load()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string }
+      toast(e.response?.data?.message || e.message || "Duplication impossible", "error")
+    } finally {
+      setDuplicatingId(null)
+    }
+  }
+
   // ─── Delete Plan ───
   const handleDeletePlan = async () => {
     if (!deleteTarget) return
@@ -640,6 +658,17 @@ export default function LevelTemplatesPage() {
                     title="Déplacer vers un dossier"
                   >
                     <MoveRight className="h-3.5 w-3.5" />
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => handleDuplicatePlan(plan)}
+                    disabled={duplicatingId === plan._id}
+                    title="Dupliquer le programme"
+                  >
+                    {duplicatingId === plan._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
                   </Button>
 
                   <Button

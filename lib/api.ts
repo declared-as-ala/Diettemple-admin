@@ -99,6 +99,11 @@ class ApiClient {
     return response.data;
   }
 
+  async duplicateLevelTemplate(id: string) {
+    const response = await this.client.post(`/admin/level-templates/${id}/duplicate`);
+    return response.data;
+  }
+
   async deleteLevelTemplate(id: string) {
     const response = await this.client.delete(`/admin/level-templates/${id}`);
     return response.data;

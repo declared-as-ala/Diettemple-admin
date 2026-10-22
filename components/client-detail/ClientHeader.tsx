@@ -10,14 +10,6 @@ import { Button } from "@/components/ui/button"
 import type { PlanAssignmentData, ProfileData, TabId } from "./types"
 import { daysUntil, fmtDate, fmtRelative } from "./utils"
 
-const LEVEL_COLORS: Record<string, string> = {
-  'Initiate': 'from-blue-600 via-blue-700 to-blue-800',
-  'Fighter': 'from-amber-600 via-amber-700 to-amber-800',
-  'Warrior': 'from-purple-600 via-purple-700 to-purple-800',
-  'Champion': 'from-rose-600 via-rose-700 to-rose-800',
-  'Elite': 'from-yellow-600 via-yellow-700 to-yellow-800',
-}
-
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "fiche", label: "Fiche client", icon: User },
   { id: "plan", label: "Plan", icon: Trophy },
@@ -53,8 +45,6 @@ export default function ClientHeader({
   const levelGender = sub?.levelTemplateId?.gender ?? ""
   const tierForUi = normalizeLevelName(clientLevel || clientDisplayName || levelName)
   const heroLevel = tierForUi || clientDisplayName || levelName || "Initiate"
-  const gradientClass =
-    LEVEL_COLORS[tierForUi] ?? LEVEL_COLORS[clientLevel] ?? LEVEL_COLORS[levelName] ?? "from-slate-800 via-slate-900 to-black"
   const isActive = planAssignment?.status === "active" || (!planAssignment && sub?.effectiveStatus === "ACTIVE")
   const isExpired = planAssignment?.status === "completed" || (!planAssignment && sub?.effectiveStatus === "EXPIRED")
   const planEndDate = planAssignment?.finalActiveDate || sub?.endAt
@@ -115,143 +105,112 @@ export default function ClientHeader({
         </div>
       </div>
 
-      {/* ── HERO BAND ── */}
-      <div className={cn("relative bg-gradient-to-br overflow-hidden", gradientClass)}>
-        {/* Decorative radial glow */}
-        <div
-          className="absolute inset-0 opacity-30 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse at top right, rgba(255,255,255,0.18), transparent 55%)",
-          }}
-        />
-
-        {/* Level hero background badge */}
-        <div className="absolute right-0 top-0 bottom-0 w-full pointer-events-none select-none">
-          <img
-            src={getLevelImageUrl(heroLevel)}
-            alt={heroLevel}
-            className="absolute right-0 top-1/2 -translate-y-1/2 h-[150%] max-h-[480px] w-auto object-contain opacity-[0.22] md:opacity-[0.3] drop-shadow-2xl"
-            onError={(e) => {
-              ;(e.target as HTMLImageElement).style.display = "none"
-            }}
-          />
+      {/* ── HERO ── */}
+      <div className="px-4 pt-4 sm:px-6 sm:pt-5">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-primary" />
           <img
             src={getLevelImageUrl(heroLevel)}
             alt=""
             aria-hidden
-            className="hidden lg:block absolute right-8 top-1/2 -translate-y-1/2 h-44 w-44 object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+            className="pointer-events-none absolute -right-6 top-1/2 hidden h-56 w-56 -translate-y-1/2 object-contain opacity-[0.07] grayscale md:block"
             onError={(e) => {
               ;(e.target as HTMLImageElement).style.display = "none"
             }}
           />
-        </div>
 
-        {/* Content */}
-        <div className="relative z-10 px-6 py-7 lg:pr-64">
-          <div className="flex items-start gap-5">
-            {/* Avatar */}
-            <div className="relative flex-shrink-0">
+          <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center">
+            <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
               {photo ? (
                 <img
                   src={photo}
                   alt={displayName}
-                  className="h-20 w-20 rounded-2xl object-cover border-2 border-white/25 shadow-2xl"
+                  className="h-20 w-20 shrink-0 rounded-2xl border border-border object-cover"
                   onError={(e) => {
                     ;(e.target as HTMLImageElement).style.display = "none"
                   }}
                 />
               ) : (
-                <div className="h-20 w-20 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center shadow-xl backdrop-blur-sm">
-                  <User className="h-9 w-9 text-white/40" />
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-foreground text-xl font-semibold text-background">
+                  {displayName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || <User className="h-8 w-8" />}
                 </div>
               )}
-            </div>
 
-            {/* Name + meta */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                {tierForUi && (
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-white/70 bg-white/10 backdrop-blur px-2 py-0.5 rounded-md border border-white/15">
-                    <Trophy className="inline h-3 w-3 mr-1 -mt-0.5" />
-                    {tierForUi}
-                  </span>
-                )}
-                {(planAssignment || sub) && (
-                  <span
-                    className={cn(
-                      "text-[11px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
-                      isActive
-                        ? "bg-emerald-400/20 text-emerald-200 ring-1 ring-emerald-400/30"
-                        : isExpired
-                          ? "bg-red-400/20 text-red-200 ring-1 ring-red-400/30"
-                          : "bg-white/10 text-white/60"
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  {tierForUi && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-foreground px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-background">
+                      <Trophy className="h-3 w-3" />
+                      {tierForUi}
+                    </span>
+                  )}
+                  {(planAssignment || sub) && (
+                    <span
+                      className={cn(
+                        "rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider",
+                        isActive
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                          : isExpired
+                            ? "bg-red-500/15 text-red-700 dark:text-red-400"
+                            : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {isActive ? "Plan actif" : isExpired ? "Terminé" : planAssignment?.status || sub?.effectiveStatus}
+                    </span>
+                  )}
+                </div>
+
+                <h1 className="mt-1.5 truncate text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl">{displayName}</h1>
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {client.email && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Mail className="h-3 w-3" />
+                      {client.email}
+                    </span>
+                  )}
+                  {client.phone && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Phone className="h-3 w-3" />
+                      {client.phone}
+                    </span>
+                  )}
+                  {client.createdAt && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock className="h-3 w-3" />
+                      Inscrit {fmtRelative(client.createdAt)}
+                    </span>
+                  )}
+                </div>
+
+                {(levelName || planAssignment?.progress?.currentWeek) && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    {levelName && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 font-medium text-foreground">
+                        {levelGender === "F" ? <Users className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                        {clientDisplayName || levelName}
+                      </span>
                     )}
-                  >
-                    {isActive ? "Plan actif" : isExpired ? "Terminé" : planAssignment?.status || sub?.effectiveStatus}
-                  </span>
-                )}
-              </div>
-
-              <h1 className="mt-1 text-2xl md:text-3xl font-bold text-white truncate leading-tight tracking-tight">
-                {displayName}
-              </h1>
-
-              {/* Contact + account meta row */}
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/70">
-                {client.email && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Mail className="h-3 w-3" />
-                    {client.email}
-                  </span>
-                )}
-                {client.phone && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Phone className="h-3 w-3" />
-                    {client.phone}
-                  </span>
-                )}
-                {client.createdAt && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="h-3 w-3" />
-                    Inscrit {fmtRelative(client.createdAt)}
-                  </span>
-                )}
-                {levelName && (
-                  <span className="inline-flex items-center gap-1.5 text-white/90 font-medium">
-                    {levelGender === "F" ? (
-                      <Users className="h-3.5 w-3.5" />
-                    ) : (
-                      <User className="h-3.5 w-3.5" />
+                    {planAssignment?.progress?.currentWeek && (
+                      <span className="num inline-flex items-center rounded-lg border border-border bg-background px-2.5 py-1 font-medium text-foreground">
+                        Semaine {planAssignment.progress.currentWeek} / {planAssignment.durationWeeks}
+                      </span>
                     )}
-                    Plan : {clientDisplayName || levelName}
-                  </span>
-                )}
-                {planAssignment?.progress?.currentWeek && (
-                  <span className="inline-flex items-center gap-1.5 font-medium text-white/90">
-                    Semaine {planAssignment.progress.currentWeek} / {planAssignment.durationWeeks}
-                  </span>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Plan end card */}
             {planEndDate && (
-              <div className="hidden sm:flex flex-col items-end text-right bg-white/10 backdrop-blur rounded-xl border border-white/15 px-4 py-3 flex-shrink-0">
-                <p className="text-[10px] uppercase tracking-wider text-white/60 font-semibold">
+              <div className="flex shrink-0 flex-col rounded-xl border border-border bg-background px-4 py-3 lg:min-w-[210px] lg:text-right">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {isActive ? "Accès au plan jusqu’au" : "Plan terminé le"}
                 </p>
-                <p className="text-white font-bold text-sm mt-0.5">
-                  {fmtDate(planEndDate)}
-                </p>
+                <p className="num mt-0.5 text-base font-semibold text-foreground">{fmtDate(planEndDate)}</p>
                 <p
                   className={cn(
-                    "text-[11px] font-semibold mt-0.5",
-                    daysLeft > 14
-                      ? "text-emerald-300"
-                      : daysLeft > 0
-                        ? "text-amber-300"
-                        : "text-red-300"
+                    "num mt-0.5 text-xs font-semibold",
+                    daysLeft > 14 ? "text-emerald-600 dark:text-emerald-400" : daysLeft > 0 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
                   )}
                 >
                   {daysLeft > 0 ? `${daysLeft} jours restants` : `J+${Math.abs(daysLeft)}`}
