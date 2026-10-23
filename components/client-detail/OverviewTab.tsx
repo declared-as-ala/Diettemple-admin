@@ -14,12 +14,14 @@ import {
   ChevronRight, ExternalLink, MessageSquare, Pencil,
   ShieldCheck, RefreshCw, Scale, Phone, Mail, MapPin,
   Calendar, CheckCircle2, Trash2, Plus, History, TrendingUp, TrendingDown,
+  Zap,
 } from "lucide-react"
 import type { ProfileData, ClientOrder, OrderFilter, PlanAssignmentData } from "./types"
 import { fmtDate, fmtRelative, formatMoney } from "./utils"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 import { AdminModal, AdminModalFooter } from "@/components/admin"
+import { getActivityConfig, formatKcal, formatFactor, calculateClientMetabolic } from "@/lib/metabolicCalc"
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
@@ -96,6 +98,31 @@ export default function OverviewTab({
   const isExpired = planAssignment?.status === "completed" || (!planAssignment && sub?.effectiveStatus === "EXPIRED")
   const levelName = planAssignment?.levelName || sub?.levelTemplateId?.name || ""
   const clientDisplayName = sub?.levelTemplateId?.clientDisplayName || levelName
+
+  const activityConfig = getActivityConfig(client.activityLevel)
+
+  const metabolicState = useMemo(() => {
+    if (client.bmr != null) {
+      return {
+        bmr: client.bmr,
+        tdee: client.tdee ?? null,
+        activityLevel: client.activityLevel ?? null,
+        activityFactor: activityConfig?.coefficient ?? null,
+        isBmrAvailable: true,
+        isTdeeAvailable: client.tdee != null,
+        missingFields: !client.activityLevel ? ["Niveau d'activité"] : [],
+      }
+    }
+    return calculateClientMetabolic({
+      weightKg: client.poids,
+      heightCm: client.taille,
+      age: client.dateOfBirth
+        ? Math.floor((new Date().getTime() - new Date(client.dateOfBirth).getTime()) / (365.25 * 24 * 3600 * 1000))
+        : client.age,
+      sex: client.sexe,
+      activityLevel: client.activityLevel,
+    })
+  }, [client, activityConfig])
 
   // ── Suivi / Consultations state ──
   const [consultations, setConsultations] = useState<any[]>([])
@@ -548,6 +575,154 @@ export default function OverviewTab({
                   ))}
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── CARD METABOLISME: BMR & TDEE (6 cols) ── */}
+        <Card className="lg:col-span-6 flex flex-col justify-between">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2 font-semibold">
+                <Flame className="h-4 w-4 text-amber-500" />
+                Métabolisme & Dépense énergétique
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                onClick={onOpenEditFiche}
+              >
+                <Pencil className="h-3 w-3" />
+                Modifier
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* BMR Card */}
+              <div className="p-3.5 rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-card to-card flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <Flame className="h-3.5 w-3.5 text-amber-500" />
+                    BMR (Repos)
+                  </span>
+                  <span className="text-[10px] text-amber-400 font-mono px-1.5 py-0.5 rounded bg-amber-500/10">
+                    Mifflin-St Jeor
+                  </span>
+                </div>
+                <div className="my-2">
+                  {metabolicState.isBmrAvailable && metabolicState.bmr ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-black font-mono text-foreground">
+                        {Math.round(metabolicState.bmr).toLocaleString("fr-FR")}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase">kcal/jour</span>
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      <span className="text-xs font-semibold text-muted-foreground">Calcul indisponible</span>
+                      <p className="text-[10px] text-muted-foreground/80 mt-0.5">
+                        {!client.sexe ? "Sexe non renseigné" : "Données corporelles incomplètes"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
+                  Calories estimées nécessaires au repos
+                </p>
+              </div>
+
+              {/* TDEE Card */}
+              <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-card flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <Zap className="h-3.5 w-3.5 text-emerald-500" />
+                    TDEE (Total)
+                  </span>
+                  {activityConfig && (
+                    <span className="text-[10px] text-emerald-400 font-mono px-1.5 py-0.5 rounded bg-emerald-500/10">
+                      ×{activityConfig.coefficient.toFixed(3)}
+                    </span>
+                  )}
+                </div>
+                <div className="my-2">
+                  {metabolicState.isTdeeAvailable && metabolicState.tdee ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-black font-mono text-foreground">
+                        {Math.round(metabolicState.tdee).toLocaleString("fr-FR")}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase">kcal/jour</span>
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      <span className="text-xs font-semibold text-muted-foreground">Calcul indisponible</span>
+                      <p className="text-[10px] text-muted-foreground/80 mt-0.5">
+                        {!activityConfig ? "Niveau d'activité à renseigner" : "BMR indisponible"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
+                  Besoins caloriques journaliers estimés selon l&apos;activité
+                </p>
+              </div>
+            </div>
+
+            {/* Activity Level Strip */}
+            <div className="p-3 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider block font-medium">
+                  Niveau d&apos;activité physique
+                </span>
+                {activityConfig ? (
+                  <div className="mt-0.5">
+                    <span className="text-sm font-bold text-foreground">
+                      {activityConfig.label}{" "}
+                      <span className="text-xs font-mono text-primary font-normal">
+                        (Facteur ×{activityConfig.coefficient.toFixed(3)})
+                      </span>
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {activityConfig.description}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="text-amber-500 border-amber-500/30 bg-amber-500/10 text-xs">
+                      À compléter
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Aucun niveau d&apos;activité physique sélectionné
+                    </span>
+                  </div>
+                )}
+              </div>
+              {!activityConfig && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs shrink-0 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                  onClick={onOpenEditFiche}
+                >
+                  Compléter
+                </Button>
+              )}
+            </div>
+
+            {/* Last update footer */}
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Dernière mise à jour du profil
+              </span>
+              <span className="font-medium text-foreground">
+                {client.metabolicCalculationUpdatedAt
+                  ? fmtDate(client.metabolicCalculationUpdatedAt)
+                  : client.updatedAt
+                    ? fmtDate(client.updatedAt)
+                    : "—"}
+              </span>
             </div>
           </CardContent>
         </Card>

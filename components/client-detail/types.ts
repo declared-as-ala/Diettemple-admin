@@ -48,6 +48,10 @@ export interface ClientData {
   createdAt?: string
   updatedAt?: string
   fitnessLevel?: 'A' | 'B'
+  activityLevel?: 'sedentaire' | 'legerement_actif' | 'moderement_actif' | 'tres_actif' | 'extremement_actif'
+  bmr?: number
+  tdee?: number
+  metabolicCalculationUpdatedAt?: string
   bodyComposition?: {
     bodyFatPercentage?: number
     muscleMassPercentage?: number

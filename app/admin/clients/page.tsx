@@ -14,9 +14,11 @@ import { cn } from "@/lib/utils";
 import {
   UserPlus, Search, RefreshCw, Users, ChevronRight, Mail, Phone,
   Activity, CalendarDays, Loader2, HeartPulse, Target, Dumbbell, LockKeyhole, X,
+  Flame, Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr as dateFnsFr } from "date-fns/locale";
+import { ACTIVITY_LEVEL_OPTIONS, calculateClientMetabolic, formatFactor, type ActivityLevel } from "@/lib/metabolicCalc";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -296,6 +298,7 @@ export default function AdminClientsPage() {
   const [addPoids, setAddPoids] = useState("");
   const [addObjectif, setAddObjectif] = useState("");
   const [addFitnessLevel, setAddFitnessLevel] = useState<"A" | "B" | "">("");
+  const [addActivityLevel, setAddActivityLevel] = useState<ActivityLevel | "">("");
   const [addBodyFat, setAddBodyFat] = useState("");
   const [addMuscleMass, setAddMuscleMass] = useState("");
   const [addSelectedPlanId, setAddSelectedPlanId] = useState("");
@@ -306,6 +309,16 @@ export default function AdminClientsPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [addErrors, setAddErrors] = useState<AdminFormError[]>([]);
   const addNameRef = useRef<HTMLInputElement>(null);
+
+  const metabolicCalc = useMemo(() => {
+    return calculateClientMetabolic({
+      weightKg: addPoids,
+      heightCm: addTaille,
+      age: addAge,
+      sex: addSexe,
+      activityLevel: addActivityLevel,
+    });
+  }, [addPoids, addTaille, addAge, addSexe, addActivityLevel]);
 
   const loadClients = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
@@ -359,6 +372,7 @@ export default function AdminClientsPage() {
     const errors: AdminFormError[] = [];
     if (!addEmail && !addPhone) errors.push({ field: "add-email", message: "Renseignez un email ou un numéro de téléphone." });
     if (!addPassword || addPassword.length < 6) errors.push({ field: "add-password", message: fr.clientsPage.passwordMinLength });
+    if (!addActivityLevel) errors.push({ field: "add-activity-level", message: "Veuillez sélectionner un niveau d'activité physique." });
     if (addBodyFat && (Number(addBodyFat) < 0 || Number(addBodyFat) > 100)) errors.push({ field: "add-fat", message: "La masse grasse doit être comprise entre 0 et 100 %." });
     if (addMuscleMass && (Number(addMuscleMass) < 0 || Number(addMuscleMass) > 100)) errors.push({ field: "add-muscle", message: "La masse musculaire doit être comprise entre 0 et 100 %." });
     setAddErrors(errors);
@@ -380,6 +394,7 @@ export default function AdminClientsPage() {
         poids: addPoids || undefined,
         objectif: addObjectif || undefined,
         fitnessLevel: addFitnessLevel || undefined,
+        activityLevel: addActivityLevel || undefined,
         assignedPlanId: addSelectedPlanId || undefined,
         bodyComposition: (addBodyFat || addMuscleMass) ? {
           bodyFatPercentage: addBodyFat ? parseFloat(addBodyFat) : undefined,
@@ -387,8 +402,7 @@ export default function AdminClientsPage() {
         } : undefined,
       });
       setAddOpen(false);
-      setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword("");
-      setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddBodyFat(""); setAddMuscleMass(""); setAddSelectedPlanId(""); setAddPlanLevelFilter("all"); setAddPlanGenderFilter("all");
+      resetAddForm();
       loadClients();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
@@ -405,11 +419,11 @@ export default function AdminClientsPage() {
     .sort((a, b) => a.name.localeCompare(b.name, "fr")), [addPlanGenderFilter, addPlanLevelFilter, addPlans]);
 
   const selectedAddPlan = addPlans.find((plan) => plan._id === addSelectedPlanId);
-  const addDirty = Boolean(addName || addEmail || addPhone || addPassword || addSexe || addAge || addTaille || addPoids || addObjectif || addFitnessLevel || addBodyFat || addMuscleMass || addSelectedPlanId);
+  const addDirty = Boolean(addName || addEmail || addPhone || addPassword || addSexe || addAge || addTaille || addPoids || addObjectif || addFitnessLevel || addActivityLevel || addBodyFat || addMuscleMass || addSelectedPlanId);
 
   const resetAddForm = () => {
     setAddErrors([]); setAddName(""); setAddEmail(""); setAddPhone(""); setAddPassword("");
-    setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel("");
+    setAddSexe(""); setAddAge(""); setAddTaille(""); setAddPoids(""); setAddObjectif(""); setAddFitnessLevel(""); setAddActivityLevel("");
     setAddBodyFat(""); setAddMuscleMass(""); setAddSelectedPlanId(""); setAddPlanLevelFilter("all"); setAddPlanGenderFilter("all");
   };
 
@@ -565,6 +579,131 @@ export default function AdminClientsPage() {
               <div className="space-y-2"><Label htmlFor="add-age">Âge</Label><Input id="add-age" type="number" min={1} value={addAge} onChange={(event) => setAddAge(event.target.value)} placeholder="Ex. 28" className="h-11 bg-muted/30" /></div>
               <div className="space-y-2"><Label htmlFor="add-taille">Taille</Label><div className="relative"><Input id="add-taille" type="number" min={1} value={addTaille} onChange={(event) => setAddTaille(event.target.value)} placeholder="175" className="h-11 bg-muted/30 pr-12" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">cm</span></div></div>
               <div className="space-y-2"><Label htmlFor="add-poids">Poids</Label><div className="relative"><Input id="add-poids" type="number" min={1} value={addPoids} onChange={(event) => setAddPoids(event.target.value)} placeholder="78" className="h-11 bg-muted/30 pr-12" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">kg</span></div></div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="add-activity-level" className="flex items-center justify-between">
+                  <span>Niveau d&apos;activité physique *</span>
+                  {metabolicCalc.activityFactor && (
+                    <span className="text-xs text-primary font-mono font-medium">
+                      Facteur {formatFactor(metabolicCalc.activityFactor)}
+                    </span>
+                  )}
+                </Label>
+                <select
+                  id="add-activity-level"
+                  value={addActivityLevel}
+                  onChange={(event) => setAddActivityLevel(event.target.value as ActivityLevel | "")}
+                  className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  aria-invalid={addErrors.some((error) => error.field === "add-activity-level")}
+                >
+                  <option value="">Sélectionner le niveau d&apos;activité physique</option>
+                  {ACTIVITY_LEVEL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label} (×{opt.coefficient.toFixed(3)}) — {opt.description}
+                    </option>
+                  ))}
+                </select>
+                {addActivityLevel && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {ACTIVITY_LEVEL_OPTIONS.find((o) => o.value === addActivityLevel)?.description}
+                  </p>
+                )}
+              </div>
+            </div>
+          </AdminFormSection>
+
+          <AdminFormSection
+            title="Métabolisme & Besoins énergétiques"
+            description="Calcul automatique selon l'équation de Mifflin-St Jeor et les facteurs d'activité physique."
+            icon={<Flame className="h-5 w-5 text-amber-500" aria-hidden="true" />}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Card 1 — BMR */}
+              <div className={cn(
+                "rounded-2xl border p-4 transition-all duration-200 flex flex-col justify-between",
+                metabolicCalc.isBmrAvailable
+                  ? "border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card"
+                  : "border-border/60 bg-muted/20"
+              )}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Flame className="h-4 w-4 text-amber-500" />
+                    Métabolisme de base (BMR)
+                  </span>
+                  {metabolicCalc.isBmrAvailable && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                      Mifflin-St Jeor
+                    </span>
+                  )}
+                </div>
+
+                <div className="my-3">
+                  {metabolicCalc.isBmrAvailable ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono">
+                        {Math.round(metabolicCalc.bmr!).toLocaleString("fr-FR")}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase">kcal/jour</span>
+                    </div>
+                  ) : (
+                    <div className="py-2">
+                      <p className="text-sm font-semibold text-muted-foreground">Calcul indisponible</p>
+                      <p className="text-xs text-muted-foreground/80 mt-0.5">
+                        {!addSexe
+                          ? "Renseignez le sexe (Homme ou Femme)"
+                          : `Complétez : ${metabolicCalc.missingFields.filter(f => !f.includes("activité")).join(", ")}`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground border-t border-border/40 pt-2">
+                  Calories estimées nécessaires au repos
+                </p>
+              </div>
+
+              {/* Card 2 — TDEE */}
+              <div className={cn(
+                "rounded-2xl border p-4 transition-all duration-200 flex flex-col justify-between",
+                metabolicCalc.isTdeeAvailable
+                  ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-card to-card"
+                  : "border-border/60 bg-muted/20"
+              )}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Zap className="h-4 w-4 text-emerald-500" />
+                    Dépense journalière (TDEE)
+                  </span>
+                  {metabolicCalc.activityFactor && (
+                    <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                      Facteur : {formatFactor(metabolicCalc.activityFactor)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="my-3">
+                  {metabolicCalc.isTdeeAvailable ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono">
+                        {Math.round(metabolicCalc.tdee!).toLocaleString("fr-FR")}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase">kcal/jour</span>
+                    </div>
+                  ) : (
+                    <div className="py-2">
+                      <p className="text-sm font-semibold text-muted-foreground">Calcul indisponible</p>
+                      <p className="text-xs text-muted-foreground/80 mt-0.5">
+                        {!metabolicCalc.isBmrAvailable
+                          ? "Nécessite le calcul du BMR"
+                          : "Sélectionnez un niveau d'activité physique"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground border-t border-border/40 pt-2">
+                  Besoins caloriques journaliers estimés selon l&apos;activité
+                </p>
+              </div>
             </div>
           </AdminFormSection>
 

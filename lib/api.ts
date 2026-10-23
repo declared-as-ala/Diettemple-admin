@@ -523,6 +523,7 @@ class ApiClient {
     poids?: string;
     objectif?: string;
     fitnessLevel?: 'A' | 'B';
+    activityLevel?: 'sedentaire' | 'legerement_actif' | 'moderement_actif' | 'tres_actif' | 'extremement_actif';
     assignedPlanId?: string;
     bodyComposition?: { bodyFatPercentage?: number; muscleMassPercentage?: number };
   }) {
