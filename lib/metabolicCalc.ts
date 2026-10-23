@@ -97,14 +97,18 @@ export function calculateClientMetabolic(input: MetabolicInput): MetabolicResult
   const missingFields: string[] = [];
 
   // Parse weight (kg)
+  // Frontend allows up to 500 kg for live preview; backend enforces ≤300 kg for DB storage
   let weight: number | null = null;
+  let weightOutOfRange = false;
   if (input.weightKg != null && input.weightKg !== '') {
     const parsed = typeof input.weightKg === 'number' ? input.weightKg : parseFloat(String(input.weightKg).replace(',', '.'));
-    if (!isNaN(parsed) && parsed >= 30 && parsed <= 300) {
+    if (!isNaN(parsed) && parsed >= 1 && parsed <= 500) {
       weight = parsed;
+    } else if (!isNaN(parsed) && parsed > 500) {
+      weightOutOfRange = true;
     }
   }
-  if (weight === null) missingFields.push('Poids (30–300 kg)');
+  if (weight === null) missingFields.push(weightOutOfRange ? 'Poids invalide (max 500 kg)' : 'Poids (1–500 kg)');
 
   // Parse height (cm)
   let height: number | null = null;
@@ -164,8 +168,10 @@ export function calculateClientMetabolic(input: MetabolicInput): MetabolicResult
   if (bmr === null) {
     if (!input.sex) {
       statusMessage = 'Calcul indisponible : veuillez renseigner le sexe (Homme ou Femme).';
+    } else if (missingFields.length > 0) {
+      statusMessage = `Calcul indisponible : ${missingFields.join(', ')}.`;
     } else {
-      statusMessage = `Calcul indisponible : informations manquantes (${missingFields.join(', ')}).`;
+      statusMessage = 'Calcul indisponible : informations insuffisantes.';
     }
   } else if (tdee === null) {
     statusMessage = "BMR calculé. Sélectionnez un niveau d'activité physique pour calculer le TDEE.";

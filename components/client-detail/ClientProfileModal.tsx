@@ -532,7 +532,11 @@ export default function ClientProfileModal({ open, onOpenChange, profile, onSave
                       <span className="text-xs font-semibold text-muted-foreground uppercase">kcal/jour</span>
                     </span>
                   ) : (
-                    <span className="text-xs text-muted-foreground italic">Calcul indisponible</span>
+                    <span className="text-xs text-muted-foreground italic">
+                      {metabolicCalc.statusMessage
+                        ? metabolicCalc.statusMessage.replace('Calcul indisponible : ', '')
+                        : 'Calcul indisponible'}
+                    </span>
                   )}
                 </div>
                 <span className="text-[10px] text-muted-foreground">Calories nécessaires au repos</span>

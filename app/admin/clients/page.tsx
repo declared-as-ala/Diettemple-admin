@@ -648,9 +648,9 @@ export default function AdminClientsPage() {
                     <div className="py-2">
                       <p className="text-sm font-semibold text-muted-foreground">Calcul indisponible</p>
                       <p className="text-xs text-muted-foreground/80 mt-0.5">
-                        {!addSexe
-                          ? "Renseignez le sexe (Homme ou Femme)"
-                          : `Complétez : ${metabolicCalc.missingFields.filter(f => !f.includes("activité")).join(", ")}`}
+                        {metabolicCalc.statusMessage
+                          ? metabolicCalc.statusMessage.replace('Calcul indisponible : ', '')
+                          : metabolicCalc.missingFields.filter(f => !f.includes("activité")).join(", ")}
                       </p>
                     </div>
                   )}
