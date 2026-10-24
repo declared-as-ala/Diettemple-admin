@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 import { PageLoader } from "@/components/ui/loading"
-import { Plus, Video, Edit, Trash2, Dumbbell, Play, Upload, X, Loader2, Info, SlidersHorizontal, ImageIcon } from "lucide-react"
+import { Plus, Video, Edit, Trash2, Dumbbell, Play, Upload, X, Loader2, Info, SlidersHorizontal, ImageIcon, Check } from "lucide-react"
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { AdminFormErrorSummary, AdminFormSection, AdminModal, AdminModalFooter, type AdminFormError } from "@/components/admin"
 import { Textarea } from "@/components/ui/textarea"
@@ -46,7 +46,20 @@ type ExerciseDraft = {
   restTime: string
   defaultWeight: string
   videoUrl: string
+  supportedLoadModes: LoadMode[]
+  defaultLoadMode: LoadMode
 }
+
+type LoadMode = "external_weight" | "bodyweight" | "bodyweight_plus_weight"
+
+const LOAD_MODE_OPTIONS: Array<{ value: LoadMode; label: string; description: string }> = [
+  { value: "external_weight", label: "Charge externe (kg)", description: "Haltères, barre, machine ou câble." },
+  { value: "bodyweight", label: "Poids du corps", description: "La série utilise uniquement le poids de l’utilisateur." },
+  { value: "bodyweight_plus_weight", label: "Poids du corps + charge", description: "La charge saisie est un ajout au poids du corps." },
+]
+
+const loadModeLabel = (mode?: string) =>
+  LOAD_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? "Charge externe (kg)"
 
 function ExerciseFormSections({
   draft,
@@ -90,6 +103,50 @@ function ExerciseFormSections({
           <div className="space-y-2"><Label htmlFor="exercise-reps">Répétitions</Label><Input id="exercise-reps" type="number" min={1} value={draft.reps} onChange={(event) => onChange({ reps: event.target.value })} placeholder="Optionnel" className="h-11 bg-muted/30" disabled={disabled} /></div>
           <div className="space-y-2"><Label htmlFor="exercise-rest">Repos</Label><div className="relative"><Input id="exercise-rest" type="number" min={0} value={draft.restTime} onChange={(event) => onChange({ restTime: event.target.value })} placeholder="Optionnel" className="h-11 bg-muted/30 pr-12" disabled={disabled} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">sec</span></div></div>
           <div className="space-y-2"><Label htmlFor="exercise-weight">Poids conseillé</Label><div className="relative"><Input id="exercise-weight" type="number" min={0} step={0.5} value={draft.defaultWeight} onChange={(event) => onChange({ defaultWeight: event.target.value })} placeholder="Optionnel" className="h-11 bg-muted/30 pr-12" disabled={disabled} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">kg</span></div></div>
+        </div>
+      </AdminFormSection>
+
+      <AdminFormSection title="Mode de charge" description="Choisissez uniquement les modes réellement compatibles avec cet exercice." icon={<Dumbbell className="h-5 w-5" aria-hidden="true" />}>
+        <div className="grid gap-3">
+          {LOAD_MODE_OPTIONS.map((option) => {
+            const selected = draft.supportedLoadModes.includes(option.value)
+            return (
+              <label key={option.value} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${selected ? "border-primary bg-primary/8" : "border-border bg-muted/20 hover:bg-muted/35"}`}>
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={selected}
+                  disabled={disabled}
+                  onChange={() => {
+                    const next = selected
+                      ? draft.supportedLoadModes.filter((mode) => mode !== option.value)
+                      : [...draft.supportedLoadModes, option.value]
+                    const safeNext = next.length > 0 ? next : draft.supportedLoadModes
+                    onChange({
+                      supportedLoadModes: safeNext,
+                      defaultLoadMode: safeNext.includes(draft.defaultLoadMode) ? draft.defaultLoadMode : safeNext[0],
+                    })
+                  }}
+                />
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${selected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/50"}`} aria-hidden="true">
+                  {selected && <Check className="h-3.5 w-3.5" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-foreground">{option.label}</span>
+                  <span className="block text-xs text-muted-foreground">{option.description}</span>
+                </span>
+              </label>
+            )
+          })}
+        </div>
+        <div className="space-y-2">
+          <Label>Mode par défaut</Label>
+          <Select value={draft.defaultLoadMode} onValueChange={(value) => onChange({ defaultLoadMode: value as LoadMode })} disabled={disabled}>
+            <SelectTrigger className="h-11 w-full bg-muted/30"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {draft.supportedLoadModes.map((mode) => <SelectItem key={mode} value={mode}>{loadModeLabel(mode)}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </AdminFormSection>
 
@@ -154,6 +211,8 @@ export default function ExercisesPage() {
     restTime: "",
     defaultWeight: "",
     videoUrl: "",
+    supportedLoadModes: ["external_weight"] as LoadMode[],
+    defaultLoadMode: "external_weight" as LoadMode,
   })
 
   const loadData = useCallback(async () => {
@@ -228,6 +287,8 @@ export default function ExercisesPage() {
       restTime: "",
       defaultWeight: "",
       videoUrl: "",
+      supportedLoadModes: ["external_weight"],
+      defaultLoadMode: "external_weight",
     })
     setSelectedVideoFile(null)
     setSelectedExercise(null)
@@ -257,6 +318,9 @@ export default function ExercisesPage() {
         reps: newExercise.reps ? parseInt(newExercise.reps) : undefined,
         restTime: newExercise.restTime ? parseInt(newExercise.restTime) : undefined,
         defaultWeight: newExercise.defaultWeight ? parseFloat(newExercise.defaultWeight) : undefined,
+        supportedLoadModes: newExercise.supportedLoadModes,
+        defaultLoadMode: newExercise.defaultLoadMode,
+        supportsAdditionalWeight: newExercise.supportedLoadModes.includes("bodyweight_plus_weight"),
       })
       const createdId = response?.exercise?._id
       if (createdId && selectedVideoFile) {
@@ -291,6 +355,8 @@ export default function ExercisesPage() {
       restTime: exercise.restTime?.toString() || "",
       defaultWeight: exercise.defaultWeight?.toString() || "",
       videoUrl: exercise.videoUrl || "",
+      supportedLoadModes: exercise.supportedLoadModes?.length ? exercise.supportedLoadModes : ["external_weight"],
+      defaultLoadMode: exercise.defaultLoadMode || exercise.supportedLoadModes?.[0] || "external_weight",
     })
     setShowEditDialog(true)
   }
@@ -315,6 +381,9 @@ export default function ExercisesPage() {
         reps: newExercise.reps ? parseInt(newExercise.reps) : undefined,
         restTime: newExercise.restTime ? parseInt(newExercise.restTime) : undefined,
         defaultWeight: newExercise.defaultWeight ? parseFloat(newExercise.defaultWeight) : undefined,
+        supportedLoadModes: newExercise.supportedLoadModes,
+        defaultLoadMode: newExercise.defaultLoadMode,
+        supportsAdditionalWeight: newExercise.supportedLoadModes.includes("bodyweight_plus_weight"),
       })
 
       toast("Exercice mis à jour avec succès", "success")
@@ -506,7 +575,12 @@ export default function ExercisesPage() {
   }
 
   const filteredExercises = exercises
-  const createExerciseDirty = Boolean(Object.values(newExercise).some(Boolean) || selectedVideoFile)
+  const createExerciseDirty = Boolean(
+    newExercise.name || newExercise.muscleGroup || newExercise.description || newExercise.sets || newExercise.reps ||
+    newExercise.restTime || newExercise.defaultWeight || newExercise.videoUrl || selectedVideoFile ||
+    newExercise.defaultLoadMode !== "external_weight" ||
+    newExercise.supportedLoadModes.length !== 1 || newExercise.supportedLoadModes[0] !== "external_weight"
+  )
   const editExerciseDirty = Boolean(selectedExercise && JSON.stringify(newExercise) !== JSON.stringify({
     name: selectedExercise.name || "",
     muscleGroup: selectedExercise.muscleGroup || "",
@@ -516,6 +590,8 @@ export default function ExercisesPage() {
     restTime: selectedExercise.restTime?.toString() || "",
     defaultWeight: selectedExercise.defaultWeight?.toString() || "",
     videoUrl: selectedExercise.videoUrl || "",
+    supportedLoadModes: selectedExercise.supportedLoadModes?.length ? selectedExercise.supportedLoadModes : ["external_weight"],
+    defaultLoadMode: selectedExercise.defaultLoadMode || selectedExercise.supportedLoadModes?.[0] || "external_weight",
   }))
 
   if (loading && exercises.length === 0 && !searchLoading) {
