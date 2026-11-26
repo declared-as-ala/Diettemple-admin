@@ -12,6 +12,25 @@ export type LevelHomeContentItem = {
   isActive?: boolean;
 };
 
+export type InvitationStatus = 'pending' | 'sent' | 'accepted' | 'expired' | 'revoked' | 'failed';
+
+export interface ClientInvitation {
+  _id: string;
+  email: string;
+  name: string | null;
+  status: InvitationStatus;
+  createdAt: string;
+  sentAt: string | null;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+  expiresAt: string;
+  sendCount: number;
+  lastSendError: string | null;
+  userId: string | null;
+  canResend: boolean;
+  canRevoke: boolean;
+}
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -529,6 +548,27 @@ class ApiClient {
   }) {
     const response = await this.client.post('/admin/clients', data);
     return response.data;
+  }
+
+  // ── Client invitations (the client sets their own password; the admin never sees or sends one) ──
+  async createInvitation(data: { email: string; name?: string }) {
+    const response = await this.client.post('/admin/invitations', data);
+    return response.data as { invitation: ClientInvitation };
+  }
+
+  async getInvitations(params?: { status?: string; q?: string }, options?: { signal?: AbortSignal }) {
+    const response = await this.client.get('/admin/invitations', { params, signal: options?.signal });
+    return response.data as { invitations: ClientInvitation[] };
+  }
+
+  async resendInvitation(id: string) {
+    const response = await this.client.post(`/admin/invitations/${id}/resend`);
+    return response.data as { invitation: ClientInvitation };
+  }
+
+  async revokeInvitation(id: string) {
+    const response = await this.client.post(`/admin/invitations/${id}/revoke`);
+    return response.data as { invitation: ClientInvitation };
   }
 
   async getClientPlan(clientId: string) {

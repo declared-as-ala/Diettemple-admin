@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminFormErrorSummary, AdminFormSection, AdminModal, AdminModalFooter, AdminSearchableSelect, type AdminFormError } from "@/components/admin";
 import { cn } from "@/lib/utils";
+import { InviteClientModal } from "@/components/client-invitations/InviteClientModal";
 import {
   UserPlus, Search, RefreshCw, Users, ChevronRight, Mail, Phone,
   Activity, CalendarDays, Loader2, HeartPulse, Target, Dumbbell, LockKeyhole, X,
@@ -288,6 +289,8 @@ export default function AdminClientsPage() {
 
   // Add client modal
   const [addOpen, setAddOpen] = useState(false);
+  // Clients are now invited by email (they choose their own password); `addOpen` belongs to the legacy manual form below.
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPhone, setAddPhone] = useState("");
@@ -450,10 +453,16 @@ export default function AdminClientsPage() {
                 : "Gérez vos clients et leurs programmes"}
             </p>
           </div>
-          <Button onClick={() => setAddOpen(true)} className="gap-2 shrink-0">
-            <UserPlus className="h-4 w-4" />
-            Nouveau client
-          </Button>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="outline" onClick={() => router.push("/admin/invitations")} className="gap-2">
+              <Mail className="h-4 w-4" />
+              Invitations
+            </Button>
+            <Button onClick={() => setInviteOpen(true)} className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Ajouter un client
+            </Button>
+          </div>
         </div>
 
         {/* Search + Refresh */}
@@ -518,7 +527,7 @@ export default function AdminClientsPage() {
                 : "Ajoutez votre premier client pour commencer."}
             </p>
             {segment === "all" && (
-              <Button className="mt-4 gap-2" onClick={() => setAddOpen(true)}>
+              <Button className="mt-4 gap-2" onClick={() => setInviteOpen(true)}>
                 <UserPlus className="h-4 w-4" />
                 Nouveau client
               </Button>
@@ -552,6 +561,7 @@ export default function AdminClientsPage() {
         )}
       </div>
 
+      <InviteClientModal open={inviteOpen} onOpenChange={setInviteOpen} onInvited={() => router.push("/admin/invitations")} />
       <AdminModal
         open={addOpen}
         onOpenChange={(open) => { setAddOpen(open); if (!open) resetAddForm(); }}

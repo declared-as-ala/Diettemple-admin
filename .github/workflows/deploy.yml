@@ -9,7 +9,31 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  # Runs BEFORE anything is built: the Docker build executes `npm run build` and the PostCSS/ESLint configs, so a poisoned
+  # file (known obfuscated payload) must never reach it. Fails the whole pipeline instead of building it.
+  security-gate:
+    name: Security gate (refuse the known obfuscated payload)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Refuse known payload markers and hidden long lines
+        run: |
+          if git grep -nE "_0x[0-9a-f]{4,6}|global\.i *= *'|node (init|api\.js)" -- . ':!node_modules' ':!package-lock.json' ':!.github'; then
+            echo "::error::Known malicious payload markers found in the repository. Refusing to build."
+            exit 1
+          fi
+          LONG=$(git ls-files '*.config.js' '*.config.mjs' '*.config.cjs' '*.config.ts' init api.js             | xargs -r awk 'length($0) > 2000 { print FILENAME ": line " FNR " has " length($0) " chars" }')
+          if [ -n "$LONG" ]; then
+            echo "$LONG"
+            echo "::error::Abnormally long line in a config/script file (possible hidden payload)."
+            exit 1
+          fi
+          echo "Security gate passed."
+
   build-and-push:
+    needs: security-gate
     runs-on: ubuntu-latest
     permissions:
       contents: read
