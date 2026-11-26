@@ -31,6 +31,62 @@ export interface ClientInvitation {
   canRevoke: boolean;
 }
 
+export type ComplaintStatus = 'new' | 'in_progress' | 'waiting_client' | 'resolved' | 'closed';
+export type ComplaintPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type ComplaintCategory = 'technical' | 'training' | 'nutrition' | 'billing' | 'order' | 'other';
+
+export interface ComplaintStats {
+  total: number;
+  new: number;
+  inProgress: number;
+  waitingClient: number;
+  pending: number;
+  resolved: number;
+  closed: number;
+  /** Complaints with messages the admin has not read yet. */
+  unread: number;
+}
+
+export interface ComplaintClient {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  photoUri?: string | null;
+}
+
+export interface ComplaintSummary {
+  id: string;
+  reference: string;
+  category: ComplaintCategory;
+  categoryLabel: string;
+  subject: string;
+  status: ComplaintStatus;
+  statusLabel: string;
+  priority: ComplaintPriority;
+  unread: number;
+  createdAt: string;
+  lastMessageAt: string;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  lastMessagePreview: string;
+  messageCount: number;
+  client: ComplaintClient;
+}
+
+export interface ComplaintMessage {
+  id: string;
+  authorType: 'client' | 'admin';
+  body: string;
+  createdAt: string;
+  internal: boolean;
+  attachments: Array<{ id: string; name: string; mime: string; size: number }>;
+}
+
+export interface ComplaintDetail extends Omit<ComplaintSummary, 'messageCount'> {
+  messages: ComplaintMessage[];
+}
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -569,6 +625,47 @@ class ApiClient {
   async revokeInvitation(id: string) {
     const response = await this.client.post(`/admin/invitations/${id}/revoke`);
     return response.data as { invitation: ClientInvitation };
+  }
+
+  // ── Complaints / support center ──
+  async getComplaintStats() {
+    const response = await this.client.get('/admin/complaints/stats');
+    return response.data.stats as ComplaintStats;
+  }
+
+  async getComplaints(params?: Record<string, string | undefined>, options?: { signal?: AbortSignal }) {
+    const response = await this.client.get('/admin/complaints', { params, signal: options?.signal });
+    return response.data.complaints as ComplaintSummary[];
+  }
+
+  async getComplaint(id: string) {
+    const response = await this.client.get(`/admin/complaints/${id}`);
+    return response.data.complaint as ComplaintDetail;
+  }
+
+  async replyToComplaint(id: string, data: { body: string; status?: ComplaintStatus; files?: File[] }) {
+    const form = new FormData();
+    form.append('body', data.body);
+    if (data.status) form.append('status', data.status);
+    (data.files || []).forEach((f) => form.append('attachments', f));
+    const response = await this.client.post(`/admin/complaints/${id}/reply`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return response.data.complaint as ComplaintDetail;
+  }
+
+  async addComplaintNote(id: string, body: string) {
+    const response = await this.client.post(`/admin/complaints/${id}/notes`, { body });
+    return response.data.complaint as ComplaintDetail;
+  }
+
+  async updateComplaint(id: string, patch: { status?: ComplaintStatus; priority?: ComplaintPriority }) {
+    const response = await this.client.patch(`/admin/complaints/${id}`, patch);
+    return response.data.complaint as ComplaintDetail;
+  }
+
+  /** Attachments are private: fetched with the admin token, shown through a temporary blob URL. */
+  async getComplaintAttachmentBlob(complaintId: string, attachmentId: string) {
+    const response = await this.client.get(`/admin/complaints/${complaintId}/attachments/${attachmentId}`, { responseType: 'blob' });
+    return response.data as Blob;
   }
 
   async getClientPlan(clientId: string) {

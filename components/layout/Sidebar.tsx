@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import Image from "next/image"
 import { auth } from "@/lib/auth"
+import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { fr } from "@/lib/i18n/fr"
 import { ChevronLeft, ChevronRight, X, LogOut } from "lucide-react"
@@ -25,8 +26,25 @@ const initials = (name: string) =>
     .map((p) => p[0]?.toUpperCase())
     .join("") || "A"
 
+/** Number of complaints with messages the admin has not read yet (refreshed every minute and on navigation). */
+function useUnreadComplaints(pathname: string) {
+  const [unread, setUnread] = useState(0)
+  useEffect(() => {
+    let alive = true
+    const load = () => api.getComplaintStats().then((s) => alive && setUnread(s.unread)).catch(() => {})
+    load()
+    const t = setInterval(load, 60000)
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
+  }, [pathname])
+  return unread
+}
+
 export function Sidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileOpenChange }: SidebarProps) {
   const pathname = usePathname()
+  const unreadComplaints = useUnreadComplaints(pathname)
   const navRef = useRef<HTMLElement>(null)
   const displayCollapsed = collapsed && !mobileOpen
   const [userName, setUserName] = useState("Admin")
@@ -154,6 +172,13 @@ export function Sidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileOpen
                       {isActive && <span aria-hidden className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
                       <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={isActive ? 2 : 1.75} />
                       {!displayCollapsed && <span className="flex-1 truncate">{item.label}</span>}
+                      {item.badge === "complaints" && unreadComplaints > 0 ? (
+                        displayCollapsed ? (
+                          <span className="absolute right-2 top-1.5 h-2.5 w-2.5 rounded-full bg-primary" aria-label={`${unreadComplaints} réclamation(s) non lue(s)`} />
+                        ) : (
+                          <span className="ml-auto rounded-full bg-primary px-1.5 text-[11px] font-bold leading-5 text-primary-foreground" aria-label={`${unreadComplaints} réclamation(s) non lue(s)`}>{unreadComplaints > 99 ? "99+" : unreadComplaints}</span>
+                        )
+                      ) : null}
                     </Link>
                   )
                 })}

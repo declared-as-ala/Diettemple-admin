@@ -10,11 +10,12 @@ import {
   Video,
   Users,
   ShieldCheck,
+  MessageSquareWarning,
   type LucideIcon,
 } from "lucide-react"
 import { fr } from "@/lib/i18n/fr"
 
-export type NavItem = { href: string; label: string; icon: LucideIcon }
+export type NavItem = { href: string; label: string; icon: LucideIcon; /** Shows a live counter next to the label. */ badge?: "complaints" }
 export type NavSection = { label: string; items: NavItem[] }
 
 const BOUTIQUE_ITEMS: NavItem[] = [
@@ -25,6 +26,7 @@ const BOUTIQUE_ITEMS: NavItem[] = [
 export const ALL_SECTIONS: NavSection[] = [
   { label: "Vue d'ensemble", items: [{ href: "/admin/dashboard", label: fr.sidebar.dashboard, icon: LayoutDashboard }] },
   { label: fr.sidebar.clients, items: [{ href: "/admin/clients", label: fr.sidebar.clients, icon: User }] },
+  { label: "Support", items: [{ href: "/admin/complaints", label: "Réclamations", icon: MessageSquareWarning, badge: "complaints" }] },
   {
     label: fr.sidebar.training,
     items: [

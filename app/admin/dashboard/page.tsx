@@ -38,6 +38,7 @@ import {
 import FadeContent from "@/components/FadeContent";
 import { AnimatedText } from "@/components/dashboard/AnimatedText";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { ComplaintsDashboardCard } from "@/components/complaints/ComplaintsDashboardCard";
 import { PeriodFilter, PERIODS, type PeriodValue } from "@/components/dashboard/PeriodFilter";
 import { DashTable, type DashColumn } from "@/components/dashboard/DashTable";
 import { PlanDistribution, StatusDonut, SubscriptionActions, SubscriptionsOverTime } from "@/components/dashboard/DashCharts";
@@ -329,6 +330,8 @@ export default function AdminDashboardPage() {
           </Button>
         </div>
       </header>
+
+      <ComplaintsDashboardCard />
 
       {loadError && (
         <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-[var(--trend-down-bg)] px-4 py-3 text-sm text-[var(--trend-down)]">
