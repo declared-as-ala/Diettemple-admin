@@ -280,6 +280,7 @@ export default function AdminClientProfilePage() {
 
         {tab === "plan" && (
           <TrainingTab
+            clientId={id}
             planAssignment={planAssignment}
             planAssignmentLoading={planAssignmentLoading}
             exerciseHistory={exerciseHistory}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,12 +9,16 @@ import { getLevelImageUrl } from "@/lib/levelAssets"
 import {
   Activity, TrendingUp, Loader2, ChevronDown, ChevronUp,
   Calendar, CheckCircle2, Clock, PauseCircle, Archive, Trophy,
-  Dumbbell, Sparkles, RefreshCw,
+  Dumbbell, Sparkles, RefreshCw, Mic,
 } from "lucide-react"
+import { api, type VoiceExerciseSummary } from "@/lib/api"
+import { VoiceMessagesModal } from "@/components/voice/VoiceMessagesModal"
 import type { ExerciseLoadHistoryItem, PlanAssignmentData } from "./types"
 import { fmtDate } from "./utils"
 
 interface TrainingTabProps {
+  /** Needed for the per-exercise coach voice messages. */
+  clientId?: string
   planAssignment: PlanAssignmentData | null
   planAssignmentLoading: boolean
   exerciseHistory: ExerciseLoadHistoryItem[]
@@ -52,7 +56,7 @@ function formatMuscleGroup(raw?: string | null): string {
   return MUSCLE_GROUP_LABELS[normalized] || raw
 }
 
-function ExerciseCard({ item }: { item: ExerciseLoadHistoryItem }) {
+function ExerciseCard({ item, voice, onVoice }: { item: ExerciseLoadHistoryItem; voice?: VoiceExerciseSummary; onVoice?: () => void }) {
   const [expanded, setExpanded] = useState(false)
 
   // Compute PR from all sessions and sets
@@ -125,6 +129,14 @@ function ExerciseCard({ item }: { item: ExerciseLoadHistoryItem }) {
           </p>
         </div>
 
+        <div className="flex shrink-0 items-center gap-1.5">
+        {onVoice ? (
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={onVoice} aria-label={`Messages vocaux pour ${item.exerciseName}`}>
+            <Mic className="h-3 w-3" />
+            {voice && voice.total > 0 ? `${voice.total}` : "Vocal"}
+            {voice && voice.unread > 0 ? <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground" title="Pas encore lus par le client">{voice.unread}</span> : null}
+          </Button>
+        ) : null}
         <Button
           variant="outline"
           size="sm"
@@ -134,6 +146,7 @@ function ExerciseCard({ item }: { item: ExerciseLoadHistoryItem }) {
           {expanded ? "Masquer" : "Voir l'historique"}
           {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -274,6 +287,7 @@ const STATUS_META: Record<string, { label: string; color: string; icon: React.Re
 // ── Main Plan Tab Component ───────────────────────────────────────────────────
 
 export default function TrainingTab({
+  clientId,
   planAssignment,
   planAssignmentLoading,
   exerciseHistory,
@@ -286,6 +300,34 @@ export default function TrainingTab({
   onRenewPlan,
 }: TrainingTabProps) {
   const [todayMs] = useState(() => Date.now())
+
+  // ── Coach voice messages (per exercise) ──
+  const [voiceSummary, setVoiceSummary] = useState<VoiceExerciseSummary[]>([])
+  const [voiceTarget, setVoiceTarget] = useState<{ id: string; name: string } | null>(null)
+  const [allExercises, setAllExercises] = useState<Array<{ _id: string; name: string }>>([])
+  const [pickerValue, setPickerValue] = useState("")
+  const refreshVoice = useCallback(() => {
+    if (!clientId) return
+    api.getVoiceSummary(clientId).then(setVoiceSummary).catch(() => {})
+  }, [clientId])
+  useEffect(() => { refreshVoice() }, [refreshVoice])
+  useEffect(() => {
+    if (!clientId) return
+    let alive = true
+    ;(async () => {
+      // the API caps a page at 100 exercises: walk the pages (bounded) to fill the picker
+      const all: Array<{ _id: string; name: string }> = []
+      for (let page = 1; page <= 10; page++) {
+        const r = await api.getExercises({ page, limit: 100 })
+        const list = ((r?.exercises ?? []) as Array<{ _id: string; name: string }>).filter((e) => e?._id)
+        all.push(...list)
+        if (list.length < 100) break
+      }
+      if (alive) setAllExercises(all.sort((x, y) => x.name.localeCompare(y.name, "fr")))
+    })().catch(() => {})
+    return () => { alive = false }
+  }, [clientId])
+  const voiceFor = (exerciseId: string) => voiceSummary.find((v) => v.exerciseId === exerciseId)
 
   // Sessions completion stats
   const sessionStats = useMemo(() => {
@@ -560,6 +602,35 @@ export default function TrainingTab({
           </div>
         </CardHeader>
         <CardContent>
+          {clientId ? (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border p-3">
+              <Mic className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Message vocal pour un exercice</span>
+              <select
+                value={pickerValue}
+                onChange={(e) => {
+                  const ex = allExercises.find((x) => x._id === e.target.value)
+                  setPickerValue("")
+                  if (ex) setVoiceTarget({ id: ex._id, name: ex.name })
+                }}
+                className="h-9 min-w-[200px] flex-1 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                aria-label="Choisir un exercice"
+              >
+                <option value="">Choisir un exercice…</option>
+                {allExercises.map((e) => <option key={e._id} value={e._id}>{e.name}</option>)}
+              </select>
+            </div>
+          ) : null}
+          {voiceTarget && clientId ? (
+            <VoiceMessagesModal
+              open
+              onOpenChange={(v) => { if (!v) setVoiceTarget(null) }}
+              clientId={clientId}
+              exerciseId={voiceTarget.id}
+              exerciseName={voiceTarget.name}
+              onChanged={refreshVoice}
+            />
+          ) : null}
           {exerciseHistoryLoading ? (
             <div className="py-10 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mb-2" />
@@ -576,7 +647,7 @@ export default function TrainingTab({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {exerciseHistory.map((item) => (
-                <ExerciseCard key={item.exerciseId} item={item} />
+                <ExerciseCard key={item.exerciseId} item={item} voice={voiceFor(item.exerciseId)} onVoice={clientId ? () => setVoiceTarget({ id: item.exerciseId, name: item.exerciseName }) : undefined} />
               ))}
             </div>
           )}
