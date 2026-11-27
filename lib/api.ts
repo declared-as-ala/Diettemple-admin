@@ -49,6 +49,9 @@ export interface VoiceMessageItem {
   createdAt: string;
   read: boolean;
   readAt: string | null;
+  scope?: 'exercise' | 'client';
+  /** Exercise-wide messages: how many clients opened it. */
+  readCount?: number;
 }
 
 export type ComplaintStatus = 'new' | 'in_progress' | 'waiting_client' | 'resolved' | 'closed';
@@ -653,17 +656,27 @@ class ApiClient {
     return response.data.exercises as VoiceExerciseSummary[];
   }
 
-  async getVoiceMessages(clientId: string, exerciseId: string) {
-    const response = await this.client.get(`/admin/voice-messages/clients/${clientId}/exercises/${exerciseId}`);
+  /** Messages attached to the exercise itself (shown to every client). */
+  async getExerciseVoiceSummary() {
+    const response = await this.client.get('/admin/voice-messages/exercises');
+    return response.data.exercises as Array<{ exerciseId: string; total: number }>;
+  }
+
+  private voicePath(clientId: string | null, exerciseId: string) {
+    return clientId ? `/admin/voice-messages/clients/${clientId}/exercises/${exerciseId}` : `/admin/voice-messages/exercises/${exerciseId}`;
+  }
+
+  async getVoiceMessages(clientId: string | null, exerciseId: string) {
+    const response = await this.client.get(this.voicePath(clientId, exerciseId));
     return response.data.messages as VoiceMessageItem[];
   }
 
-  async sendVoiceMessage(clientId: string, exerciseId: string, data: { audio?: Blob; durationSec?: number; body?: string }) {
+  async sendVoiceMessage(clientId: string | null, exerciseId: string, data: { audio?: Blob; durationSec?: number; body?: string }) {
     const form = new FormData();
     if (data.audio) form.append('audio', data.audio, `voice.${data.audio.type.includes('mp4') ? 'm4a' : data.audio.type.includes('ogg') ? 'ogg' : 'webm'}`);
     if (data.durationSec != null) form.append('durationSec', String(Math.round(data.durationSec)));
     if (data.body) form.append('body', data.body);
-    const response = await this.client.post(`/admin/voice-messages/clients/${clientId}/exercises/${exerciseId}`, form, {
+    const response = await this.client.post(this.voicePath(clientId, exerciseId), form, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 60000,
     });

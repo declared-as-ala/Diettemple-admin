@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/toast"
 import { PageLoader } from "@/components/ui/loading"
-import { Plus, Video, Edit, Trash2, Dumbbell, Play, Upload, X, Loader2, Info, SlidersHorizontal, ImageIcon, Check } from "lucide-react"
+import { Plus, Video, Edit, Trash2, Dumbbell, Play, Upload, X, Loader2, Info, SlidersHorizontal, ImageIcon, Check, Mic } from "lucide-react"
+import { VoiceMessagesModal } from "@/components/voice/VoiceMessagesModal"
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { AdminFormErrorSummary, AdminFormSection, AdminModal, AdminModalFooter, type AdminFormError } from "@/components/admin"
 import { Textarea } from "@/components/ui/textarea"
@@ -201,6 +202,13 @@ export default function ExercisesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingBulk, setDeletingBulk] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<any>(null)
+  // Coach voice message attached to the exercise itself (every client sees it in the app)
+  const [voiceTarget, setVoiceTarget] = useState<{ id: string; name: string } | null>(null)
+  const [voiceCounts, setVoiceCounts] = useState<Record<string, number>>({})
+  const refreshVoiceCounts = useCallback(() => {
+    api.getExerciseVoiceSummary().then((rows) => setVoiceCounts(Object.fromEntries(rows.map((r) => [r.exerciseId, r.total])))).catch(() => {})
+  }, [])
+  useEffect(() => { refreshVoiceCounts() }, [refreshVoiceCounts])
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false)
   const [newExercise, setNewExercise] = useState({
     name: "",
@@ -806,6 +814,17 @@ export default function ExercisesPage() {
                       <Button variant="ghost" size="icon" onClick={() => handleEditExercise(exercise)}>
                         <Edit className="h-4 w-4" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 gap-1 px-2"
+                        onClick={() => setVoiceTarget({ id: exercise._id, name: exercise.name })}
+                        title="Message vocal de cet exercice"
+                        aria-label={`Message vocal pour ${exercise.name}`}
+                      >
+                        <Mic className={`h-4 w-4 ${voiceCounts[exercise._id] ? "text-primary" : ""}`} />
+                        {voiceCounts[exercise._id] ? <span className="text-xs font-semibold text-primary">{voiceCounts[exercise._id]}</span> : null}
+                      </Button>
                       {exercise.videoUrl && (
                         <Button variant="ghost" size="icon" onClick={() => handleWatchVideo(exercise.videoUrl)}>
                           <Play className="h-4 w-4" />
@@ -844,6 +863,9 @@ export default function ExercisesPage() {
         <ExerciseFormSections draft={newExercise} onChange={(patch) => setNewExercise((previous) => ({ ...previous, ...patch }))} muscleGroups={muscleGroups} errors={exerciseErrors} disabled={updatingExercise} />
       </AdminModal>
 
+      {voiceTarget ? (
+        <VoiceMessagesModal open onOpenChange={(v) => { if (!v) setVoiceTarget(null) }} clientId={null} exerciseId={voiceTarget.id} exerciseName={voiceTarget.name} onChanged={refreshVoiceCounts} />
+      ) : null}
       <ConfirmModal open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }} title="Supprimer l’exercice ?" description={deleteTarget ? `L’exercice « ${deleteTarget.name} » sera supprimé de la bibliothèque. Cette action peut affecter les séances qui l’utilisent.` : undefined} confirmLabel="Supprimer l’exercice" cancelLabel="Annuler" variant="destructive" loading={deletingId !== null} onConfirm={() => handleDeleteOne(deleteTarget._id)} />
       <ConfirmModal open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen} title="Supprimer les exercices sélectionnés ?" description={`${selectedIds.size} exercice${selectedIds.size !== 1 ? "s" : ""} seront supprimés de la bibliothèque. Les séances associées peuvent être affectées.`} confirmLabel="Tout supprimer" cancelLabel="Annuler" variant="destructive" loading={deletingBulk} onConfirm={handleDeleteSelected} />
 

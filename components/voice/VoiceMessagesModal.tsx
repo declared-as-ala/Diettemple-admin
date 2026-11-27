@@ -56,9 +56,15 @@ function VoiceBubble({ m, onDelete }: { m: VoiceMessageItem; onDelete: () => voi
           {format(new Date(m.createdAt), "d MMM, HH:mm", { locale: dateFnsFr })}
         </span>
         <span className="flex items-center gap-2">
-          <span className={m.read ? "flex items-center gap-1 text-emerald-500" : "flex items-center gap-1"} title={m.read ? "Lu par le client" : "Pas encore lu"}>
-            <CheckCheck className="h-3.5 w-3.5" />{m.read ? "Lu" : "Envoyé"}
-          </span>
+          {m.scope === "exercise" ? (
+            <span className="flex items-center gap-1" title="Nombre de clients qui l'ont écouté ou ouvert">
+              <CheckCheck className="h-3.5 w-3.5" />Lu par {m.readCount ?? 0} client{(m.readCount ?? 0) > 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span className={m.read ? "flex items-center gap-1 text-emerald-500" : "flex items-center gap-1"} title={m.read ? "Lu par le client" : "Pas encore lu"}>
+              <CheckCheck className="h-3.5 w-3.5" />{m.read ? "Lu" : "Envoyé"}
+            </span>
+          )}
           <button type="button" onClick={onDelete} className="rounded p-1 hover:bg-destructive/10 hover:text-destructive" aria-label="Supprimer ce message" title="Supprimer">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -73,7 +79,8 @@ export function VoiceMessagesModal({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  clientId: string;
+  /** null = message on the exercise itself, shown to every client. */
+  clientId: string | null;
   exerciseId: string;
   exerciseName: string;
   onChanged?: () => void;
@@ -118,7 +125,7 @@ export function VoiceMessagesModal({
       setRecording(null);
       setText("");
       setRecorderKey((k) => k + 1);
-      notify("Message envoyé au client.", "success");
+      notify(clientId ? "Message envoyé au client." : "Message ajouté à l'exercice.", "success");
       onChanged?.();
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
@@ -146,7 +153,7 @@ export function VoiceMessagesModal({
 
   return (
     <>
-      <AdminModal open={open} onOpenChange={onOpenChange} title={`Messages vocaux — ${exerciseName}`} description="Visible uniquement par ce client, sur cet exercice." busy={sending} dirty={!!recording || text.trim().length > 0}>
+      <AdminModal open={open} onOpenChange={onOpenChange} title={`Messages vocaux — ${exerciseName}`} description={clientId ? "Visible uniquement par ce client, sur cet exercice." : "Visible par tous les clients, dans l'application, sur cet exercice."} busy={sending} dirty={!!recording || text.trim().length > 0}>
         <div className="space-y-4">
           <div className="max-h-[38vh] min-h-[80px] space-y-3 overflow-y-auto rounded-xl border border-border bg-background p-3" role="log" aria-label="Messages envoyés">
             {loading ? (
@@ -170,7 +177,7 @@ export function VoiceMessagesModal({
           <div className="flex justify-end">
             <Button onClick={() => void send()} disabled={!canSend} className="gap-2">
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Envoyer au client
+              {clientId ? "Envoyer au client" : "Publier sur l'exercice"}
             </Button>
           </div>
         </div>
